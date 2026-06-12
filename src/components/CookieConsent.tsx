@@ -1,17 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-
-function getCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
-  return match ? decodeURIComponent(match[2]) : null;
-}
-
-function setCookie(name: string, value: string, days: number) {
-  const expires = new Date(Date.now() + days * 864e5).toUTCString();
-  document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
-}
+import { getCookie, setCookie } from "@/lib/cookies";
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);

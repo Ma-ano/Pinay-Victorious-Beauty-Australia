@@ -1,23 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getCookie, setCookie } from "@/lib/cookies";
 
 export default function DemoBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    setVisible(localStorage.getItem("demo-banner-dismissed") !== "true");
+    setVisible(getCookie("demo_banner_dismissed") !== "true");
   }, []);
 
   const dismiss = () => {
-    localStorage.setItem("demo-banner-dismissed", "true");
+    setCookie("demo_banner_dismissed", "true", 365);
     setVisible(false);
   };
 
   if (!visible) return null;
 
   return (
-    <div className="bg-black text-white text-xs sm:text-sm text-center py-2.5 px-4">
+    <div className="fixed bottom-0 left-0 w-full bg-black text-white text-xs sm:text-sm text-center py-2.5 px-4 z-50">
       <span>
         This is a demo store — for demonstration purposes only
       </span>
