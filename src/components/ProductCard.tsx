@@ -28,15 +28,15 @@ export default function ProductCard({ product }: { product: Product }) {
     <div className="group relative">
       <Link
         href={`/shop/${product.slug}`}
-        className="block bg-card rounded-2xl overflow-hidden border border-card-border transition-all duration-500 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1"
+        className="block bg-card overflow-hidden border border-gray-200 dark:border-gray-600 transition-all duration-500 hover:border-[#E8CFCF] dark:hover:border-[#E8CFCF] hover:shadow-xl hover:shadow-primary/10"
       >
-        <div className="relative aspect-square overflow-hidden rounded-t-2xl">
+        <div className="relative aspect-square overflow-hidden">
           <div className="w-full h-full transition-transform duration-700 group-hover:scale-110">
             <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.imageUrl} />
           </div>
 
           {product.isSale && discount > 0 && (
-            <span className="absolute top-3 left-3 bg-accent text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+            <span className="absolute top-3 left-3 bg-accent text-dark text-xs font-semibold px-2.5 py-1 rounded-full">
               -{discount}%
             </span>
           )}

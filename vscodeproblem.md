@@ -1,0 +1,73 @@
+[{
+	"resource": "/c:/Users/maano/Desktop/Prototype/src/components/HeroBanner.tsx",
+	"owner": "tailwindcss-intellisense",
+	"code": "suggestCanonicalClasses",
+	"severity": 4,
+	"message": "The class `bg-gradient-to-br` can be written as `bg-linear-to-br`",
+	"startLineNumber": 51,
+	"startColumn": 74,
+	"endLineNumber": 51,
+	"endColumn": 91,
+	"modelVersionId": 4,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/maano/Desktop/Prototype/src/components/HeroBanner.tsx",
+	"owner": "tailwindcss-intellisense",
+	"code": "suggestCanonicalClasses",
+	"severity": 4,
+	"message": "The class `bg-gradient-to-r` can be written as `bg-linear-to-r`",
+	"startLineNumber": 66,
+	"startColumn": 44,
+	"endLineNumber": 66,
+	"endColumn": 60,
+	"modelVersionId": 4,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/maano/Desktop/Prototype/src/components/Navbar.tsx",
+	"owner": "tailwindcss-intellisense",
+	"code": "suggestCanonicalClasses",
+	"severity": 4,
+	"message": "The class `w-[780px]` can be written as `w-195`",
+	"startLineNumber": 111,
+	"startColumn": 71,
+	"endLineNumber": 111,
+	"endColumn": 80,
+	"modelVersionId": 34,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/maano/Desktop/Prototype/src/components/Navbar.tsx",
+	"owner": "tailwindcss-intellisense",
+	"code": "suggestCanonicalClasses",
+	"severity": 4,
+	"message": "The class `min-w-[16px]` can be written as `min-w-4`",
+	"startLineNumber": 201,
+	"startColumn": 98,
+	"endLineNumber": 201,
+	"endColumn": 110,
+	"modelVersionId": 34,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/maano/Desktop/Prototype/src/components/Navbar.tsx",
+	"owner": "tailwindcss-intellisense",
+	"code": "suggestCanonicalClasses",
+	"severity": 4,
+	"message": "The class `z-[60]` can be written as `z-60`",
+	"startLineNumber": 260,
+	"startColumn": 39,
+	"endLineNumber": 260,
+	"endColumn": 45,
+	"modelVersionId": 34,
+	"origin": "extHost1"
+},{
+	"resource": "/c:/Users/maano/Desktop/Prototype/src/components/Newsletter.tsx",
+	"owner": "tailwindcss-intellisense",
+	"code": "suggestCanonicalClasses",
+	"severity": 4,
+	"message": "The class `bg-gradient-to-r` can be written as `bg-linear-to-r`",
+	"startLineNumber": 5,
+	"startColumn": 25,
+	"endLineNumber": 5,
+	"endColumn": 41,
+	"modelVersionId": 1,
+	"origin": "extHost1"
+}]

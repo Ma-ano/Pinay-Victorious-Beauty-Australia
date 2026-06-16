@@ -42,8 +42,8 @@ export default function WishlistButton({ productId }: { productId: string }) {
       onClick={handleClick}
       className={`absolute top-3 right-3 z-10 p-2 rounded-full transition-all ${
         wishlisted
-          ? "bg-accent/20 text-accent scale-110"
-          : "bg-white/70 text-foreground hover:bg-white hover:text-accent"
+          ? "bg-accent/20 text-red-500 scale-110"
+          : "bg-white/70 text-foreground hover:bg-white hover:text-red-500"
       }`}
       aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
     >

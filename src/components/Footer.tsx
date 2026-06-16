@@ -6,10 +6,10 @@ export default function Footer() {
     <footer className="border-t border-primary/10 bg-card/50 backdrop-blur-sm mt-auto">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
-          <div className="col-span-2 md:col-span-1">
-            <h3 className="text-lg font-bold text-dark">{site.name}</h3>
-            <p className="mt-2 text-sm text-foreground leading-relaxed max-w-xs">{site.description}</p>
-          </div>
+            <div>
+              <div className="w-10 h-10 rounded-lg bg-primary/20 mb-3" />
+              <p className="text-sm text-foreground leading-relaxed max-w-xs">{site.description}</p>
+            </div>
           <div>
             <h4 className="text-sm font-semibold text-dark mb-4">Shop</h4>
             <div className="space-y-2.5">

@@ -1,9 +1,9 @@
 export const site = {
-  name: "Beauty Store",
-  tagline: "Discover Your Radiance",
+  name: "Pinay Victorious Beauty Australia",
+  tagline: "Beauty Without Borders",
   description:
-    "Curated beauty essentials for the modern you. Premium skincare, makeup, and self-care products.",
-  email: "hello@beautystore.com",
+    "Premium beauty and wellness essentials from South Korea, Thailand, the Philippines, and across Asia.",
+  email: "hello@pinayvictorious.com",
   phone: "+61 400 000 000",
   address: "Sydney, Australia",
   social: {

@@ -1,187 +1,60 @@
-**DeepSeek V4 Flash (High) Prompt — Next.js Beauty Store (Frontend Only)**
+Categories (Products/Services)
+●	What categories should be displayed on the website?
+Shop by Category
+💄 Skincare
+Facial Cleanser
+Toner
+Serum
+Moisturizer
+Sunscreen
+Face Mask
+Whitening Products
+✨ Beauty & Cosmetics
+Makeup
+BB Cream & Foundation
+Lipstick
+Eyebrow & Eye Makeup
+Beauty Tools
+🧴 Body Care
+Body Lotion
+Body Scrub
+Body Wash
+Whitening Lotion
+Hand & Foot Care
+🧼 Soap Collection
+Whitening Soap
+Herbal Soap
+Glutathione Soap
+Kojic Soap
+💇‍♀️ Hair Care
+Shampoo
+Conditioner
+Hair Treatment
+Hair Growth Products
+💊 Wellness Products
+Collagen Drinks
+Beauty Supplements
+Coffee & Wellness Drinks
+Herbal Products
+🌿 Korean Beauty (K-Beauty)
+Korean Skincare
+Korean Cosmetics
+Korean Wellness Products
+🌺 Thai Beauty
+Thai Skincare
+Thai Herbal Products
+Thai Wellness Products
+🇵🇭 Filipino Favorites
+Best Sellers from the Philippines
+Beauty Essentials
+Wellness Products
+🔥 Best Sellers
+🆕 New Arrivals
+🎁 Gift Sets & Bundles
+💖 Sale & Promotions
+●	Can you provide a list of products/services under each category?
 
-You are a senior frontend developer. Generate a **complete, production-ready frontend-only eCommerce website** using **Next.js (App Router)** and **Tailwind CSS**.
-
----
-
-## 🔴 IMPORTANT RULES
-
-* Frontend only (NO backend, NO database, NO API calls)
-* Use **mock/static data (JSON or arrays)**
-* Use **modern Next.js App Router structure**
-* Write **clean, modular, reusable components**
-* Ensure **fully responsive design**
-* Follow **best UI/UX practices**
-* Output code in **multiple files with proper folder structure**
-
----
-
-## 🎨 DESIGN SYSTEM
-
-* Color Palette: **Pastel Pink theme**
-
-  * Primary: #F8C8DC
-  * Secondary: #FADADD
-  * Accent: #FFB6C1
-  * Background: #FFF0F5
-* Style: Elegant, minimal, feminine, modern
-* Add smooth hover effects and subtle animations
-* Mobile-first design
-
----
-
-## 🏷️ BRANDING (USE MOCK DATA)
-
-* Brand Name: **GlowMuse Beauty**
-* Tagline: **"Enhance Your Natural Glow"**
-* Logo: Placeholder only
-
----
-
-## 📁 REQUIRED PROJECT STRUCTURE
-
-Create folders like:
-
-* /app
-* /components
-* /data
-* /lib (if needed)
-* /styles
-
----
-
-## 📄 PAGES TO IMPLEMENT
-
-### 1. Home Page
-
-* Hero banner
-* Featured products
-* Categories preview
-* Sale/Promo section
-* Newsletter UI
-* SEO meta tags
-
----
-
-### 2. About Page (Mock Content)
-
-Include:
-
-* Company story
-* Mission & Vision
-* Unique selling points (organic, cruelty-free)
-* Optional team section
-
----
-
-### 3. Shop Page
-
-Categories:
-
-* Skincare
-* Makeup
-* Haircare
-* Fragrances
-* Beauty Tools
-
-Features:
-
-* Product grid
-* Search bar (frontend filtering)
-* Category filters
-* Product cards (image, name, price, discount)
-
----
-
-### 4. Product Detail Page
-
-* Product image gallery
-* Title, price, description
-* Discount badge
-* Add to Cart button (UI only)
-
----
-
-### 5. Sale Page
-
-* Discounted products
-* Promo banners
-* Discount code input (UI only)
-
----
-
-### 6. Contact Page
-
-* Contact form (Name, Email, Message)
-* Mock details:
-
-  * Email: [support@glowmuse.com](mailto:support@glowmuse.com)
-  * Phone: +61 400 000 000
-  * Address: Sydney, Australia
-* Map placeholder
-
----
-
-## 💳 PAYMENT SECTION
-
-* Display **PayPal ONLY**
-* UI only (no real integration)
-
----
-
-## 🔐 ADMIN DASHBOARD (FRONTEND ONLY)
-
-Create an admin UI with:
-
-* Sidebar navigation
-* Dashboard overview (mock stats)
-* Product management UI
-* Orders table (mock data)
-* Promotions management
-
----
-
-## ⚙️ FEATURES
-
-* SEO (meta titles, descriptions)
-* Reusable components
-* Responsive navbar + mobile menu
-* Footer with links + social icons
-* Cart UI (frontend only)
-* Optional wishlist
-* Optional toast notifications
-
----
-
-## 📜 LEGAL PAGES
-
-* Privacy Policy (mock)
-* Terms & Conditions (mock)
-  Include:
-* Data collection
-* Cookies usage
-* Refund policy
-
----
-
-## 📦 TECH STACK
-
-* Next.js (latest, App Router)
-* Tailwind CSS
-* Optional: Framer Motion
-
----
-
-## 🧠 OUTPUT FORMAT (VERY IMPORTANT)
-
-* Provide:
-
-  1. Folder structure
-  2. All key files (code blocks per file)
-  3. Reusable components
-* Do NOT skip files
-* Do NOT explain too much — focus on code
-
----
-
-Generate everything step-by-step clearly.
+●	Do you want filtering or search functionality?
+YES
+●	Will categories change frequently?
+NO

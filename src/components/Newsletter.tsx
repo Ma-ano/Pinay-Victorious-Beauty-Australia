@@ -2,7 +2,7 @@
 
 export default function Newsletter() {
   return (
-    <section className="bg-gradient-to-r from-primary/20 to-secondary/20 rounded-2xl p-8 md:p-12 text-center">
+    <section className="bg-linear-to-r from-primary/20 to-secondary/20 rounded-2xl p-8 md:p-12 text-center">
       <h2 className="text-2xl md:text-3xl font-bold text-dark">
         Join Our Glow Community
       </h2>

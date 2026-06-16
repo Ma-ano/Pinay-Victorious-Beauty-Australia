@@ -17,6 +17,7 @@ export interface Product {
   imageUrl: string;
   rating: number;
   reviews: number;
+  sold: number;
   isNew?: boolean;
   isSale?: boolean;
   discount?: number;
@@ -38,6 +39,7 @@ export const products: Product[] = [
     imageUrl: "photo-1522335789203-aabd1fc54bc9",
     rating: 4.8,
     reviews: 124,
+    sold: 3800,
     isSale: true,
     discount: 26,
     variants: [
@@ -49,7 +51,7 @@ export const products: Product[] = [
     id: "2",
     name: "Velvet Matte Lipstick",
     slug: "velvet-matte-lipstick",
-    category: "makeup",
+    category: "beauty-cosmetics",
     type: "lipstick",
     brand: "Velvet & Co.",
     price: 28.0,
@@ -58,6 +60,7 @@ export const products: Product[] = [
     imageUrl: "photo-1596462502278-27bfdc403348",
     rating: 4.6,
     reviews: 89,
+    sold: 3500,
     isNew: true,
     variants: [
       { id: "2-v-ruby", name: "Ruby Red", inStock: true },
@@ -69,7 +72,7 @@ export const products: Product[] = [
     id: "3",
     name: "Silk Repair Hair Mask",
     slug: "silk-repair-hair-mask",
-    category: "haircare",
+    category: "hair-care",
     type: "hair-mask",
     brand: "Lushé",
     price: 35.0,
@@ -79,6 +82,7 @@ export const products: Product[] = [
     imageUrl: "photo-1526947425960-945c6e72858f",
     rating: 4.7,
     reviews: 67,
+    sold: 2100,
     isSale: true,
     discount: 17,
   },
@@ -86,7 +90,7 @@ export const products: Product[] = [
     id: "4",
     name: "Bloom Eau de Parfum",
     slug: "bloom-eau-de-parfum",
-    category: "fragrances",
+    category: "beauty-cosmetics",
     type: "perfume",
     brand: "Velvet & Co.",
     price: 85.0,
@@ -95,6 +99,7 @@ export const products: Product[] = [
     imageUrl: "photo-1541643600914-78b084683601",
     rating: 4.9,
     reviews: 203,
+    sold: 4200,
     isNew: true,
     variants: [
       { id: "4-v-30ml", name: "30ml", inStock: true },
@@ -106,7 +111,7 @@ export const products: Product[] = [
     id: "5",
     name: "Jade Facial Roller",
     slug: "jade-facial-roller",
-    category: "beauty-tools",
+    category: "beauty-cosmetics",
     type: "tool",
     brand: "PureBloom",
     price: 22.0,
@@ -115,6 +120,7 @@ export const products: Product[] = [
     imageUrl: "photo-1570172619644-dfd03ed5d881",
     rating: 4.5,
     reviews: 156,
+    sold: 1900,
   },
   {
     id: "6",
@@ -130,6 +136,7 @@ export const products: Product[] = [
     imageUrl: "photo-1507003211169-0a1dd7228f2d",
     rating: 4.7,
     reviews: 98,
+    sold: 2800,
     isSale: true,
     discount: 19,
   },
@@ -137,7 +144,7 @@ export const products: Product[] = [
     id: "7",
     name: "Luminous Foundation",
     slug: "luminous-foundation",
-    category: "makeup",
+    category: "beauty-cosmetics",
     type: "foundation",
     brand: "GlowLab",
     price: 38.0,
@@ -146,6 +153,7 @@ export const products: Product[] = [
     imageUrl: "photo-1556228720-74787810a501",
     rating: 4.4,
     reviews: 112,
+    sold: 2400,
     variants: [
       { id: "7-v-fair", name: "Fair Ivory", inStock: true },
       { id: "7-v-beige", name: "Warm Beige", inStock: true },
@@ -157,7 +165,7 @@ export const products: Product[] = [
     id: "8",
     name: "Argan Oil Hair Elixir",
     slug: "argan-oil-hair-elixir",
-    category: "haircare",
+    category: "hair-care",
     type: "hair-oil",
     brand: "Lushé",
     price: 30.0,
@@ -166,12 +174,13 @@ export const products: Product[] = [
     imageUrl: "photo-1772987714654-2df39af2c658",
     rating: 4.6,
     reviews: 74,
+    sold: 1600,
   },
   {
     id: "9",
     name: "Midnight Rose Perfume Oil",
     slug: "midnight-rose-perfume-oil",
-    category: "fragrances",
+    category: "beauty-cosmetics",
     type: "perfume-oil",
     brand: "Velvet & Co.",
     price: 55.0,
@@ -181,6 +190,7 @@ export const products: Product[] = [
     imageUrl: "photo-1778330804164-2f6d5d3b16ad",
     rating: 4.8,
     reviews: 45,
+    sold: 950,
     isSale: true,
     discount: 21,
   },
@@ -188,7 +198,7 @@ export const products: Product[] = [
     id: "10",
     name: "Sonic Facial Cleansing Brush",
     slug: "sonic-facial-cleansing-brush",
-    category: "beauty-tools",
+    category: "beauty-cosmetics",
     type: "tool",
     brand: "PureBloom",
     price: 65.0,
@@ -197,43 +207,7 @@ export const products: Product[] = [
     imageUrl: "photo-1532441807072-e075a14e3b69",
     rating: 4.3,
     reviews: 88,
-  },
-  {
-    id: "11",
-    name: "Retinol Night Serum",
-    slug: "retinol-night-serum",
-    category: "skincare",
-    type: "serum",
-    brand: "GlowLab",
-    price: 58.0,
-    description:
-      "Advanced retinol serum that reduces fine lines and improves skin texture while you sleep.",
-    imageUrl: "photo-1643168343279-3f93c2e592ef",
-    rating: 4.7,
-    reviews: 134,
-    isNew: true,
-  },
-  {
-    id: "12",
-    name: "Eyeshadow Palette - Sunset",
-    slug: "eyeshadow-palette-sunset",
-    category: "makeup",
-    type: "eyeshadow",
-    brand: "Lushé",
-    price: 45.0,
-    originalPrice: 55.0,
-    description:
-      "12 warm-toned eyeshadows with buttery texture. Highly pigmented shades from matte to shimmer.",
-    imageUrl: "photo-1770981667051-e2ad2a1c149d",
-    rating: 4.8,
-    reviews: 219,
-    isSale: true,
-    discount: 18,
-    variants: [
-      { id: "12-v-sunset", name: "Sunset", inStock: true },
-      { id: "12-v-rose", name: "Rose Garden", inStock: true },
-      { id: "12-v-neutrals", name: "Neutrals", inStock: true },
-    ],
+    sold: 1200,
   },
 ];
 
@@ -249,13 +223,10 @@ export function getSaleProducts(): Product[] {
   return products.filter((p) => p.isSale);
 }
 
-export const featuredProducts: Product[] = [
-  products[0],
-  products[1],
-  products[2],
-  products[3],
-  products[4],
-  products[5],
-  products[6],
-  products[7],
-];
+export function getTrendingProducts(): Product[] {
+  return [...products].sort((a, b) => b.rating - a.rating);
+}
+
+export function getBestSellingProducts(): Product[] {
+  return [...products].sort((a, b) => b.sold - a.sold);
+}

@@ -7,7 +7,6 @@ import { ToastProvider } from "@/components/Toast";
 import { CartProvider } from "@/components/CartContext";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
-import DemoBanner from "@/components/DemoBanner";
 import { site } from "@/data/site";
 
 const geistSans = Geist({
@@ -39,7 +38,6 @@ export default function RootLayout({
         <CartProvider>
           <ToastProvider>
             <Navbar />
-            <DemoBanner />
             <main className="flex-1">{children}</main>
             <Footer />
             <CookieConsent />
