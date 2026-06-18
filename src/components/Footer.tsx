@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { site } from "@/data/site";
 
@@ -7,7 +8,16 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             <div>
-              <div className="w-10 h-10 rounded-lg bg-primary/20 mb-3" />
+              <Link href="/" className="inline-block">
+                <Image
+                  src="/images/PinayVictoriousLogo.jpg"
+                  alt={site.name}
+                  width={0}
+                  height={0}
+                  className="w-44 h-auto rounded-lg object-contain mb-3"
+                  sizes="200px"
+                />
+              </Link>
               <p className="text-sm text-foreground leading-relaxed max-w-xs">{site.description}</p>
             </div>
           <div>

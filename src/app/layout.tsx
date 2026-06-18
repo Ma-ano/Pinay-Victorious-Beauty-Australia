@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { AuthProvider } from "@/components/AuthContext";
 import { ToastProvider } from "@/components/Toast";
 import { CartProvider } from "@/components/CartContext";
 import BackToTop from "@/components/BackToTop";
@@ -35,6 +36,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
       <body className="min-h-screen flex flex-col">
+        <AuthProvider>
         <CartProvider>
           <ToastProvider>
             <Navbar />
@@ -44,6 +46,7 @@ export default function RootLayout({
             <BackToTop />
           </ToastProvider>
         </CartProvider>
+        </AuthProvider>
       </body>
     </html>
   );

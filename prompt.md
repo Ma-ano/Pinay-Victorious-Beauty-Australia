@@ -1,60 +1,44 @@
-Categories (Products/Services)
-●	What categories should be displayed on the website?
-Shop by Category
-💄 Skincare
-Facial Cleanser
-Toner
-Serum
-Moisturizer
-Sunscreen
-Face Mask
-Whitening Products
-✨ Beauty & Cosmetics
-Makeup
-BB Cream & Foundation
-Lipstick
-Eyebrow & Eye Makeup
-Beauty Tools
-🧴 Body Care
-Body Lotion
-Body Scrub
-Body Wash
-Whitening Lotion
-Hand & Foot Care
-🧼 Soap Collection
-Whitening Soap
-Herbal Soap
-Glutathione Soap
-Kojic Soap
-💇‍♀️ Hair Care
-Shampoo
-Conditioner
-Hair Treatment
-Hair Growth Products
-💊 Wellness Products
-Collagen Drinks
-Beauty Supplements
-Coffee & Wellness Drinks
-Herbal Products
-🌿 Korean Beauty (K-Beauty)
-Korean Skincare
-Korean Cosmetics
-Korean Wellness Products
-🌺 Thai Beauty
-Thai Skincare
-Thai Herbal Products
-Thai Wellness Products
-🇵🇭 Filipino Favorites
-Best Sellers from the Philippines
-Beauty Essentials
-Wellness Products
-🔥 Best Sellers
-🆕 New Arrivals
-🎁 Gift Sets & Bundles
-💖 Sale & Promotions
-●	Can you provide a list of products/services under each category?
+please make the UI of this fancy and using the color palette
 
-●	Do you want filtering or search functionality?
-YES
-●	Will categories change frequently?
-NO
+Hello,
+
+Follow this link to verify your email address.
+
+https://pinay-victorious.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=UxOb7uVN2X3riRyASSu964DBGSO6F71LvD9ge6enJJgAAAGe1svc4w&apiKey=AIzaSyAy_skrFRKL6r2d4nZ2xN7VFClVnWXCzT4&lang=en
+
+If you didn’t ask to verify this address, you can ignore this email.
+
+Thanks,
+
+Your Pinay Victorious team
+
+and 
+
+https://pinay-victorious.firebaseapp.com/__/auth/action?mode=verifyEmail&oobCode=UxOb7uVN2X3riRyASSu964DBGSO6F71LvD9ge6enJJgAAAGe1svc4w&apiKey=AIzaSyAy_skrFRKL6r2d4nZ2xN7VFClVnWXCzT4&lang=en
+Your email has been verified
+You can now sign in with your new account
+
+## Error Type
+Console Error
+
+## Error Message
+Encountered two children with the same key, `/shop`. Keys should be unique so that components maintain their identity across updates. Non-unique keys may cause children to be duplicated and/or omitted — the behavior is unsupported and could change in a future version.
+
+
+    at div (<anonymous>:null:null)
+    at <unknown> (src/components/CustomerNavbar.tsx:141:25)
+    at Array.map (<anonymous>:null:null)
+    at CustomerNavbar (src/components/CustomerNavbar.tsx:138:29)
+    at Navbar (src/components/Navbar.tsx:10:38)
+    at RootLayout (src\app\layout.tsx:42:13)
+
+## Code Frame
+  139 |                     if (link.label === "Categories") {
+  140 |                       return (
+> 141 |                         <div key={link.href} ref={catRef} className="relative">
+      |                         ^
+  142 |                           <button
+  143 |                             onClick={() => setCatOpen(!catOpen)}
+  144 |                             className={`flex items-center gap-1 px-4 py-2 text-sm transition-color...
+
+Next.js version: 16.2.9 (Turbopack)
