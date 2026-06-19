@@ -65,13 +65,13 @@ export default function VerifyPage() {
               </div>
               <h1 className="text-xl font-semibold text-dark">Email Verified!</h1>
               <p className="text-sm text-foreground">
-                Your email has been successfully verified. You can now log in to your account.
+                Your email has been successfully verified. Your account is now active.
               </p>
               <Link
-                href="/login"
+                href="/"
                 className="w-full mt-2 bg-accent text-white py-2.5 rounded-xl font-medium text-center text-sm hover:bg-accent/80 transition-all"
               >
-                Continue to Login
+                Continue to Homepage
               </Link>
             </div>
           )}

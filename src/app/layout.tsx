@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { cookies } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -8,17 +8,8 @@ import { ToastProvider } from "@/components/Toast";
 import { CartProvider } from "@/components/CartContext";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
+import WhatsAppBubble from "@/components/WhatsAppBubble";
 import { site } from "@/data/site";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: {
@@ -28,13 +19,16 @@ export const metadata: Metadata = {
   description: site.description,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const cookieStore = await cookies();
+  const theme = cookieStore.get("theme")?.value || "light";
+
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
+    <html lang="en" className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
       <body className="min-h-screen flex flex-col">
         <AuthProvider>
         <CartProvider>
@@ -44,6 +38,7 @@ export default function RootLayout({
             <Footer />
             <CookieConsent />
             <BackToTop />
+            <WhatsAppBubble />
           </ToastProvider>
         </CartProvider>
         </AuthProvider>

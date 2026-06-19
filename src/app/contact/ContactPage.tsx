@@ -1,8 +1,40 @@
 "use client";
 
+import { useState } from "react";
 import { site } from "@/data/site";
 
 export default function ContactPage() {
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSending(true);
+    setError("");
+    const form = new FormData(e.currentTarget);
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.get("name"),
+          email: form.get("email"),
+          message: form.get("message"),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to send");
+      }
+      setSent(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setSending(false);
+    }
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="max-w-3xl mx-auto">
@@ -13,7 +45,7 @@ export default function ContactPage() {
         </div>
 
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-dark mb-1.5">Name</label>
               <input id="name" type="text" required
@@ -29,9 +61,16 @@ export default function ContactPage() {
               <textarea id="message" rows={5} required
                 className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm resize-none" />
             </div>
-            <button type="submit" className="w-full py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/80 transition-colors text-sm">
-              Send Message
-            </button>
+            {sent ? (
+              <div className="w-full py-3 bg-green-100 text-green-800 rounded-xl font-medium text-sm text-center">
+                Message sent! We&apos;ll get back to you soon.
+              </div>
+            ) : (
+              <button type="submit" disabled={sending} className="w-full py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/80 transition-colors text-sm disabled:opacity-50">
+                {sending ? "Sending..." : "Send Message"}
+              </button>
+            )}
+            {error && <p className="text-red-600 text-sm">{error}</p>}
           </form>
 
           <div className="space-y-4">
@@ -62,18 +101,7 @@ export default function ContactPage() {
               </div>
             </div>
 
-            <div className="bg-card rounded-2xl border border-card-border overflow-hidden">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3310.7443225331466!2d151.2073038!3d-33.8719187!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x6b12ae3b3b3b3b3b%3A0x5017d681632bfc0!2sSydney%20NSW%2C%20Australia!5e0!3m2!1sen!2s!4v1"
-                width="100%"
-                height="250"
-                style={{ border: 0 }}
-                loading="lazy"
-                allowFullScreen
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Beauty Store Location"
-              />
-            </div>
+
           </div>
         </div>
       </div>

@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
 import type { Product } from "@/data/products";
 import ImagePlaceholder from "@/components/ImagePlaceholder";
@@ -9,6 +12,10 @@ interface Props {
 }
 
 export default function ProductDetailPage({ product }: Props) {
+  const [selectedImage, setSelectedImage] = useState(0);
+  const images = product.images?.length ? product.images : [{ url: "", name: product.name }];
+  const currentImage = images[selectedImage] || images[0];
+
   const discount = product.originalPrice
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
@@ -29,8 +36,13 @@ export default function ProductDetailPage({ product }: Props) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-14">
         <div className="space-y-4">
-          <div className="relative aspect-square rounded-2xl overflow-hidden">
-            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.imageUrl} />
+          <div className="relative aspect-square rounded-2xl overflow-hidden bg-card">
+            <ImagePlaceholder
+              category={product.category}
+              name={currentImage.name || product.name}
+              imageUrl={currentImage.url}
+              key={selectedImage}
+            />
             {product.isSale && (
               <span className="absolute top-4 left-4 bg-accent text-white text-sm font-semibold px-3 py-1.5 rounded-full z-10">
                 -{discount}%
@@ -42,13 +54,27 @@ export default function ProductDetailPage({ product }: Props) {
               </span>
             )}
           </div>
-          <div className="flex gap-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="flex-1 aspect-square rounded-xl overflow-hidden opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
-                <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.imageUrl} />
-              </div>
-            ))}
-          </div>
+          {images.length > 1 && (
+            <div className="flex gap-3">
+              {images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedImage(i)}
+                  className={`flex-1 aspect-square rounded-xl overflow-hidden transition-all cursor-pointer ${
+                    i === selectedImage
+                      ? "ring-2 ring-accent ring-offset-2 opacity-100"
+                      : "opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  <ImagePlaceholder
+                    category={product.category}
+                    name={img.name || product.name}
+                    imageUrl={img.url}
+                  />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="lg:sticky lg:top-28 lg:self-start">
@@ -91,9 +117,9 @@ export default function ProductDetailPage({ product }: Props) {
 
           <div className="mt-8 divide-y divide-primary/10 rounded-xl border border-card-border bg-card">
             {[
-              { title: "Details", content: "Premium formula crafted with the finest ingredients. Suitable for all skin types. Dermatologist tested." },
-              { title: "Shipping & Returns", content: "Free shipping on orders over $50. 30-day return policy. Items must be unused in original packaging." },
-              { title: "Ingredients", content: "Water, Glycerin, Hyaluronic Acid, Vitamin E, Natural Extracts. Free from parabens and sulfates." },
+              { title: "Details", content: product.detail || "Premium formula crafted with the finest ingredients." },
+              { title: "Shipping & Returns", content: product.shippingReturns || "Free shipping on orders over $50. 30-day return policy." },
+              { title: "Ingredients", content: product.ingredients || "Contact us for ingredient details." },
             ].map((section) => (
               <details key={section.title} className="group">
                 <summary className="flex items-center justify-between px-4 py-3.5 text-sm font-medium text-dark cursor-pointer hover:text-accent transition-colors list-none">

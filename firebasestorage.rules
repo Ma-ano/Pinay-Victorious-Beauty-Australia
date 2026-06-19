@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Profile photos — read anyone, write own only
+    match /profiles/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Category images — read anyone, admin write
+    match /categories/{categorySlug}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+
+    // Featured brand slides — read anyone, admin write
+    match /featured-brands/{slideIndex}/{allPaths=**} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+
+    // Product images — read anyone, admin write
+    match /products/{fileName} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+  }
+}

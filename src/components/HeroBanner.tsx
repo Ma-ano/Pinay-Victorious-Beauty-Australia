@@ -2,43 +2,29 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import type { FeaturedBrandConfig } from "@/lib/settings-store";
 
-const slides = [
-  {
-    image: "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=1600&q=80&auto=format&fit=crop",
-    title: "Medicube",
-    subtitle: "Dermatologist-tested formulas for acne, pores, and more.",
-    cta: "Shop Now",
-    link: "/shop",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=1600&q=80&auto=format&fit=crop",
-    title: "COSRX",
-    subtitle: "Gentle, high-performance skincare for every routine.",
-    cta: "Shop Now",
-    link: "/shop",
-  },
-  {
-    image: "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=1600&q=80&auto=format&fit=crop",
-    title: "Dr. Althea",
-    subtitle: "Gentle, effective formulas crafted for glowing results.",
-    cta: "Shop Now",
-    link: "/shop",
-  },
+const fallbackSlides: FeaturedBrandConfig[] = [
+  { brand: "", title: "Welcome", description: "Discover premium beauty products curated for you.", image: "" },
+  { brand: "", title: "New Arrivals", description: "Fresh from the latest collections.", image: "" },
+  { brand: "", title: "Best Sellers", description: "Our most popular products loved by customers.", image: "" },
 ];
 
-export default function HeroBanner() {
+export default function HeroBanner({ featuredBrands }: { featuredBrands?: FeaturedBrandConfig[] }) {
+  const slides = (featuredBrands?.filter((b) => b.brand || b.title) || []).length > 0
+    ? featuredBrands!.filter((b) => b.brand || b.title)
+    : fallbackSlides;
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
   const next = useCallback(() => {
     setCurrent((prev) => (prev + 1) % slides.length);
-  }, []);
+  }, [slides.length]);
 
   const prev = useCallback(() => {
     setCurrent((prev) => (prev - 1 + slides.length) % slides.length);
-  }, []);
+  }, [slides.length]);
 
   useEffect(() => {
     if (isPaused) return;
@@ -58,11 +44,21 @@ export default function HeroBanner() {
           className="absolute inset-0 transition-opacity duration-700 ease-in-out"
           style={{ opacity: i === current ? 1 : 0 }}
         >
-          <img
-            src={slide.image}
-            alt=""
-            className="w-full h-full object-cover"
-          />
+          {slide?.image ? (
+            <div className="w-full h-full">
+              <img
+                src={slide.image}
+                alt=""
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = "none";
+                }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />
+            </div>
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10" />
+          )}
           <div className="absolute inset-0 bg-linear-to-r from-background/80 via-background/50 to-transparent" />
         </div>
       ))}
@@ -80,21 +76,23 @@ export default function HeroBanner() {
             {i === current && (
               <div className="max-w-lg">
                 <div className="glass-strong rounded-3xl p-6 md:p-8">
-                  <p className="text-sm md:text-base text-accent font-semibold tracking-widest uppercase">
-                    Featured Brand
-                  </p>
+                  {slide.brand && (
+                    <p className="text-sm md:text-base text-accent font-semibold tracking-widest uppercase">
+                      Featured Brand
+                    </p>
+                  )}
                   <h1 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-bold text-dark leading-[1.15] tracking-tight">
                     {slide.title}
                   </h1>
                   <p className="mt-3 text-sm md:text-base text-foreground leading-relaxed">
-                    {slide.subtitle}
+                    {slide.description}
                   </p>
                   <div className="mt-4">
                     <Link
-                      href={slide.link}
-                      className="group inline-flex items-center gap-2 px-6 py-2.5 bg-accent text-dark rounded-full font-medium text-sm hover:bg-accent/80 transition-all hover:shadow-lg hover:shadow-accent/25"
+                      href="/shop"
+                      className="group inline-flex items-center gap-2 px-6 py-2.5 bg-accent text-white rounded-full font-medium text-sm hover:bg-accent/80 transition-all hover:shadow-lg hover:shadow-accent/25"
                     >
-                      {slide.cta}
+                      Shop Now
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                       </svg>

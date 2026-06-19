@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import ProductCard from "@/components/ProductCard";
-import { products } from "@/data/products";
+import { getAllProducts } from "@/lib/product-store";
+import type { Product } from "@/data/products";
 import { categories } from "@/data/categories";
 import { productTypes } from "@/data/productTypes";
 import { brands } from "@/data/brands";
@@ -11,6 +12,8 @@ type Sort = "default" | "price-asc" | "price-desc" | "name";
 type View = "grid" | "list";
 
 export default function ShopPage() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
@@ -19,7 +22,14 @@ export default function ShopPage() {
   const [view, setView] = useState<View>("grid");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
 
-  const maxPrice = Math.max(...products.map((p) => p.originalPrice || p.price));
+  useEffect(() => {
+    getAllProducts().then((all) => {
+      setProducts(all);
+      setLoading(false);
+    });
+  }, []);
+
+  const maxPrice = Math.max(...products.map((p) => p.originalPrice || p.price), 200);
 
   const filtered = useMemo(() => {
     let result = products.filter((p) => {
@@ -190,7 +200,11 @@ export default function ShopPage() {
         />
       </div>
 
-      {view === "grid" ? (
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
           {filtered.map((product) => (
             <div key={product.id} className="animate-fade-in-up">
@@ -208,7 +222,7 @@ export default function ShopPage() {
         </div>
       )}
 
-      {filtered.length === 0 && (
+      {!loading && filtered.length === 0 && (
         <p className="text-center text-foreground mt-20 text-sm">No products match your filters</p>
       )}
     </div>

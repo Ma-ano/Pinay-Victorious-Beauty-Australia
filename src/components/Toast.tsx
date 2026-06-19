@@ -5,11 +5,11 @@ import { createContext, useContext, useState, useCallback, useEffect, type React
 interface ToastItem {
   id: number;
   message: string;
-  type: "success" | "info";
+  type: "success" | "info" | "error";
 }
 
 interface ToastContextType {
-  showToast: (message: string, type?: "success" | "info") => void;
+  showToast: (message: string, type?: "success" | "info" | "error") => void;
 }
 
 const ToastContext = createContext<ToastContextType | null>(null);
@@ -28,7 +28,7 @@ export function useToast(): ToastContextType {
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
-  const addToast = useCallback((message: string, type: "success" | "info" = "success") => {
+  const addToast = useCallback((message: string, type: "success" | "info" | "error" = "success") => {
     const id = ++toastId;
     setToasts((prev) => [...prev, { id, message, type }]);
     setTimeout(() => {
@@ -46,6 +46,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             className={`pointer-events-auto px-5 py-3 rounded-xl text-sm font-medium shadow-lg animate-slide-in ${
               t.type === "success"
                 ? "bg-green-500 text-white"
+                : t.type === "error"
+                ? "bg-red-500 text-white"
                 : "bg-accent text-white"
             }`}
           >

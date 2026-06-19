@@ -1,76 +1,75 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { reviews as allReviews, getReviewsByProductId, type Review } from "@/data/reviews";
-import { useToast } from "./Toast";
+import { useEffect, useMemo, useState } from "react";
+import { collection, onSnapshot, query, where, type Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { getReviewsByProductId, type Review } from "@/data/reviews";
 
 interface ProductReviewsProps {
   productId: string;
   productName: string;
 }
 
-const reviewers = ["Alice K.", "Bella M.", "Daisy R.", "Freya L.", "Georgia P.", "Hazel W.", "Iris J.", "Jasmine S.", "Kiera B.", "Luna D.", "Maya T.", "Natalie C.", "Olivia H.", "Piper F.", "Quinn A.", "Rose N.", "Skye V.", "Violet G.", "Willow Z.", "Zara Y."];
+interface FirestoreReview {
+  productId: string;
+  author: string;
+  rating: number;
+  content: string;
+  isVerified: boolean;
+  createdAt?: Timestamp;
+}
 
-const reviewTemplates = [
-  "Absolutely love this product! Exceeded my expectations in every way.",
-  "Great quality for the price. Would definitely recommend to friends.",
-  "I've been using this for a few weeks now and I'm really impressed.",
-  "Beautiful product with excellent quality. Arrived quickly and well-packaged.",
-  "Really happy with my purchase. The quality is outstanding.",
-  "Perfect for my daily routine. I use it every day without fail.",
-  "Lovely product but I wish it lasted a bit longer. Still very good.",
-  "Exceeded expectations! Will definitely be buying more from this brand.",
-  "Nice product overall. Does exactly what it promises.",
-  "Super happy with this! The quality is fantastic and it looks beautiful.",
-];
+function mapFirestoreReview(id: string, review: FirestoreReview): Review {
+  return {
+    id,
+    productId: review.productId,
+    author: review.author || "Customer",
+    rating: Number(review.rating || 0),
+    content: review.content || "",
+    date: review.createdAt
+      ? review.createdAt.toDate().toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+    isVerified: review.isVerified === true,
+  };
+}
 
 export default function ProductReviews({ productId, productName }: ProductReviewsProps) {
-  const { showToast } = useToast();
-  const [reviews, setReviews] = useState<Review[]>(() => getReviewsByProductId(productId));
-  const [sortBy, setSortBy] = useState<string>("newest");
-  const [showForm, setShowForm] = useState(false);
-  const [formRating, setFormRating] = useState(0);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [formName, setFormName] = useState("");
-  const [formEmail, setFormEmail] = useState("");
-  const [formContent, setFormContent] = useState("");
+  const [persistedReviews, setPersistedReviews] = useState<Review[]>([]);
+  const [sortBy, setSortBy] = useState("newest");
+
+  useEffect(() => {
+    const reviewsQuery = query(collection(db, "reviews"), where("productId", "==", productId));
+    return onSnapshot(reviewsQuery, (snapshot) => {
+      setPersistedReviews(
+        snapshot.docs.map((docSnap) => mapFirestoreReview(docSnap.id, docSnap.data() as FirestoreReview))
+      );
+    });
+  }, [productId]);
+
+  const reviews = useMemo(() => [
+    ...persistedReviews,
+    ...getReviewsByProductId(productId),
+  ], [persistedReviews, productId]);
 
   const sorted = useMemo(() => {
     const copy = [...reviews];
     switch (sortBy) {
-      case "newest": return copy.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      case "oldest": return copy.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-      case "highest": return copy.sort((a, b) => b.rating - a.rating);
-      case "lowest": return copy.sort((a, b) => a.rating - b.rating);
-      default: return copy;
+      case "newest":
+        return copy.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      case "oldest":
+        return copy.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      case "highest":
+        return copy.sort((a, b) => b.rating - a.rating);
+      case "lowest":
+        return copy.sort((a, b) => a.rating - b.rating);
+      default:
+        return copy;
     }
   }, [reviews, sortBy]);
 
-  const avgRating = reviews.length > 0 ? (reviews.reduce((s, r) => s + r.rating, 0) / reviews.length).toFixed(1) : "0.0";
-
-  function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    if (!formRating || !formName || !formContent) {
-      showToast("Please fill in all fields", "info");
-      return;
-    }
-    const newReview: Review = {
-      id: `r-${Date.now()}`,
-      productId,
-      author: formName.trim(),
-      rating: formRating,
-      content: formContent.trim(),
-      date: new Date().toISOString().split("T")[0],
-      isVerified: false,
-    };
-    setReviews((prev) => [newReview, ...prev]);
-    setFormRating(0);
-    setFormName("");
-    setFormEmail("");
-    setFormContent("");
-    setShowForm(false);
-    showToast("Review submitted! Thank you.", "success");
-  }
+  const avgRating = reviews.length > 0
+    ? (reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
+    : "0.0";
 
   return (
     <div className="mt-16 border-t border-card-border pt-10">
@@ -79,8 +78,8 @@ export default function ProductReviews({ productId, productName }: ProductReview
           <h2 className="text-2xl font-bold text-dark">Customer Reviews</h2>
           <div className="flex items-center gap-3 mt-2">
             <div className="flex items-center gap-0.5">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <svg key={i} className={`w-4 h-4 ${i < Math.round(Number(avgRating)) ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <svg key={index} className={`w-4 h-4 ${index < Math.round(Number(avgRating)) ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
                   <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                 </svg>
               ))}
@@ -89,53 +88,16 @@ export default function ProductReviews({ productId, productName }: ProductReview
             <span className="text-sm text-foreground">({reviews.length} {reviews.length === 1 ? "review" : "reviews"})</span>
           </div>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="px-6 py-2.5 bg-accent text-white rounded-full text-sm font-medium hover:bg-accent/80 transition-all"
-        >
-          {showForm ? "Cancel" : "Write a Review"}
-        </button>
+        <p className="text-sm text-foreground max-w-sm">
+          Reviews for {productName} come from customers with delivered orders.
+        </p>
       </div>
-
-      {showForm && (
-        <form onSubmit={handleSubmit} className="mb-10 p-6 rounded-2xl bg-card border border-card-border space-y-4">
-          <h3 className="font-semibold text-dark text-sm">Write a Review for {productName}</h3>
-          <div>
-            <p className="text-sm text-foreground mb-2">Your Rating *</p>
-            <div className="flex items-center gap-1">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <button key={i} type="button" onClick={() => setFormRating(i + 1)} onMouseEnter={() => setHoverRating(i + 1)} onMouseLeave={() => setHoverRating(0)} className="p-0.5 focus:outline-none">
-                  <svg className={`w-7 h-7 cursor-pointer transition-colors ${(hoverRating || formRating) > i ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                </button>
-              ))}
-              <span className="text-sm text-foreground ml-2">{formRating > 0 ? `${formRating}/5` : "Select"}</span>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label htmlFor="review-name" className="block text-sm text-foreground mb-1">Name *</label>
-              <input id="review-name" type="text" value={formName} onChange={(e) => setFormName(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm" />
-            </div>
-            <div>
-              <label htmlFor="review-email" className="block text-sm text-foreground mb-1">Email</label>
-              <input id="review-email" type="email" value={formEmail} onChange={(e) => setFormEmail(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm" />
-            </div>
-          </div>
-          <div>
-            <label htmlFor="review-content" className="block text-sm text-foreground mb-1">Your Review *</label>
-            <textarea id="review-content" rows={3} value={formContent} onChange={(e) => setFormContent(e.target.value)} required className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm resize-none" />
-          </div>
-          <button type="submit" className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/80 transition-all">Submit Review</button>
-        </form>
-      )}
 
       <div className="flex items-center justify-between mb-6">
         <p className="text-sm text-foreground">{sorted.length} {sorted.length === 1 ? "review" : "reviews"}</p>
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value)}
+          onChange={(event) => setSortBy(event.target.value)}
           className="text-sm border border-card-border rounded-lg px-3 py-1.5 bg-card text-dark focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
           <option value="newest">Newest</option>
@@ -150,13 +112,13 @@ export default function ProductReviews({ productId, productName }: ProductReview
           <svg className="w-12 h-12 mx-auto text-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-          <p className="mt-4 text-foreground text-sm">No reviews yet. Be the first to review this product!</p>
+          <p className="mt-4 text-foreground text-sm">No reviews yet.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {sorted.map((review) => (
             <div key={review.id} className="p-5 rounded-2xl bg-card border border-card-border">
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-sm font-semibold text-accent">
                     {review.author.charAt(0)}
@@ -165,8 +127,8 @@ export default function ProductReviews({ productId, productName }: ProductReview
                     <p className="text-sm font-medium text-dark">{review.author}</p>
                     <div className="flex items-center gap-2 mt-0.5">
                       <div className="flex items-center gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                          <svg key={i} className={`w-3 h-3 ${i < review.rating ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
+                        {Array.from({ length: 5 }).map((_, index) => (
+                          <svg key={index} className={`w-3 h-3 ${index < review.rating ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                           </svg>
                         ))}

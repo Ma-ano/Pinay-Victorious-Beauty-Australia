@@ -92,8 +92,14 @@ export default function ImagePlaceholder({
     }
   }, []);
 
-  const showImage = imageUrl && !errored;
-  const showFallback = !imageUrl || errored;
+  const imgSrc = imageUrl?.startsWith("http")
+    ? imageUrl
+    : imageUrl
+      ? `https://images.unsplash.com/${imageUrl}?w=600&h=600&fit=crop&auto=format`
+      : "";
+
+  const showImage = imgSrc && !errored;
+  const showFallback = !imgSrc || errored;
 
   return (
     <div className={`relative overflow-hidden ${aspectRatio} ${className}`}>
@@ -109,7 +115,7 @@ export default function ImagePlaceholder({
           />
           <img
             ref={imgRef}
-            src={`https://images.unsplash.com/${imageUrl}?w=600&h=600&fit=crop&auto=format`}
+            src={imgSrc}
             alt={name || category}
             loading="lazy"
             onLoad={() => setLoaded(true)}

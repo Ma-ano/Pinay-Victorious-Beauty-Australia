@@ -1,13 +1,22 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ProductCard from "@/components/ProductCard";
-import { getSaleProducts } from "@/data/products";
+import type { Product } from "@/data/products";
+import { getSaleProducts } from "@/lib/product-store";
 
 export default function SalePage() {
   const [code, setCode] = useState("");
   const [applied, setApplied] = useState(false);
-  const saleProducts = getSaleProducts();
+  const [saleProducts, setSaleProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getSaleProducts().then((products) => {
+      setSaleProducts(products);
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -43,7 +52,11 @@ export default function SalePage() {
         )}
       </div>
 
-      {saleProducts.length > 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[30vh]">
+          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : saleProducts.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
           {saleProducts.map((product) => (
             <ProductCard key={product.id} product={product} />

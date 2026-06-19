@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getCookie, setCookie } from "@/lib/cookies";
 
 export default function ThemeToggle() {
   const [dark, setDark] = useState(false);
@@ -14,6 +15,7 @@ export default function ThemeToggle() {
     const next = !dark;
     setDark(next);
     document.documentElement.classList.toggle("dark", next);
+    setCookie("theme", next ? "dark" : "light", 365);
   };
 
   return (

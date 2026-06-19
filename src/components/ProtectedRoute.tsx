@@ -4,15 +4,19 @@ import { useAuth } from "./AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, type ReactNode } from "react";
 
-export default function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+export default function ProtectedRoute({ children, requireAdmin = false }: { children: ReactNode; requireAdmin?: boolean }) {
+  const { isAuthenticated, loading, needsVerification, isAdmin } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && needsVerification) {
+      router.push("/verify-email");
+    } else if (!loading && !isAuthenticated) {
       router.push("/login");
+    } else if (!loading && requireAdmin && !isAdmin) {
+      router.push("/");
     }
-  }, [user, loading, router]);
+  }, [isAuthenticated, isAdmin, needsVerification, loading, requireAdmin, router]);
 
   if (loading) {
     return (
@@ -22,7 +26,7 @@ export default function ProtectedRoute({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!user) return null;
+  if (!isAuthenticated || (requireAdmin && !isAdmin)) return null;
 
   return <>{children}</>;
 }

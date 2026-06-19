@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { Product, ProductVariant } from "@/data/products";
+import { getCookie, setCookie } from "@/lib/cookies";
 
 export interface CartItem {
   key: string;
@@ -26,10 +27,12 @@ function makeKey(productId: string, variantId?: string): string {
 
 const CartContext = createContext<CartContextType | null>(null);
 
+const CART_COOKIE = "beauty_store_cart";
+
 function loadCart(): CartItem[] {
   if (typeof window === "undefined") return [];
   try {
-    const data = localStorage.getItem("beauty_store_cart");
+    const data = getCookie(CART_COOKIE);
     if (!data) return [];
     const parsed = JSON.parse(data);
     return parsed.map((item: any) => {
@@ -40,6 +43,14 @@ function loadCart(): CartItem[] {
     });
   } catch {
     return [];
+  }
+}
+
+function saveCart(items: CartItem[]) {
+  try {
+    setCookie(CART_COOKIE, JSON.stringify(items), 30);
+  } catch {
+    // Cookie may exceed size limit — silently ignore
   }
 }
 
@@ -54,7 +65,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (hydrated) {
-      localStorage.setItem("beauty_store_cart", JSON.stringify(items));
+      saveCart(items);
     }
   }, [items, hydrated]);
 

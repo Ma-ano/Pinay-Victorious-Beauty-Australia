@@ -6,61 +6,130 @@ import {
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
-  sendEmailVerification,
-  onAuthStateChanged,
+  onIdTokenChanged,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword,
   type User as FirebaseUser,
 } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { auth, db, googleProvider } from "@/lib/firebase";
+
+export interface Address {
+  street: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+}
 
 export interface User {
   uid: string;
   name: string;
   email: string;
+  phone: string;
+  photoURL: string;
+  address: Address;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   emailVerified: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  isAuthenticated: boolean;
+  needsVerification: boolean;
+  isAdmin: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (name: string, email: string, password: string, phone?: string, address?: Address) => Promise<void>;
+  loginWithGoogle: () => Promise<boolean>;
   logout: () => Promise<void>;
+  updateProfile: (data: { name?: string; phone?: string; photoURL?: string; address?: Address }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  resendVerification: () => Promise<void>;
 }
+
+const defaultAddress: Address = { street: "", city: "", state: "", postcode: "", country: "Australia" };
+
+const defaultUser: Omit<User, "uid" | "name" | "email"> = {
+  phone: "",
+  photoURL: "",
+  address: { ...defaultAddress },
+};
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function mapFirebaseUser(fu: FirebaseUser): User {
   return {
+    ...defaultUser,
     uid: fu.uid,
     name: fu.displayName || fu.email?.split("@")[0] || "User",
     email: fu.email || "",
+    photoURL: fu.photoURL || "",
   };
+}
+
+async function syncSession(fu: FirebaseUser | null) {
+  try {
+    if (fu) {
+      const idToken = await fu.getIdToken(true);
+      await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken }),
+      });
+    } else {
+      await fetch("/api/auth/session", { method: "DELETE" });
+    }
+  } catch {
+    // Session sync is best-effort
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [emailVerified, setEmailVerified] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  const isAuthenticated = user !== null && emailVerified;
+  const needsVerification = user !== null && !emailVerified;
+
+  async function checkAdminClaim(fu: import("firebase/auth").User) {
+    try {
+      const tokenResult = await fu.getIdTokenResult();
+      setIsAdmin(tokenResult.claims.isAdmin === true);
+    } catch {
+      setIsAdmin(false);
+    }
+  }
 
   useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (fu) => {
+    const unsub = onIdTokenChanged(auth, async (fu) => {
       if (fu) {
         setUser(mapFirebaseUser(fu));
         setEmailVerified(fu.emailVerified);
+        await checkAdminClaim(fu);
         try {
           const userDoc = await getDoc(doc(db, "users", fu.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setUser((prev) => prev ? { ...prev, name: data.name || prev.name } : null);
+            setUser((prev) => prev ? {
+              ...prev,
+              name: data.name || prev.name,
+              phone: data.phone || "",
+              photoURL: data.photoURL || prev.photoURL || "",
+              address: data.address || { ...defaultAddress },
+            } : null);
           }
         } catch {
           // Firestore rules may not be configured yet — continue with Firebase user data
         }
+        await syncSession(fu);
       } else {
         setUser(null);
         setEmailVerified(false);
+        setIsAdmin(false);
+        await syncSession(null);
       }
       setLoading(false);
     });
@@ -70,60 +139,161 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const fu = cred.user;
+    await fu.getIdToken(true);
     setEmailVerified(fu.emailVerified);
+    await checkAdminClaim(fu);
     try {
       const userDoc = await getDoc(doc(db, "users", fu.uid));
       let name = fu.displayName || fu.email?.split("@")[0] || "User";
+      let phone = "";
+      let photoURL = fu.photoURL || "";
+      let address = { ...defaultAddress };
       if (userDoc.exists()) {
-        name = userDoc.data().name || name;
+        const data = userDoc.data();
+        name = data.name || name;
+        phone = data.phone || "";
+        photoURL = data.photoURL || photoURL;
+        address = data.address || { ...defaultAddress };
       }
-      setUser({ uid: fu.uid, name, email: fu.email || "" });
+      setUser({ uid: fu.uid, name, email: fu.email || "", phone, photoURL, address });
     } catch {
-      setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "" });
+      setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "", ...defaultUser });
+    }
+    await syncSession(fu);
+    try {
+      const tr = await fu.getIdTokenResult();
+      return tr.claims.isAdmin === true;
+    } catch {
+      return false;
     }
   }, []);
 
-  const register = useCallback(async (name: string, email: string, password: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    const fu = cred.user;
-    try {
-      await setDoc(doc(db, "users", fu.uid), { name, email });
-    } catch {
-      // Firestore rules may not be configured yet — continue
+  const register = useCallback(async (name: string, email: string, password: string, phone?: string, address?: Address) => {
+    const userAddress = address || { ...defaultAddress };
+    const res = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        phone: phone?.trim() || undefined,
+        address: userAddress,
+      }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      const msg = (data as { error?: string }).error || "Registration failed";
+      if (res.status === 409) {
+        throw { code: "auth/email-already-in-use", message: msg };
+      }
+      throw new Error(msg);
     }
-    await sendEmailVerification(fu);
-    setUser({ uid: fu.uid, name, email: fu.email || "" });
+
+    const data = await res.json();
+    setUser({
+      uid: (data as { uid: string }).uid,
+      name: name.trim(),
+      email: email.trim(),
+      phone: phone?.trim() || "",
+      photoURL: "",
+      address: userAddress,
+    });
     setEmailVerified(false);
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
     const cred = await signInWithPopup(auth, googleProvider);
     const fu = cred.user;
+    await checkAdminClaim(fu);
     try {
       const userDoc = await getDoc(doc(db, "users", fu.uid));
       if (!userDoc.exists()) {
         const displayName = fu.displayName || fu.email?.split("@")[0] || "User";
-        await setDoc(doc(db, "users", fu.uid), { name: displayName, email: fu.email });
+        await setDoc(doc(db, "users", fu.uid), {
+          name: displayName,
+          email: fu.email,
+          phone: "",
+          photoURL: fu.photoURL || "",
+          address: { ...defaultAddress },
+          createdAt: new Date().toISOString(),
+        });
       }
       let name = fu.displayName || fu.email?.split("@")[0] || "User";
+      let phone = "";
+      let photoURL = fu.photoURL || "";
+      let address = { ...defaultAddress };
       if (userDoc.exists()) {
-        name = userDoc.data().name || name;
+        const data = userDoc.data();
+        name = data.name || name;
+        phone = data.phone || "";
+        photoURL = data.photoURL || photoURL;
+        address = data.address || { ...defaultAddress };
       }
-      setUser({ uid: fu.uid, name, email: fu.email || "" });
+      setUser({ uid: fu.uid, name, email: fu.email || "", phone, photoURL, address });
     } catch {
-      setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "" });
+      setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "", ...defaultUser });
     }
     setEmailVerified(fu.emailVerified);
+    await syncSession(fu);
+    try {
+      const tr = await fu.getIdTokenResult();
+      return tr.claims.isAdmin === true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const logout = useCallback(async () => {
     await signOut(auth);
     setUser(null);
     setEmailVerified(false);
+    await syncSession(null);
   }, []);
 
+  const resendVerification = useCallback(async (emailOverride?: string) => {
+    const email = emailOverride || user?.email;
+    if (!email) throw new Error("Email is required");
+    const res = await fetch("/api/auth/send-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) throw new Error("Failed to resend verification email");
+  }, [user?.email]);
+
+  const updateProfile = useCallback(async (data: { name?: string; phone?: string; photoURL?: string; address?: Address }) => {
+    if (!user) throw new Error("Not authenticated");
+
+    const updateData: Record<string, unknown> = {};
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.phone !== undefined) updateData.phone = data.phone;
+    if (data.photoURL !== undefined) updateData.photoURL = data.photoURL;
+    if (data.address !== undefined) updateData.address = data.address;
+
+    await updateDoc(doc(db, "users", user.uid), updateData);
+
+    setUser((prev) => prev ? {
+      ...prev,
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.phone !== undefined ? { phone: data.phone } : {}),
+      ...(data.photoURL !== undefined ? { photoURL: data.photoURL } : {}),
+      ...(data.address !== undefined ? { address: data.address } : {}),
+    } : null);
+  }, [user]);
+
+  const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const fu = auth.currentUser;
+    if (!fu || !user) throw new Error("Not authenticated");
+
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(fu, credential);
+    await updatePassword(fu, newPassword);
+  }, [user]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, emailVerified, login, register, loginWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, emailVerified, isAuthenticated, needsVerification, isAdmin, login, register, loginWithGoogle, logout, updateProfile, changePassword, resendVerification }}>
       {children}
     </AuthContext.Provider>
   );

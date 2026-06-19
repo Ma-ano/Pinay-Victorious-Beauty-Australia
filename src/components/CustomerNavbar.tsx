@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { site, navLinks } from "@/data/site";
 import { categories } from "@/data/categories";
-import { products } from "@/data/products";
+import { getAllProducts } from "@/lib/product-store";
 import type { Product } from "@/data/products";
 import ThemeToggle from "./ThemeToggle";
 import { useCart } from "./CartContext";
@@ -26,22 +26,23 @@ export default function CustomerNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [catOpen, setCatOpen] = useState(false);
-  const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    getAllProducts().then(setAllProducts);
+  }, []);
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Product[]>([]);
-  const [navHeight, setNavHeight] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
   const searchWrapperRef = useRef<HTMLDivElement>(null);
-  const navRef = useRef<HTMLElement>(null);
   const catRef = useRef<HTMLDivElement>(null);
   const lastScrollY = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
   const { showToast } = useToast();
   const { items, removeItem, updateQuantity, totalItems, totalPrice } = useCart();
-  const { user, logout } = useAuth();
+  const { user, isAuthenticated, needsVerification, logout, isAdmin } = useAuth();
 
   const ticking = useRef(false);
   useEffect(() => {
@@ -49,12 +50,9 @@ export default function CustomerNavbar() {
       if (!ticking.current) {
         requestAnimationFrame(() => {
           const currentY = window.scrollY;
-          setScrolled(currentY > 20);
-          if (currentY > 80) {
-            setHidden(currentY > lastScrollY.current);
-          } else {
-            setHidden(false);
-          }
+          const shouldHide = currentY > 80 && currentY > lastScrollY.current;
+          setHidden(shouldHide);
+          if (shouldHide) setSearchOpen(false);
           lastScrollY.current = currentY;
           ticking.current = false;
         });
@@ -64,10 +62,6 @@ export default function CustomerNavbar() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -81,31 +75,21 @@ export default function CustomerNavbar() {
     }
   }, [catOpen]);
 
-  useEffect(() => {
+  const results = useMemo<Product[]>(() => {
     if (!query.trim()) {
-      setResults([]);
-      return;
+      return [];
     }
     const q = query.toLowerCase();
-    const filtered = products.filter(
+    return allProducts.filter(
       p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
-    );
-    setResults(filtered.slice(0, 6));
-  }, [query]);
-
-  useEffect(() => {
-    if (navRef.current) setNavHeight(navRef.current.offsetHeight);
-  }, []);
+    ).slice(0, 6);
+  }, [query, allProducts]);
 
   useEffect(() => {
     if (searchOpen && searchRef.current) {
       searchRef.current.focus();
     }
   }, [searchOpen]);
-
-  useEffect(() => {
-    if (hidden) setSearchOpen(false);
-  }, [hidden]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -122,7 +106,6 @@ export default function CustomerNavbar() {
   return (
     <>
       <nav
-        ref={navRef}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-card ${
           hidden ? "-translate-y-full" : "translate-y-0"
         }`}
@@ -209,7 +192,7 @@ export default function CustomerNavbar() {
                                         <ImagePlaceholder
                                           category={product.category}
                                           name={product.name}
-                                          imageUrl={product.imageUrl}
+                                          imageUrl={product.images?.[0]?.url || ""}
                                           className="w-8 h-8"
                                         />
                                       </div>
@@ -244,7 +227,7 @@ export default function CustomerNavbar() {
                   </div>
                   {navLinks.map((link) => {
                     if (link.label === "Categories") {
-                      return (
+                        return (
                         <div key={link.label} ref={catRef} className="relative">
                           <button
                             onClick={() => setCatOpen(!catOpen)}
@@ -334,14 +317,56 @@ export default function CustomerNavbar() {
                       </Link>
                     );
                   })}
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className={`relative px-4 py-2 text-sm transition-colors rounded-lg text-foreground hover:text-accent hover:bg-primary/10`}
+                    >
+                      Admin
+                    </Link>
+                  )}
                 </div>
                 <div className="flex items-center gap-1">
                   <ThemeToggle />
+                  <button
+                    onClick={() => setCartOpen(true)}
+                    className="relative p-2 text-foreground hover:text-accent transition-colors"
+                    aria-label="Open cart"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                    </svg>
+                    {totalItems > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-[10px] min-w-4 h-4 rounded-full flex items-center justify-center px-1">
+                        {totalItems > 99 ? "99+" : totalItems}
+                      </span>
+                    )}
+                  </button>
                   {user ? (
                     <div className="flex items-center gap-1.5">
-                      <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent">
-                        {user.name.charAt(0).toUpperCase()}
-                      </div>
+                      {isAuthenticated && (
+                        <Link
+                          href="/orders"
+                          className={`hidden lg:block px-3 py-2 text-sm transition-colors rounded-lg ${
+                            pathname === "/orders"
+                              ? "text-accent"
+                              : "text-foreground hover:text-accent hover:bg-primary/10"
+                          }`}
+                        >
+                          My Orders
+                        </Link>
+                      )}
+                      <Link
+                        href="/profile"
+                        className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden text-xs font-semibold text-accent hover:ring-2 hover:ring-accent/50 transition-all"
+                        title="My Profile"
+                      >
+                        {user.photoURL ? (
+                          <Image src={user.photoURL} alt={user.name} width={32} height={32} className="w-full h-full object-cover" />
+                        ) : (
+                          user.name.charAt(0).toUpperCase()
+                        )}
+                      </Link>
                       <button
                         onClick={() => logout()}
                         className="hidden sm:block px-2.5 py-1.5 text-xs text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
@@ -365,20 +390,6 @@ export default function CustomerNavbar() {
                       </Link>
                     </div>
                   )}
-                  <button
-                    onClick={() => setCartOpen(true)}
-                    className="relative p-2 text-foreground hover:text-accent transition-colors"
-                    aria-label="Open cart"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-                    </svg>
-                    {totalItems > 0 && (
-                      <span className="absolute -top-0.5 -right-0.5 bg-accent text-white text-[10px] min-w-4 h-4 rounded-full flex items-center justify-center px-1">
-                        {totalItems > 99 ? "99+" : totalItems}
-                      </span>
-                    )}
-                  </button>
                   <button
                     onClick={() => setMobileOpen(!mobileOpen)}
                     className="md:hidden p-2 text-foreground"
@@ -430,14 +441,20 @@ export default function CustomerNavbar() {
                 <MobileNavLink href="/about" label="About" pathname={pathname} onClose={() => setMobileOpen(false)} />
                 <MobileNavLink href="/contact" label="Contact" pathname={pathname} onClose={() => setMobileOpen(false)} />
                 <div className="border-t border-primary/10 pt-2 mt-2">
-                  {user ? (
+                  {isAuthenticated ? (
                     <>
-                      <div className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground">
+                      <MobileNavLink href="/orders" label="My Orders" pathname={pathname} onClose={() => setMobileOpen(false)} />
+                      {isAdmin && <MobileNavLink href="/admin" label="Admin" pathname={pathname} onClose={() => setMobileOpen(false)} />}
+                      <Link
+                        href="/profile"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
+                      >
                         <div className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent">
-                          {user.name.charAt(0).toUpperCase()}
+                          {user!.name.charAt(0).toUpperCase()}
                         </div>
-                        {user.name}
-                      </div>
+                        {user!.name}
+                      </Link>
                       <button
                         onClick={() => { logout(); setMobileOpen(false); }}
                         className="block w-full text-left px-3 py-2.5 text-sm text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
@@ -445,6 +462,17 @@ export default function CustomerNavbar() {
                         Logout
                       </button>
                     </>
+                  ) : needsVerification ? (
+                    <Link
+                      href="/verify-email"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-accent bg-accent/10 hover:bg-accent/20 rounded-lg transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                      </svg>
+                      Verify Email
+                    </Link>
                   ) : (
                     <>
                       <Link
@@ -498,7 +526,7 @@ export default function CustomerNavbar() {
                 items.map((item) => (
                   <div key={item.key} className="flex gap-3">
                     <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-primary/10">
-                      <ImagePlaceholder category={item.product.category} name={item.product.name} imageUrl={item.product.imageUrl} />
+                      <ImagePlaceholder category={item.product.category} name={item.product.name} imageUrl={item.product.images?.[0]?.url || ""} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <Link href={`/shop/${item.product.slug}`} onClick={() => setCartOpen(false)} className="text-sm font-medium text-dark hover:text-accent transition-colors line-clamp-1">
@@ -542,12 +570,21 @@ export default function CustomerNavbar() {
                   <span className="font-semibold text-dark">${totalPrice.toFixed(2)}</span>
                 </div>
                 <button
-                  onClick={() => showToast("Order placed — Thank you for your purchase!", "success")}
+                  onClick={() => {
+                    setCartOpen(false);
+                    if (!user) {
+                      router.push("/login?redirect=checkout");
+                    } else if (needsVerification) {
+                      showToast("Please verify your email before checking out", "error");
+                    } else {
+                      router.push("/checkout");
+                    }
+                  }}
                   className="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm"
                 >
                   Checkout
                 </button>
-                <p className="text-xs text-center text-foreground">PayPal accepted · Free shipping over $50</p>
+                <p className="text-xs text-center text-foreground">Cash on Delivery · Free shipping over $50</p>
               </div>
             )}
           </div>

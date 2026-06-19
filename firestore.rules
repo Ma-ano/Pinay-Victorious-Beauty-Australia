@@ -1,0 +1,76 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users - read own, admin read all, write own only
+    match /users/{userId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId || request.auth.token.isAdmin == true);
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Orders - create own, read own or admin
+    match /orders/{orderId} {
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
+         request.auth.token.isAdmin == true);
+      allow create: if request.auth != null &&
+        request.auth.uid == request.resource.data.userId;
+      allow update: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+      allow delete: if false;
+    }
+
+    // Reviews - public read, customers create one verified review per delivered order item
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null &&
+        request.resource.data.userId == request.auth.uid &&
+        request.resource.data.orderId is string &&
+        request.resource.data.productId is string &&
+        request.resource.data.author is string &&
+        request.resource.data.content is string &&
+        request.resource.data.rating is int &&
+        request.resource.data.rating >= 1 &&
+        request.resource.data.rating <= 5 &&
+        request.resource.data.isVerified == true &&
+        get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.userId == request.auth.uid &&
+        get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.status == "delivered";
+      allow update, delete: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+
+    // Products - anyone read, admin write
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+
+    // Newsletter subscribers
+    match /subscribers/{email} {
+      allow read, delete: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+      allow create: if true;
+    }
+
+    // OTP codes - anyone can create/read (API routes use client SDK with no auth context)
+    // OTP stored as SHA256 hash, 5-min expiry, 3-attempt limit enforced in app code
+    match /otps/{email} {
+      allow read, write: if true;
+    }
+
+    // Promotions - anyone read, admin write
+    match /promotions/{promotionId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+
+    // Settings - anyone read, admin write
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
+    }
+  }
+}

@@ -1,0 +1,171 @@
+import { db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  setDoc,
+  deleteDoc,
+  serverTimestamp,
+  query,
+  where,
+} from "firebase/firestore";
+import type { Product, ProductImage, ProductVariant } from "@/data/products";
+
+export interface ProductFormData {
+  name: string;
+  slug: string;
+  category: string;
+  type: string;
+  brand: string;
+  price: number;
+  originalPrice?: number;
+  description: string;
+  detail: string;
+  shippingReturns: string;
+  ingredients: string;
+  images: ProductImage[];
+  isNew?: boolean;
+  isSale?: boolean;
+  discount?: number;
+  variants?: ProductVariant[];
+}
+
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const cleaned = { ...obj };
+  for (const key in cleaned) {
+    if (cleaned[key] === undefined) {
+      delete cleaned[key];
+    }
+  }
+  return cleaned;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+}
+
+export async function getAllProducts(): Promise<Product[]> {
+  const snapshot = await getDocs(collection(db, "products"));
+  return snapshot.docs.map((docSnap) => {
+    const data = docSnap.data() as Product;
+    return {
+      ...data,
+      id: docSnap.id,
+      rating: data.rating ?? 0,
+      reviews: data.reviews ?? 0,
+      sold: data.sold ?? 0,
+      images: data.images ?? [],
+      variants: data.variants ?? [],
+    };
+  });
+}
+
+export async function getProductById(id: string): Promise<Product | null> {
+  const snap = await getDoc(doc(db, "products", id));
+  if (!snap.exists()) return null;
+  return { ...snap.data(), id: snap.id } as Product;
+}
+
+export async function getProductBySlug(slug: string): Promise<Product | null> {
+  const all = await getAllProducts();
+  return all.find((p) => p.slug === slug) || null;
+}
+
+export async function saveProduct(
+  id: string | null,
+  data: ProductFormData
+): Promise<string> {
+  const productId = id || doc(collection(db, "products")).id;
+  const slug = data.slug || slugify(data.name);
+  await setDoc(doc(db, "products", productId), stripUndefined({
+    ...data,
+    slug,
+    createdAt: id ? undefined : serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  }));
+  return productId;
+}
+
+export async function deleteProduct(id: string): Promise<void> {
+  await deleteDoc(doc(db, "products", id));
+}
+
+export async function getProductReviews(productId: string): Promise<{ avgRating: number; reviewCount: number }> {
+  try {
+    const q = query(collection(db, "reviews"), where("productId", "==", productId));
+    const snap = await getDocs(q);
+    if (snap.empty) return { avgRating: 0, reviewCount: 0 };
+    let total = 0;
+    snap.docs.forEach((d) => {
+      total += d.data().rating || 0;
+    });
+    return { avgRating: total / snap.size, reviewCount: snap.size };
+  } catch {
+    return { avgRating: 0, reviewCount: 0 };
+  }
+}
+
+export async function getProductSoldCount(productId: string): Promise<number> {
+  try {
+    const q = query(
+      collection(db, "orders"),
+      where("status", "==", "delivered")
+    );
+    const snap = await getDocs(q);
+    let count = 0;
+    snap.docs.forEach((docSnap) => {
+      const data = docSnap.data();
+      if (data.items) {
+        data.items.forEach((item: { productId: string; quantity: number }) => {
+          if (item.productId === productId) {
+            count += item.quantity || 0;
+          }
+        });
+      }
+    });
+    return count;
+  } catch {
+    return 0;
+  }
+}
+
+async function enrichProductWithStats(product: Product): Promise<Product & { avgRating: number; reviewCount: number; soldCount: number }> {
+  const [reviews, sold] = await Promise.all([
+    getProductReviews(product.id),
+    getProductSoldCount(product.id),
+  ]);
+  return { ...product, avgRating: reviews.avgRating, reviewCount: reviews.reviewCount, soldCount: sold };
+}
+
+export async function getSaleProducts(): Promise<Product[]> {
+  const all = await getAllProducts();
+  return all.filter((p) => p.isSale);
+}
+
+export async function getTrendingProducts(): Promise<Product[]> {
+  const all = await getAllProducts();
+  const enriched = await Promise.all(all.map(enrichProductWithStats));
+  return enriched.sort((a, b) => b.avgRating - a.avgRating);
+}
+
+export async function getBestSellingProducts(): Promise<Product[]> {
+  const all = await getAllProducts();
+  const enriched = await Promise.all(all.map(enrichProductWithStats));
+  return enriched.sort((a, b) => b.soldCount - a.soldCount);
+}
+
+export async function getProductsByCategory(category: string): Promise<Product[]> {
+  const all = await getAllProducts();
+  return all.filter((p) => p.category === category);
+}
+
+export async function getProductsByBrand(brand: string): Promise<Product[]> {
+  const all = await getAllProducts();
+  return all.filter((p) => p.brand === brand);
+}

@@ -32,11 +32,11 @@ export default function ProductCard({ product }: { product: Product }) {
       >
         <div className="relative aspect-square overflow-hidden">
           <div className="w-full h-full transition-transform duration-700 group-hover:scale-110">
-            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.imageUrl} />
+            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.images?.[0]?.url || ""} />
           </div>
 
           {product.isSale && discount > 0 && (
-            <span className="absolute top-3 left-3 bg-accent text-dark text-xs font-semibold px-2.5 py-1 rounded-full">
+            <span className="absolute top-3 left-3 bg-accent text-white text-xs font-semibold px-2.5 py-1 rounded-full">
               -{discount}%
             </span>
           )}
