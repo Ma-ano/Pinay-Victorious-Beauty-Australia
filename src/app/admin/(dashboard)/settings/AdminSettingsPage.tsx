@@ -109,38 +109,41 @@ export default function AdminSettingsPage() {
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs text-foreground mb-1">Brand Name</label>
-                <input
-                  type="text"
-                  value={brand.brand}
-                  onChange={(e) => updateBrand(i, "brand", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                  placeholder="e.g. COSRX"
-                />
+                <div>
+                  <label className="block text-xs text-foreground mb-1">Brand Name</label>
+                  <input
+                    type="text"
+                    value={brand.brand}
+                    onChange={(e) => updateBrand(i, "brand", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    placeholder="e.g. COSRX"
+                  />
+                  <p className="text-[11px] text-foreground/60 mt-0.5">The brand name shown above the slide title.</p>
+                </div>
+                <div>
+                  <label className="block text-xs text-foreground mb-1">Title</label>
+                  <input
+                    type="text"
+                    value={brand.title}
+                    onChange={(e) => updateBrand(i, "title", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    placeholder="Headline for the slide"
+                  />
+                  <p className="text-[11px] text-foreground/60 mt-0.5">The big headline customers see on the homepage banner.</p>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs text-foreground mb-1">Title</label>
-                <input
-                  type="text"
-                  value={brand.title}
-                  onChange={(e) => updateBrand(i, "title", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                  placeholder="Headline for the slide"
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className="block text-xs text-foreground mb-1">Description</label>
-              <textarea
-                rows={2}
-                value={brand.description}
-                onChange={(e) => updateBrand(i, "description", e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                placeholder="Brief description for the slide"
-              />
-            </div>
+              <div>
+                <label className="block text-xs text-foreground mb-1">Description</label>
+                <textarea
+                  rows={2}
+                  value={brand.description}
+                  onChange={(e) => updateBrand(i, "description", e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
+                  placeholder="Brief description for the slide"
+                />
+                <p className="text-[11px] text-foreground/60 mt-0.5">A short sentence explaining what this slide is about.</p>
+              </div>
 
             <div>
               <label className="block text-xs text-foreground mb-1">Background Image</label>
@@ -171,7 +174,7 @@ export default function AdminSettingsPage() {
                   <input
                     ref={(el) => { fileInputRefs.current[`brand-${i}`] = el; }}
                     type="file"
-                    accept="image/*"
+                    accept=".jpg,.jpeg,.png"
                     className="hidden"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
@@ -210,6 +213,7 @@ export default function AdminSettingsPage() {
             return (
               <div key={cat.slug} className="space-y-2">
                 <label className="block text-xs font-medium text-dark">{cat.name}</label>
+                <p className="text-[11px] text-foreground/60 -mt-1">This image appears on the homepage in the "Shop by Category" section.</p>
                 <div className="flex gap-2 items-start">
                   <div className="flex-1 space-y-2">
                     <div className="flex gap-2">
@@ -234,7 +238,7 @@ export default function AdminSettingsPage() {
                     <input
                       ref={(el) => { fileInputRefs.current[cat.slug] = el; }}
                       type="file"
-                      accept="image/*"
+                      accept=".jpg,.jpeg,.png"
                       className="hidden"
                       onChange={(e) => {
                         const file = e.target.files?.[0];

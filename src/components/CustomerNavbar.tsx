@@ -326,11 +326,20 @@ export default function CustomerNavbar() {
                     </Link>
                   )}
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-0.5">
                   <ThemeToggle />
+                  <Link
+                    href="/wishlist"
+                    className="p-1.5 text-foreground hover:text-accent transition-colors"
+                    aria-label="Wishlist"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                  </Link>
                   <button
                     onClick={() => setCartOpen(true)}
-                    className="relative p-2 text-foreground hover:text-accent transition-colors"
+                    className="relative p-1.5 text-foreground hover:text-accent transition-colors"
                     aria-label="Open cart"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -343,11 +352,11 @@ export default function CustomerNavbar() {
                     )}
                   </button>
                   {user ? (
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-0.5">
                       {isAuthenticated && (
                         <Link
                           href="/orders"
-                          className={`hidden lg:block px-3 py-2 text-sm transition-colors rounded-lg ${
+                          className={`hidden lg:block px-2 py-1.5 text-xs transition-colors rounded-lg ${
                             pathname === "/orders"
                               ? "text-accent"
                               : "text-foreground hover:text-accent hover:bg-primary/10"
@@ -358,18 +367,18 @@ export default function CustomerNavbar() {
                       )}
                       <Link
                         href="/profile"
-                        className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden text-xs font-semibold text-accent hover:ring-2 hover:ring-accent/50 transition-all"
+                        className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden text-[10px] font-semibold text-accent hover:ring-2 hover:ring-accent/50 transition-all shrink-0"
                         title="My Profile"
                       >
                         {user.photoURL ? (
-                          <Image src={user.photoURL} alt={user.name} width={32} height={32} className="w-full h-full object-cover" />
+                          <Image src={user.photoURL} alt={user.name} width={28} height={28} className="w-full h-full object-cover" />
                         ) : (
                           user.name.charAt(0).toUpperCase()
                         )}
                       </Link>
                       <button
                         onClick={() => logout()}
-                        className="hidden sm:block px-2.5 py-1.5 text-xs text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
+                        className="hidden sm:block px-2 py-1 text-xs text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
                       >
                         Logout
                       </button>
@@ -378,13 +387,13 @@ export default function CustomerNavbar() {
                     <div className="hidden md:flex items-center gap-0.5">
                       <Link
                         href="/login"
-                        className="px-3 py-2 text-sm text-foreground hover:text-accent transition-colors rounded-lg hover:bg-primary/10"
+                        className="px-2 py-1.5 text-xs text-foreground hover:text-accent transition-colors rounded-lg hover:bg-primary/10"
                       >
                         Login
                       </Link>
                       <Link
                         href="/register"
-                        className="px-3 py-2 text-sm font-medium text-white bg-accent hover:bg-accent/80 transition-colors rounded-lg"
+                        className="px-2 py-1.5 text-xs font-medium text-white bg-accent hover:bg-accent/80 transition-colors rounded-lg"
                       >
                         Register
                       </Link>
@@ -443,6 +452,7 @@ export default function CustomerNavbar() {
                 <div className="border-t border-primary/10 pt-2 mt-2">
                   {isAuthenticated ? (
                     <>
+                      <MobileNavLink href="/wishlist" label="Wishlist" pathname={pathname} onClose={() => setMobileOpen(false)} />
                       <MobileNavLink href="/orders" label="My Orders" pathname={pathname} onClose={() => setMobileOpen(false)} />
                       {isAdmin && <MobileNavLink href="/admin" label="Admin" pathname={pathname} onClose={() => setMobileOpen(false)} />}
                       <Link
@@ -529,13 +539,18 @@ export default function CustomerNavbar() {
                       <ImagePlaceholder category={item.product.category} name={item.product.name} imageUrl={item.product.images?.[0]?.url || ""} />
                     </div>
                     <div className="flex-1 min-w-0">
+                      <p className="text-xs text-foreground">Product:</p>
                       <Link href={`/shop/${item.product.slug}`} onClick={() => setCartOpen(false)} className="text-sm font-medium text-dark hover:text-accent transition-colors line-clamp-1">
                         {item.product.name}
                       </Link>
                       {item.variant && (
-                        <p className="text-xs text-foreground mt-0.5">{item.variant.name}</p>
+                        <p className="text-xs text-foreground mt-0.5">
+                          <span className="text-foreground">Variant:</span> {item.variant.name}
+                        </p>
                       )}
-                      <p className="text-sm font-semibold text-dark mt-0.5">${item.product.price.toFixed(2)}</p>
+                      <p className="text-xs text-foreground mt-0.5">
+                        Price: <span className="text-sm font-semibold text-dark">${(item.variant?.price ?? item.product.price).toFixed(2)}</span>
+                      </p>
                       <div className="flex items-center gap-2 mt-1.5">
                         <button
                           onClick={() => updateQuantity(item.key, item.quantity - 1)}

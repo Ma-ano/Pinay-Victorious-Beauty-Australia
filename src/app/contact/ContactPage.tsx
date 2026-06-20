@@ -75,7 +75,7 @@ export default function ContactPage() {
 
           <div className="space-y-4">
             <div className="bg-card rounded-2xl p-6 border border-card-border">
-              <h3 className="font-semibold text-dark text-sm mb-4">Contact Details</h3>
+              <h2 className="font-semibold text-dark text-sm mb-4">Contact Details</h2>
               <div className="space-y-3 text-sm text-foreground">
                 {[
                   { icon: "M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z", content: <a href={`mailto:${site.email}`} className="hover:text-accent transition-colors">{site.email}</a> },

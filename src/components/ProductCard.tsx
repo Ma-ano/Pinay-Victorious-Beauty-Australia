@@ -15,12 +15,18 @@ export default function ProductCard({ product }: { product: Product }) {
     ? Math.round((1 - product.price / product.originalPrice) * 100)
     : 0;
 
+  const quickAddVariant = product.variants?.[0];
+  const quickAddStock = quickAddVariant
+    ? (quickAddVariant as { stock?: number }).stock
+    : product.stock;
+  const quickAddOutOfStock = quickAddStock !== undefined && quickAddStock <= 0;
+
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const variant = product.variants?.[0];
-    addItem(product, variant);
-    const label = variant ? variant.name : product.name;
+    if (quickAddOutOfStock) return;
+    addItem(product, quickAddVariant);
+    const label = quickAddVariant ? quickAddVariant.name : product.name;
     showToast(`${label} added to cart`);
   };
 
@@ -48,14 +54,19 @@ export default function ProductCard({ product }: { product: Product }) {
 
           <WishlistButton productId={product.id} />
 
-          <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
-            <button
-              onClick={handleQuickAdd}
-              className="w-full py-2.5 bg-white/90 backdrop-blur-sm text-black text-sm font-medium rounded-xl hover:bg-white transition-all"
-            >
-              Quick Add
-            </button>
-          </div>
+            <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
+              <button
+                onClick={handleQuickAdd}
+                disabled={quickAddOutOfStock}
+                className={`w-full py-2.5 text-sm font-medium rounded-xl transition-all ${
+                  quickAddOutOfStock
+                    ? "bg-gray-400/80 text-white cursor-not-allowed"
+                    : "bg-white/90 backdrop-blur-sm text-black hover:bg-white"
+                }`}
+              >
+                {quickAddOutOfStock ? "Out of Stock" : "Quick Add"}
+              </button>
+            </div>
         </div>
 
         <div className="p-4">

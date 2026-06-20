@@ -7,6 +7,8 @@ export interface ProductVariant {
   id: string;
   name: string;
   inStock: boolean;
+  stock?: number;
+  price?: number;
 }
 
 export interface Product {
@@ -29,6 +31,7 @@ export interface Product {
   isNew?: boolean;
   isSale?: boolean;
   discount?: number;
+  stock?: number;
   variants?: ProductVariant[];
 }
 

@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import ProductCard from "@/components/ProductCard";
-import { getAllProducts } from "@/lib/product-store";
+import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
 import { categories } from "@/data/categories";
 import { productTypes } from "@/data/productTypes";
@@ -11,28 +11,64 @@ import { brands } from "@/data/brands";
 type Sort = "default" | "price-asc" | "price-desc" | "name";
 type View = "grid" | "list";
 
-export default function ShopPage() {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+interface ShopPageProps {
+  initialProducts?: Product[];
+  initialReviewStats?: Record<string, { avgRating: number; reviewCount: number }>;
+}
+
+export default function ShopPage({ initialProducts, initialReviewStats }: ShopPageProps) {
+  const hasInitial = !!(initialProducts && initialReviewStats);
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (initialProducts && initialReviewStats) {
+      return initialProducts.map((p) => ({
+        ...p,
+        rating: initialReviewStats[p.id]?.avgRating ?? p.rating,
+        reviews: initialReviewStats[p.id]?.reviewCount ?? p.reviews,
+      }));
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(!hasInitial);
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
   const [selectedBrand, setSelectedBrand] = useState("all");
   const [sort, setSort] = useState<Sort>("default");
   const [view, setView] = useState<View>("grid");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 200]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+
+  const fetchProducts = useCallback(async () => {
+    const [all, reviewStats] = await Promise.all([getAllProducts(), getAllReviewStats()]);
+    const enriched = all.map((p) => ({
+      ...p,
+      rating: reviewStats[p.id]?.avgRating ?? p.rating,
+      reviews: reviewStats[p.id]?.reviewCount ?? p.reviews,
+    }));
+    setProducts(enriched);
+    if (enriched.length > 0) {
+      const max = Math.max(...enriched.map((p) => p.originalPrice || p.price));
+      setPriceRange((prev) => [prev[0], Math.max(prev[1], max)]);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    getAllProducts().then((all) => {
-      setProducts(all);
-      setLoading(false);
-    });
-  }, []);
+    if (!hasInitial) fetchProducts();
+  }, [fetchProducts]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (hasInitial) return;
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") fetchProducts();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [fetchProducts, hasInitial]);
 
   const maxPrice = Math.max(...products.map((p) => p.originalPrice || p.price), 200);
 
   const filtered = useMemo(() => {
-    let result = products.filter((p) => {
+    const result = products.filter((p) => {
       const matchesSearch =
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.category.toLowerCase().includes(search.toLowerCase());

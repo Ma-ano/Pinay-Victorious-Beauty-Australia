@@ -10,15 +10,17 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  updateDoc,
   where,
   type Timestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthContext";
 import { useToast } from "@/components/Toast";
+import ImagePlaceholder from "@/components/ImagePlaceholder";
 import { getAllProducts } from "@/lib/product-store";
 
-type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected";
+type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected" | "received";
 
 interface OrderItem {
   productId: string;
@@ -58,16 +60,20 @@ const statusColors: Record<OrderStatus, string> = {
   approved: "bg-blue-100 text-blue-700",
   shipped: "bg-violet-100 text-violet-700",
   delivered: "bg-green-100 text-green-700",
+  received: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
 };
 
-async function getProductSlugMap(): Promise<Map<string, string>> {
+async function getProductInfoMap(): Promise<{ slug: Map<string, string>; image: Map<string, string> }> {
   try {
     const allProducts = await getAllProducts();
-    return new Map(allProducts.map((product) => [product.id, product.slug]));
+    return {
+      slug: new Map(allProducts.map((p) => [p.id, p.slug])),
+      image: new Map(allProducts.map((p) => [p.id, p.images?.[0]?.url || ""])),
+    };
   } catch {
-    return new Map();
+    return { slug: new Map(), image: new Map() };
   }
 }
 
@@ -97,9 +103,15 @@ export default function OrdersPage() {
   const [savingReview, setSavingReview] = useState(false);
   const [error, setError] = useState("");
   const [productSlugById, setProductSlugById] = useState<Map<string, string>>(new Map());
+  const [productImageById, setProductImageById] = useState<Map<string, string>>(new Map());
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+  const [receiveConfirmId, setReceiveConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
-    getProductSlugMap().then(setProductSlugById);
+    getProductInfoMap().then((info) => {
+      setProductSlugById(info.slug);
+      setProductImageById(info.image);
+    });
   }, []);
 
   useEffect(() => {
@@ -169,8 +181,8 @@ export default function OrdersPage() {
   async function submitReview(event: React.FormEvent) {
     event.preventDefault();
     if (!user || !activeReview || !activeReviewKey) return;
-    if (rating < 1 || rating > 5 || !content.trim()) {
-      showToast("Choose a rating and write a short review", "info");
+    if (rating < 1 || rating > 5) {
+      showToast("Choose a rating", "info");
       return;
     }
 
@@ -196,6 +208,32 @@ export default function OrdersPage() {
       showToast("Failed to submit review", "error");
     } finally {
       setSavingReview(false);
+    }
+  }
+
+  async function handleCancel(orderId: string) {
+    try {
+      await updateDoc(doc(db, "orders", orderId), {
+        status: "cancelled",
+        updatedAt: serverTimestamp(),
+      });
+      setCancelConfirmId(null);
+      showToast("Order cancelled", "success");
+    } catch {
+      showToast("Failed to cancel order", "error");
+    }
+  }
+
+  async function handleReceive(orderId: string) {
+    try {
+      await updateDoc(doc(db, "orders", orderId), {
+        status: "received",
+        updatedAt: serverTimestamp(),
+      });
+      setReceiveConfirmId(null);
+      showToast("Order marked as received", "success");
+    } catch {
+      showToast("Failed to update order", "error");
     }
   }
 
@@ -247,11 +285,61 @@ export default function OrdersPage() {
                   <p className="text-sm font-semibold text-dark">Order #{order.firestoreId.slice(-8)}</p>
                   <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {order.paymentMethod || "cod"}</p>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  {(order.status === "pending" || order.status === "approved") && (
+                    cancelConfirmId === order.firestoreId ? (
+                      <span className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleCancel(order.firestoreId)}
+                          className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-full transition-all"
+                        >
+                          Confirm Cancel?
+                        </button>
+                        <button
+                          onClick={() => setCancelConfirmId(null)}
+                          className="text-xs text-foreground hover:text-dark transition-colors"
+                        >
+                          Keep
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setCancelConfirmId(order.firestoreId)}
+                        className="text-xs font-medium text-red-500 hover:text-red-600 px-2.5 py-1 rounded-full border border-red-200 hover:border-red-300 transition-all"
+                      >
+                        Cancel
+                      </button>
+                    )
+                  )}
+                  {order.status === "delivered" && (
+                    receiveConfirmId === order.firestoreId ? (
+                      <span className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleReceive(order.firestoreId)}
+                          className="text-xs font-medium text-white bg-emerald-500 hover:bg-emerald-600 px-2.5 py-1 rounded-full transition-all"
+                        >
+                          Confirm Received?
+                        </button>
+                        <button
+                          onClick={() => setReceiveConfirmId(null)}
+                          className="text-xs text-foreground hover:text-dark transition-colors"
+                        >
+                          Keep
+                        </button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setReceiveConfirmId(order.firestoreId)}
+                        className="text-xs font-medium text-emerald-600 hover:text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:border-emerald-300 transition-all"
+                      >
+                        Mark as Received
+                      </button>
+                    )
+                  )}
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-700"}`}>
                     {order.status}
                   </span>
-                  <span className="text-sm font-bold text-accent">${Number(order.subtotal || 0).toFixed(2)}</span>
+                          <span className="text-sm font-bold text-accent">Total to pay: ${Number(order.subtotal || 0).toFixed(2)}</span>
                 </div>
               </div>
 
@@ -262,23 +350,26 @@ export default function OrdersPage() {
                   const productSlug = productSlugById.get(item.productId);
                   return (
                     <div key={`${item.productId}-${index}`} className="px-5 py-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
+                      <div className="flex gap-3 items-start">
+                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-primary/10">
+                          <ImagePlaceholder category="" name={item.name} imageUrl={productImageById.get(item.productId) || ""} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs text-foreground">Product:</p>
                           {productSlug ? (
-                            <Link href={`/shop/${productSlug}`} className="text-sm font-semibold text-dark hover:text-accent transition-colors">
+                            <Link href={`/shop/${productSlug}`} className="text-sm font-semibold text-dark hover:text-accent transition-colors truncate block">
                               {item.name}
                             </Link>
                           ) : (
-                            <p className="text-sm font-semibold text-dark">{item.name}</p>
+                            <p className="text-sm font-semibold text-dark truncate">{item.name}</p>
                           )}
-                          <p className="text-xs text-foreground">
-                            Qty: {item.quantity}
-                            {item.variant?.name ? ` / ${item.variant.name}` : ""}
-                          </p>
+                          {item.variant?.name && (
+                            <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                          )}
+                          <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-sm font-medium text-dark">${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}</span>
-                          {order.status === "delivered" && (
+                        <div className="flex items-center gap-3 shrink-0">
+                          {order.status === "received" && (
                             reviewed ? (
                               <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">Reviewed</span>
                             ) : (
@@ -318,9 +409,11 @@ export default function OrdersPage() {
                             value={content}
                             onChange={(event) => setContent(event.target.value)}
                             rows={3}
+                            maxLength={1000}
                             className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card text-dark text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
                             placeholder="Share what you liked, how it felt, or who you would recommend it to."
                           />
+                          <div className="text-right text-[11px] text-foreground">{content.length}/1000</div>
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
@@ -350,3 +443,4 @@ export default function OrdersPage() {
     </div>
   );
 }
+

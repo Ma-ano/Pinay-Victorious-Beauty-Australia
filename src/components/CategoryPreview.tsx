@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { categories } from "@/data/categories";
 
 export default function CategoryPreview({ categoryImages }: { categoryImages?: Record<string, string> }) {
@@ -21,15 +22,18 @@ export default function CategoryPreview({ categoryImages }: { categoryImages?: R
             <Link
               key={cat.id}
               href={`/shop?category=${cat.slug}`}
-              className="group flex flex-col items-center p-5 md:p-6 bg-card rounded-2xl border border-card-border transition-all duration-500 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1"
+              className="group flex flex-col items-center p-5 md:p-6 bg-card border border-card-border transition-all duration-500 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1"
             >
               <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-primary/10 mb-3 group-hover:scale-110 transition-transform duration-500 overflow-hidden flex items-center justify-center">
                 {imgUrl && !hasError ? (
-                  <img
+                  <Image
                     src={imgUrl}
                     alt={cat.name}
+                    width={64}
+                    height={64}
                     className="w-full h-full object-cover"
                     onError={() => setErrored((prev) => new Set(prev).add(cat.slug))}
+                    unoptimized
                   />
                 ) : null}
               </div>

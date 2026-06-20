@@ -1,11 +1,11 @@
 import type { Metadata } from "next";
-import OrdersPage from "./OrdersPage";
+import WishlistPage from "./WishlistPage";
 
 export const metadata: Metadata = {
-  title: "Orders",
+  title: "Wishlist",
   robots: { index: false, follow: false },
 };
 
 export default function Page() {
-  return <OrdersPage />;
+  return <WishlistPage />;
 }

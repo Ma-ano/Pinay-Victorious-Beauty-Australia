@@ -35,6 +35,7 @@ const emptyForm = {
   isSale: false,
   isNew: false,
   discount: "",
+  stock: "",
 };
 
 export default function AdminProductsPage() {
@@ -96,10 +97,11 @@ export default function AdminProductsPage() {
       shippingReturns: product.shippingReturns || "",
       ingredients: product.ingredients || "",
       images: product.images || [],
-      variants: product.variants || [],
+      variants: (product.variants || []).map((v) => ({ ...v, stock: v.stock ?? 0 })),
       isSale: product.isSale || false,
       isNew: product.isNew || false,
       discount: product.discount ? product.discount.toString() : "",
+      stock: product.stock?.toString() || "",
     });
     setEditingId(product.id);
     setShowForm(true);
@@ -150,14 +152,14 @@ export default function AdminProductsPage() {
   function addVariant() {
     setForm((prev) => ({
       ...prev,
-      variants: [...prev.variants, { id: `v-${Date.now()}`, name: "", inStock: true }],
+      variants: [...prev.variants, { id: `v-${Date.now()}`, name: "", inStock: true, price: "" } as unknown as ProductVariant],
     }));
   }
 
-  function updateVariant(index: number, field: keyof ProductVariant, value: string | boolean) {
+  function updateVariant(index: number, field: keyof ProductVariant, value: string | boolean | number) {
     setForm((prev) => {
       const variants = [...prev.variants];
-      variants[index] = { ...variants[index], [field]: value };
+      (variants[index] as unknown as Record<string, unknown>)[field] = value;
       return { ...prev, variants };
     });
   }
@@ -170,6 +172,22 @@ export default function AdminProductsPage() {
     e.preventDefault();
     if (!form.name || !form.category || !form.price) {
       showToast("Name, Category, and Price are required", "error");
+      return;
+    }
+    if (!form.description) {
+      showToast("Description is required", "error");
+      return;
+    }
+    if (!form.detail) {
+      showToast("Product Detail is required", "error");
+      return;
+    }
+    if (!form.ingredients) {
+      showToast("Ingredients is required", "error");
+      return;
+    }
+    if (form.images.length === 0 || !form.images[0].url) {
+      showToast("At least one product image is required", "error");
       return;
     }
     setSaving(true);
@@ -188,10 +206,15 @@ export default function AdminProductsPage() {
         shippingReturns: form.shippingReturns,
         ingredients: form.ingredients,
         images: form.images.filter((img) => img.url),
-        variants: form.variants.filter((v) => v.name),
+        variants: form.variants.filter((v) => v.name).map((v) => ({
+          ...v,
+          stock: v.stock !== undefined ? Number(v.stock) : undefined,
+          price: (v as { price?: string }).price ? Number((v as { price?: string }).price) : undefined,
+        })),
         isSale: form.isSale,
         isNew: form.isNew,
         discount: form.discount ? parseInt(form.discount) : undefined,
+        stock: form.stock !== "" ? parseInt(form.stock) : undefined,
       });
       const all = await getAllProducts();
       setProducts(all);
@@ -249,110 +272,149 @@ export default function AdminProductsPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm text-dark">
+              <h2 className="font-semibold text-sm text-dark">
                 {editingId ? "Edit Product" : "Add Product"}
-              </h3>
+              </h2>
               <button onClick={cancelForm} className="text-foreground hover:text-dark" aria-label="Close">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <form onSubmit={handleSave} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs text-foreground mb-1">Product Name *</label>
-                  <input type="text" value={form.name} onChange={(e) => updateField("name", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="e.g. Radiance Glow Serum" />
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Slug</label>
-                  <input type="text" value={form.slug} onChange={(e) => updateField("slug", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="auto-generated if empty" />
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Category *</label>
-                  <select value={form.category} onChange={(e) => updateField("category", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
-                    <option value="">Select category</option>
-                    {categories.map((c) => (<option key={c.slug} value={c.slug}>{c.name}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Type</label>
-                  <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
-                    <option value="">Select type</option>
-                    {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Brand</label>
-                  <select value={form.brand} onChange={(e) => updateField("brand", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
-                    <option value="">Select brand</option>
-                    {brands.map((b) => (<option key={b} value={b}>{b}</option>))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Price *</label>
-                  <input type="number" step="0.01" value={form.price} onChange={(e) => updateField("price", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="0.00" />
-                </div>
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Original Price</label>
-                  <input type="number" step="0.01" value={form.originalPrice} onChange={(e) => updateField("originalPrice", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="0.00" />
-                </div>
-                <div className="flex items-end gap-3">
-                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                    <input type="checkbox" checked={form.isSale} onChange={(e) => updateField("isSale", e.target.checked)} className="accent-accent" />
-                    On Sale
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
-                    <input type="checkbox" checked={form.isNew} onChange={(e) => updateField("isNew", e.target.checked)} className="accent-accent" />
-                    New
-                  </label>
-                  <input type="number" value={form.discount} onChange={(e) => updateField("discount", e.target.value)}
-                    className="w-20 px-3 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="%" />
+            <form onSubmit={handleSave} className="space-y-5">
+              <div>
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Basic Info</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">What is this product called and what type is it?</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs text-foreground mb-1">Product Name *</label>
+                    <input type="text" value={form.name} onChange={(e) => updateField("name", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      placeholder="e.g. Radiance Glow Serum" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Category *</label>
+                    <select value={form.category} onChange={(e) => updateField("category", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                      <option value="">Select category</option>
+                      {categories.map((c) => (<option key={c.slug} value={c.slug}>{c.name}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Type (Optional)</label>
+                    <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                      <option value="">Select type</option>
+                      {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Brand (Optional)</label>
+                    <select value={form.brand} onChange={(e) => updateField("brand", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                      <option value="">Select brand</option>
+                      {brands.map((b) => (<option key={b} value={b}>{b}</option>))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs text-foreground mb-1">Description</label>
-                <textarea rows={2} value={form.description} onChange={(e) => updateField("description", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                  placeholder="Short product description..." />
-              </div>
-              <div>
-                <label className="block text-xs text-foreground mb-1">Product Detail</label>
-                <textarea rows={2} value={form.detail} onChange={(e) => updateField("detail", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                  placeholder="e.g. Premium formula crafted with the finest ingredients..." />
-              </div>
-              <div>
-                <label className="block text-xs text-foreground mb-1">Shipping & Returns</label>
-                <textarea rows={2} value={form.shippingReturns} onChange={(e) => updateField("shippingReturns", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                  placeholder="e.g. Free shipping on orders over $50..." />
-              </div>
-              <div>
-                <label className="block text-xs text-foreground mb-1">Ingredients</label>
-                <textarea rows={2} value={form.ingredients} onChange={(e) => updateField("ingredients", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                  placeholder="e.g. Water, Glycerin, Hyaluronic Acid..." />
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Pricing</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">Set the selling price. Add an original price to show a discount (e.g. strikethrough price).</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Price *</label>
+                    <input type="number" step="0.01" value={form.price} onChange={(e) => updateField("price", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      placeholder="0.00" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Original Price (Optional)</label>
+                    <input type="number" step="0.01" value={form.originalPrice} onChange={(e) => updateField("originalPrice", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      placeholder="0.00" />
+                  </div>
+                </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-foreground font-medium">Images</span>
-                  <button type="button" onClick={addImage} className="text-xs text-accent hover:underline">+ Add Image</button>
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Stock & Variants</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">How many items do you have? If you offer sizes or colors, add them as variants below.</p>
+                <div className="space-y-3">
+                  {form.variants.length === 0 ? (
+                    <div>
+                      <label className="block text-xs text-foreground mb-1">Stock Quantity</label>
+                      <input type="number" min="0" value={form.stock} onChange={(e) => updateField("stock", e.target.value)}
+                        className="w-full max-w-[120px] px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        placeholder="e.g. 50" />
+                      <p className="text-[11px] text-foreground mt-1">Total number of items available to sell.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {form.variants.map((v, i) => (
+                        <div key={v.id} className="flex gap-2 items-center">
+                          <input type="text" value={v.name} onChange={(e) => updateVariant(i, "name", e.target.value)}
+                            className="flex-1 min-w-0 px-4 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
+                            placeholder="Name (e.g. 30ml, Red)" />
+                          <input type="number" min="0" step="0.01" value={(v as { price?: string }).price ?? ""} onChange={(e) => updateVariant(i, "price" as keyof ProductVariant, e.target.value)}
+                            className="w-20 px-2 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
+                            placeholder="Price" />
+                          <input type="number" min="0" value={(v as { stock?: string }).stock ?? ""} onChange={(e) => updateVariant(i, "stock" as keyof ProductVariant, e.target.value)}
+                            className="w-16 px-2 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
+                            placeholder="Qty" />
+                          <button type="button" onClick={() => removeVariant(i)} className="px-3 py-2 text-xs text-red-500 hover:bg-red-50 rounded-xl shrink-0">×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={addVariant} className="text-xs text-accent hover:underline">+ Add Variant</button>
+                    {form.variants.length > 0 && (
+                      <span className="text-[11px] text-foreground">(Variant name, its price, and how many you have)</span>
+                    )}
+                  </div>
                 </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Description</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">Tell customers what this product is. Description, Details, and Ingredients are shown on the product page.</p>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Description *</label>
+                    <textarea rows={2} value={form.description} onChange={(e) => updateField("description", e.target.value)}
+                      maxLength={2000}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      placeholder="e.g. Long-lasting matte lipstick with a creamy formula. Enriched with shea butter for comfortable wear." />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Product Detail *</label>
+                    <textarea rows={2} value={form.detail} onChange={(e) => updateField("detail", e.target.value)}
+                      maxLength={2000}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      placeholder="e.g. Premium formula crafted with the finest ingredients. Suitable for all skin types. Dermatologist tested." />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Ingredients *</label>
+                    <textarea rows={2} value={form.ingredients} onChange={(e) => updateField("ingredients", e.target.value)}
+                      maxLength={2000}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      placeholder="e.g. Water, Glycerin, Hyaluronic Acid, Vitamin E, Natural Extracts. Free from parabens and sulfates." />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Shipping & Returns (Optional)</label>
+                    <textarea rows={2} value={form.shippingReturns} onChange={(e) => updateField("shippingReturns", e.target.value)}
+                      maxLength={2000}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      placeholder="e.g. Free shipping on orders over $50. 30-day return policy." />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Images *</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">Upload photos of your product. The first image will be the main cover on the shop page.</p>
                 <div className="space-y-2">
                   {form.images.map((img, i) => {
                     const isUploading = uploadingImage === i;
@@ -366,13 +428,13 @@ export default function AdminProductsPage() {
                               {isUploading ? "Uploading..." : "Upload Image"}
                             </button>
                             <input type="text" value={img.name} onChange={(e) => updateImage(i, "name", e.target.value)}
-                              className="w-28 px-3 py-1.5 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
-                              placeholder="Name" />
+                              className="w-32 px-3 py-1.5 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
+                              placeholder="Image Name *" />
                             <button type="button" onClick={() => removeImage(i)}
                               className="px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-xl">×</button>
                           </div>
                           <input ref={(el) => { fileInputRefs.current[i] = el; }}
-                            type="file" accept="image/*" className="hidden"
+                            type="file" accept=".jpg,.jpeg,.png" className="hidden"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) handleImageUpload(i, file);
@@ -388,27 +450,28 @@ export default function AdminProductsPage() {
                       </div>
                     );
                   })}
+                  <button type="button" onClick={addImage} className="text-xs text-accent hover:underline">+ Add another image</button>
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-foreground font-medium">Variants</span>
-                  <button type="button" onClick={addVariant} className="text-xs text-accent hover:underline">+ Add Variant</button>
-                </div>
-                <div className="space-y-2">
-                  {form.variants.map((v, i) => (
-                    <div key={v.id} className="flex gap-2 items-center">
-                      <input type="text" value={v.name} onChange={(e) => updateVariant(i, "name", e.target.value)}
-                        className="flex-1 px-4 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
-                        placeholder="Variant name (e.g. 30ml, Red)" />
-                      <label className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer whitespace-nowrap">
-                        <input type="checkbox" checked={v.inStock} onChange={(e) => updateVariant(i, "inStock", e.target.checked)} className="accent-accent" />
-                        In stock
-                      </label>
-                      <button type="button" onClick={() => removeVariant(i)} className="px-3 py-2 text-xs text-red-500 hover:bg-red-50 rounded-xl">×</button>
-                    </div>
-                  ))}
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Status</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">Mark this product as on sale or newly added. These badges will appear on the shop page.</p>
+                <div className="flex items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.isSale} onChange={(e) => updateField("isSale", e.target.checked)} className="accent-accent" />
+                    On Sale
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                    <input type="checkbox" checked={form.isNew} onChange={(e) => updateField("isNew", e.target.checked)} className="accent-accent" />
+                    New
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <label className="text-xs text-foreground">Discount %</label>
+                    <input type="number" value={form.discount} onChange={(e) => updateField("discount", e.target.value)}
+                      className="w-16 px-2 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
+                      placeholder="%" />
+                  </div>
                 </div>
               </div>
 
@@ -444,15 +507,17 @@ export default function AdminProductsPage() {
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Type</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Brand</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Price</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Stock</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Images</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Variants</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Availability</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-primary/10">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12 text-center text-foreground">
+                <td colSpan={10} className="px-4 py-12 text-center text-foreground">
                   {search ? "No products match your search." : "No products yet. Click \"+ Add Product\" to get started."}
                 </td>
               </tr>
@@ -469,10 +534,32 @@ export default function AdminProductsPage() {
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{p.brand}</td>
                   <td className="px-4 py-3 text-dark">${p.price.toFixed(2)}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">
+                    {p.variants && p.variants.length > 0
+                      ? p.variants.reduce((sum, v) => sum + ((v as { stock?: number }).stock ?? 0), 0)
+                      : p.stock ?? 0}
+                  </td>
+                  <td className="px-4 py-3 text-foreground hidden md:table-cell">
                     {p.images?.length || 0}
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">
                     {p.variants ? p.variants.map((v) => v.name).join(", ") : "—"}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {(() => {
+                      const hasStock = p.variants && p.variants.length > 0
+                        ? p.variants.some((v) => v.inStock)
+                        : true;
+                      return (
+                        <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                          hasStock
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${hasStock ? "bg-green-500" : "bg-red-500"}`} />
+                          {hasStock ? "In Stock" : "Out of Stock"}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">

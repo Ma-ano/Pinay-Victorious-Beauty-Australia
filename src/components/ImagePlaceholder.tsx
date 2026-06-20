@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import Image from "next/image";
 
 interface ImagePlaceholderProps {
   category: string;
@@ -113,16 +114,18 @@ export default function ImagePlaceholder({
               background: `linear-gradient(135deg, ${config.accent}22, ${config.accent}11)`,
             }}
           />
-          <img
+          <Image
             ref={imgRef}
             src={imgSrc}
             alt={name || category}
-            loading="lazy"
+            fill
             onLoad={() => setLoaded(true)}
             onError={() => setErrored(true)}
-            className={`w-full h-full object-cover transition-opacity duration-500 ${
+            className={`object-cover transition-opacity duration-500 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
+            sizes="600px"
+            unoptimized
           />
         </>
       )}

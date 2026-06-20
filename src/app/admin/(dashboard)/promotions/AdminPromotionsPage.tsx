@@ -90,6 +90,7 @@ export default function AdminPromotionsPage() {
         <div>
           <h1 className="text-2xl font-bold text-dark">Promotions</h1>
           <p className="text-sm text-foreground mt-1">{promos.length} promotions</p>
+          <p className="text-[11px] text-foreground/70 mt-1">Create discount codes that customers can enter at checkout. Expired or inactive codes won't work.</p>
         </div>
         <button
           onClick={startAdd}
@@ -108,9 +109,9 @@ export default function AdminPromotionsPage() {
             className="bg-card rounded-2xl border border-card-border shadow-2xl max-w-lg w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="font-semibold text-sm text-dark mb-4">
+            <h2 className="font-semibold text-sm text-dark mb-4">
               {editingId ? "Edit Promotion" : "Add Promotion"}
-            </h3>
+            </h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -122,6 +123,7 @@ export default function AdminPromotionsPage() {
                     className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                     placeholder="e.g. SUMMER20"
                   />
+                  <p className="text-[11px] text-foreground/70 mt-0.5">Customers type this at checkout. Keep it short and easy to remember.</p>
                 </div>
                 <div>
                   <label className="block text-xs text-foreground mb-1">Discount *</label>
@@ -133,6 +135,7 @@ export default function AdminPromotionsPage() {
                     className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                     placeholder="e.g. 20"
                   />
+                  <p className="text-[11px] text-foreground/70 mt-0.5">For Percentage, enter the number only (e.g. 20 = 20% off). For Fixed Amount, enter the dollar amount.</p>
                 </div>
                 <div>
                   <label className="block text-xs text-foreground mb-1">Type</label>
@@ -145,6 +148,7 @@ export default function AdminPromotionsPage() {
                     <option>Fixed Amount</option>
                     <option>Free Shipping</option>
                   </select>
+                  <p className="text-[11px] text-foreground/70 mt-0.5">Percentage = % off the price. Fixed Amount = $ off. Free Shipping = no delivery fee.</p>
                 </div>
                 <div>
                   <label className="block text-xs text-foreground mb-1">Expires *</label>
@@ -154,6 +158,7 @@ export default function AdminPromotionsPage() {
                     onChange={(e) => setForm({ ...form, expires: e.target.value })}
                     className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                   />
+                  <p className="text-[11px] text-foreground/70 mt-0.5">After this date, the code will stop working.</p>
                 </div>
               </div>
               <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
@@ -165,6 +170,7 @@ export default function AdminPromotionsPage() {
                 />
                 Active
               </label>
+              <p className="text-[11px] text-foreground/70 -mt-2">Uncheck to disable without deleting. Customers won't be able to use this code.</p>
               <div className="flex gap-2 pt-2">
                 <button
                   type="submit"

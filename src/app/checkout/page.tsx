@@ -1,7 +1,13 @@
+import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAdminAuth } from "@/lib/firebase-admin";
 import CheckoutPage from "./CheckoutPage";
+
+export const metadata: Metadata = {
+  title: "Checkout",
+  robots: { index: false, follow: false },
+};
 
 export default async function Page() {
   const cookieStore = await cookies();

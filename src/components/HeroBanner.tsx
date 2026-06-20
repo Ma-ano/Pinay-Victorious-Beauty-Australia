@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import type { FeaturedBrandConfig } from "@/lib/settings-store";
 
 const fallbackSlides: FeaturedBrandConfig[] = [
@@ -46,13 +47,17 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
         >
           {slide?.image ? (
             <div className="w-full h-full">
-              <img
+              <Image
                 src={slide.image}
                 alt=""
-                className="w-full h-full object-cover"
+                fill
+                className="object-cover"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
+                unoptimized
+                priority={i === 0}
+                sizes="100vw"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />
             </div>

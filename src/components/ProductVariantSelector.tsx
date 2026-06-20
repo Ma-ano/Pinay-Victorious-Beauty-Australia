@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
 import AddToCartButton from "./AddToCartButton";
 import type { Product, ProductVariant } from "@/data/products";
 
-export default function ProductVariantSelector({ product }: { product: Product }) {
-  const [selectedVariant, setSelectedVariant] = useState<ProductVariant | undefined>(
-    product.variants?.[0]
-  );
+interface Props {
+  product: Product;
+  selectedVariant?: ProductVariant;
+  onVariantChange: (variant?: ProductVariant) => void;
+}
 
+export default function ProductVariantSelector({ product, selectedVariant, onVariantChange }: Props) {
   if (!product.variants || product.variants.length === 0) {
     return <AddToCartButton product={product} />;
   }
@@ -23,7 +24,7 @@ export default function ProductVariantSelector({ product }: { product: Product }
           {product.variants.map((v) => (
             <button
               key={v.id}
-              onClick={() => setSelectedVariant(v)}
+              onClick={() => onVariantChange(v)}
               disabled={!v.inStock}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                 selectedVariant?.id === v.id

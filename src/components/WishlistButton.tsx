@@ -40,16 +40,16 @@ export default function WishlistButton({ productId }: { productId: string }) {
   return (
     <button
       onClick={handleClick}
-      className={`absolute top-3 right-3 z-10 p-2 rounded-full transition-all ${
+      className={`p-1.5 rounded-full transition-all ${
         wishlisted
-          ? "bg-accent/20 text-red-500 scale-110"
-          : "bg-white/70 text-foreground hover:bg-white hover:text-red-500"
+          ? "text-red-500 scale-110"
+          : "text-gray-900 dark:text-white hover:text-red-500"
       }`}
       aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="h-4 w-4"
+        className="h-5 w-5"
         viewBox="0 0 24 24"
         fill={wishlisted ? "currentColor" : "none"}
         stroke="currentColor"

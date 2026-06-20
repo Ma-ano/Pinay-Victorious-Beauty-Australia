@@ -19,6 +19,27 @@ interface FirestoreReview {
   createdAt?: Timestamp;
 }
 
+function ExpandableReview({ content }: { content: string }) {
+  if (!content) return null;
+  const [expanded, setExpanded] = useState(false);
+  const long = content.length > 200;
+  return (
+    <div>
+      <p className={`mt-3 text-sm text-foreground leading-relaxed break-words ${!expanded && long ? "line-clamp-3" : ""}`}>
+        {content}
+      </p>
+      {long && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="mt-1 text-xs text-accent hover:underline"
+        >
+          {expanded ? "Show less" : "Show more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
 function mapFirestoreReview(id: string, review: FirestoreReview): Review {
   return {
     id,
@@ -143,7 +164,7 @@ export default function ProductReviews({ productId, productName }: ProductReview
                   </span>
                 )}
               </div>
-              <p className="mt-3 text-sm text-foreground leading-relaxed">{review.content}</p>
+              <ExpandableReview content={review.content} />
             </div>
           ))}
         </div>

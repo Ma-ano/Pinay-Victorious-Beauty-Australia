@@ -43,6 +43,12 @@ export default function ProfilePage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
+
   if (loading) {
     return (
       <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
@@ -50,12 +56,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
-  }, [loading, user, router]);
 
   if (!user) return null;
 
@@ -176,7 +176,7 @@ export default function ProfilePage() {
               </div>
             )}
           </button>
-          <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
+          <input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handlePhotoUpload} />
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}

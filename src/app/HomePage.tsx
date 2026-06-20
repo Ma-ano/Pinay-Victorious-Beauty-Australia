@@ -10,30 +10,72 @@ import RecruitmentArea from "@/components/RecruitmentArea";
 import Newsletter from "@/components/Newsletter";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/data/products";
-import { getSaleProducts, getTrendingProducts, getBestSellingProducts } from "@/lib/product-store";
+import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import { getSettings, type SiteSettings } from "@/lib/settings-store";
 
-export default function HomePage() {
+interface HomePageProps {
+  initialProducts?: Product[];
+  initialReviewStats?: Record<string, { avgRating: number; reviewCount: number }>;
+  initialSettings?: SiteSettings | null;
+}
+
+export default function HomePage({ initialProducts, initialReviewStats, initialSettings }: HomePageProps) {
   const [trending, setTrending] = useState<Product[]>([]);
   const [bestSelling, setBestSelling] = useState<Product[]>([]);
   const [saleProducts, setSaleProducts] = useState<Product[]>([]);
-  const [settings, setSettings] = useState<SiteSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [settings, setSettings] = useState<SiteSettings | null>(initialSettings ?? null);
+  const [loading, setLoading] = useState(!(initialProducts && initialReviewStats));
 
   useEffect(() => {
-    Promise.all([
-      getTrendingProducts().catch(() => [] as Product[]),
-      getBestSellingProducts().catch(() => [] as Product[]),
-      getSaleProducts().catch(() => [] as Product[]),
-      getSettings().catch(() => null),
-    ]).then(([t, b, s, settings]) => {
+    if (initialProducts && initialReviewStats) {
+      const enriched = initialProducts.map((p) => ({
+        ...p,
+        rating: initialReviewStats[p.id]?.avgRating ?? p.rating,
+        reviews: initialReviewStats[p.id]?.reviewCount ?? p.reviews,
+      }));
+      const t = [...enriched].sort((a, b) => {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return Math.random() - 0.5;
+      });
+      const b = [...enriched].sort((a, b) => {
+        if ((b as Product & { soldCount?: number }).soldCount !== (a as Product & { soldCount?: number }).soldCount)
+          return ((b as Product & { soldCount?: number }).soldCount ?? 0) - ((a as Product & { soldCount?: number }).soldCount ?? 0);
+        return Math.random() - 0.5;
+      });
       setTrending(t);
       setBestSelling(b);
-      setSaleProducts(s.slice(0, 4));
+      setSaleProducts(enriched.filter((p) => p.isSale).slice(0, 4));
+      setSettings(initialSettings ?? null);
+      setLoading(false);
+      return;
+    }
+
+    Promise.all([
+      getAllProducts().catch(() => [] as Product[]),
+      getAllReviewStats().catch(() => ({} as Record<string, { avgRating: number; reviewCount: number }>)),
+      getSettings().catch(() => null),
+    ]).then(([all, reviewStats, settings]) => {
+      const enriched = all.map((p) => ({
+        ...p,
+        rating: reviewStats[p.id]?.avgRating ?? p.rating,
+        reviews: reviewStats[p.id]?.reviewCount ?? p.reviews,
+      }));
+      const t = [...enriched].sort((a, b) => {
+        if (b.rating !== a.rating) return b.rating - a.rating;
+        return Math.random() - 0.5;
+      });
+      const b = [...enriched].sort((a, b) => {
+        if ((b as Product & { soldCount?: number }).soldCount !== (a as Product & { soldCount?: number }).soldCount)
+          return ((b as Product & { soldCount?: number }).soldCount ?? 0) - ((a as Product & { soldCount?: number }).soldCount ?? 0);
+        return Math.random() - 0.5;
+      });
+      setTrending(t);
+      setBestSelling(b);
+      setSaleProducts(enriched.filter((p) => p.isSale).slice(0, 4));
       setSettings(settings);
       setLoading(false);
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
     return (
@@ -47,13 +89,17 @@ export default function HomePage() {
     <div className="space-y-24 pb-24">
       <HeroBanner featuredBrands={settings?.featuredBrands} />
 
-      <div className="animate-fade-in-up">
-        <ProductCarousel products={trending} title="Trending Now" description="Top-rated by our customers" />
-      </div>
+      {trending.length > 0 && (
+        <div className="animate-fade-in-up">
+          <ProductCarousel products={trending} title="Trending Now" description="Top-rated by our customers" />
+        </div>
+      )}
 
-      <div className="animate-fade-in-up">
-        <ProductCarousel products={bestSelling} title="Best Selling" description="Most purchased products" />
-      </div>
+      {bestSelling.length > 0 && (
+        <div className="animate-fade-in-up">
+          <ProductCarousel products={bestSelling} title="Best Selling" description="Most purchased products" />
+        </div>
+      )}
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 animate-fade-in-up">
         <PromotionCards />

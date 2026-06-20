@@ -28,6 +28,7 @@ export interface ProductFormData {
   isNew?: boolean;
   isSale?: boolean;
   discount?: number;
+  stock?: number;
   variants?: ProductVariant[];
 }
 
@@ -52,7 +53,7 @@ function slugify(text: string): string {
 
 export async function getAllProducts(): Promise<Product[]> {
   const snapshot = await getDocs(collection(db, "products"));
-  return snapshot.docs.map((docSnap) => {
+  const result = snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as Product;
     return {
       ...data,
@@ -61,9 +62,11 @@ export async function getAllProducts(): Promise<Product[]> {
       reviews: data.reviews ?? 0,
       sold: data.sold ?? 0,
       images: data.images ?? [],
+      stock: data.stock ?? 0,
       variants: data.variants ?? [],
     };
   });
+  return result;
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
@@ -94,6 +97,28 @@ export async function saveProduct(
 
 export async function deleteProduct(id: string): Promise<void> {
   await deleteDoc(doc(db, "products", id));
+}
+
+export async function getAllReviewStats(): Promise<Record<string, { avgRating: number; reviewCount: number }>> {
+  try {
+    const snap = await getDocs(collection(db, "reviews"));
+    const acc: Record<string, { total: number; count: number }> = {};
+    snap.docs.forEach((d) => {
+      const data = d.data();
+      const pid = data.productId;
+      if (!pid) return;
+      if (!acc[pid]) acc[pid] = { total: 0, count: 0 };
+      acc[pid].total += data.rating || 0;
+      acc[pid].count += 1;
+    });
+    const result: Record<string, { avgRating: number; reviewCount: number }> = {};
+    for (const [pid, v] of Object.entries(acc)) {
+      result[pid] = { avgRating: v.total / v.count, reviewCount: v.count };
+    }
+    return result;
+  } catch {
+    return {};
+  }
 }
 
 export async function getProductReviews(productId: string): Promise<{ avgRating: number; reviewCount: number }> {
@@ -151,13 +176,19 @@ export async function getSaleProducts(): Promise<Product[]> {
 export async function getTrendingProducts(): Promise<Product[]> {
   const all = await getAllProducts();
   const enriched = await Promise.all(all.map(enrichProductWithStats));
-  return enriched.sort((a, b) => b.avgRating - a.avgRating);
+  return enriched.sort((a, b) => {
+    if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
+    return Math.random() - 0.5;
+  });
 }
 
 export async function getBestSellingProducts(): Promise<Product[]> {
   const all = await getAllProducts();
   const enriched = await Promise.all(all.map(enrichProductWithStats));
-  return enriched.sort((a, b) => b.soldCount - a.soldCount);
+  return enriched.sort((a, b) => {
+    if (b.soldCount !== a.soldCount) return b.soldCount - a.soldCount;
+    return Math.random() - 0.5;
+  });
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {

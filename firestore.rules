@@ -15,12 +15,19 @@ service cloud.firestore {
          request.auth.token.isAdmin == true);
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId;
-      allow update: if request.auth != null &&
-        request.auth.token.isAdmin == true;
+      allow update: if request.auth != null && request.auth.token.isAdmin == true ||
+        // Customer cancels own pending/approved order
+        (request.auth.uid == resource.data.userId &&
+         request.resource.data.status == "cancelled" &&
+         resource.data.status in ["pending", "approved"]) ||
+        // Customer confirms received on own delivered order
+        (request.auth.uid == resource.data.userId &&
+         request.resource.data.status == "received" &&
+         resource.data.status == "delivered");
       allow delete: if false;
     }
 
-    // Reviews - public read, customers create one verified review per delivered order item
+    // Reviews - public read, customers create one verified review per delivered/received order item
     match /reviews/{reviewId} {
       allow read: if true;
       allow create: if request.auth != null &&
@@ -29,21 +36,42 @@ service cloud.firestore {
         request.resource.data.productId is string &&
         request.resource.data.author is string &&
         request.resource.data.content is string &&
+        request.resource.data.content.size() <= 1000 &&
         request.resource.data.rating is int &&
         request.resource.data.rating >= 1 &&
         request.resource.data.rating <= 5 &&
         request.resource.data.isVerified == true &&
         get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.userId == request.auth.uid &&
-        get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.status == "delivered";
+        get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.status in ["delivered", "received"];
       allow update, delete: if request.auth != null &&
         request.auth.token.isAdmin == true;
     }
 
-    // Products - anyone read, admin write
+    // Products - anyone read, admin write (with field validation)
     match /products/{productId} {
       allow read: if true;
       allow write: if request.auth != null &&
-        request.auth.token.isAdmin == true;
+        request.auth.token.isAdmin == true &&
+        request.resource.data.name is string &&
+        request.resource.data.name.size() > 0 &&
+        request.resource.data.name.size() <= 200 &&
+        request.resource.data.price is number &&
+        request.resource.data.price >= 0 &&
+        (!("description" in request.resource.data) ||
+          request.resource.data.description is string &&
+          request.resource.data.description.size() <= 2000) &&
+        (!("detail" in request.resource.data) ||
+          request.resource.data.detail is string &&
+          request.resource.data.detail.size() <= 2000) &&
+        (!("ingredients" in request.resource.data) ||
+          request.resource.data.ingredients is string &&
+          request.resource.data.ingredients.size() <= 2000) &&
+        (!("stock" in request.resource.data) ||
+          (request.resource.data.stock is number &&
+           request.resource.data.stock >= 0)) &&
+        (!("discount" in request.resource.data) ||
+          (request.resource.data.discount is number &&
+           request.resource.data.discount >= 0));
     }
 
     // Newsletter subscribers
@@ -74,3 +102,4 @@ service cloud.firestore {
     }
   }
 }
+

@@ -3,20 +3,46 @@
 import { useEffect, useState } from "react";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/data/products";
-import { getSaleProducts } from "@/lib/product-store";
+import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 
-export default function SalePage() {
+interface SalePageProps {
+  initialSaleProducts?: Product[];
+  initialReviewStats?: Record<string, { avgRating: number; reviewCount: number }>;
+}
+
+export default function SalePage({ initialSaleProducts, initialReviewStats }: SalePageProps) {
+  const hasInitial = !!(initialSaleProducts && initialReviewStats);
   const [code, setCode] = useState("");
   const [applied, setApplied] = useState(false);
-  const [saleProducts, setSaleProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [saleProducts, setSaleProducts] = useState<Product[]>(() => {
+    if (initialSaleProducts && initialReviewStats) {
+      return initialSaleProducts.map((p) => ({
+        ...p,
+        rating: initialReviewStats[p.id]?.avgRating ?? p.rating,
+        reviews: initialReviewStats[p.id]?.reviewCount ?? p.reviews,
+      }));
+    }
+    return [];
+  });
+  const [loading, setLoading] = useState(!hasInitial);
 
   useEffect(() => {
-    getSaleProducts().then((products) => {
-      setSaleProducts(products);
+    if (hasInitial) return;
+    Promise.all([
+      getAllProducts().catch(() => [] as Product[]),
+      getAllReviewStats().catch(() => ({} as Record<string, { avgRating: number; reviewCount: number }>)),
+    ]).then(([all, reviewStats]) => {
+      const enriched = all
+        .filter((p) => p.isSale)
+        .map((p) => ({
+          ...p,
+          rating: reviewStats[p.id]?.avgRating ?? p.rating,
+          reviews: reviewStats[p.id]?.reviewCount ?? p.reviews,
+        }));
+      setSaleProducts(enriched);
       setLoading(false);
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -45,25 +71,23 @@ export default function SalePage() {
             Apply
           </button>
         </form>
-        {applied && (
-          <p className="text-center text-xs text-green-600 mt-2">
-            {code ? "Promo code applied! (UI only)" : "Please enter a code"}
-          </p>
-        )}
+        {applied && <p className="text-green-600 text-xs mt-2 text-center">Code applied (demo)</p>}
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[30vh]">
+        <div className="flex items-center justify-center min-h-[40vh]">
           <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
-      ) : saleProducts.length > 0 ? (
+      ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
           {saleProducts.map((product) => (
             <ProductCard key={product.id} product={product} />
           ))}
         </div>
-      ) : (
-        <p className="text-center text-foreground text-sm">No sale items at the moment</p>
+      )}
+
+      {!loading && saleProducts.length === 0 && (
+        <p className="text-center text-foreground mt-20 text-sm">No products on sale at the moment.</p>
       )}
     </div>
   );

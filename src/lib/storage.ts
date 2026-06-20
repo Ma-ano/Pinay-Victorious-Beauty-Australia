@@ -1,4 +1,9 @@
+const ALLOWED_TYPES = ["image/jpeg", "image/png"];
+
 export async function uploadImage(file: File, path: string): Promise<string> {
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    throw new Error("Only JPG and PNG images are allowed");
+  }
   const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
   const { app } = await import("@/lib/firebase");
   const storage = getStorage(app);

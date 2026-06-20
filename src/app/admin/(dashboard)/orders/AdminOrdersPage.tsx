@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -14,7 +15,7 @@ import {
 import { db } from "@/lib/firebase";
 import { useToast } from "@/components/Toast";
 
-type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected";
+type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected" | "received";
 
 interface OrderItem {
   productId: string;
@@ -47,13 +48,14 @@ interface FirestoreOrder {
   updatedAt?: Timestamp;
 }
 
-const statuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "shipped", "delivered", "cancelled", "rejected"];
+const statuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "shipped", "delivered", "received", "cancelled", "rejected"];
 
 const statusColors: Record<OrderStatus, string> = {
   pending: "bg-yellow-100 text-yellow-700",
   approved: "bg-blue-100 text-blue-700",
   shipped: "bg-violet-100 text-violet-700",
   delivered: "bg-green-100 text-green-700",
+  received: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
 };
@@ -132,11 +134,12 @@ function OrderDetailModal({
               {(order.items || []).map((item, index) => (
                 <div key={`${item.productId}-${index}`} className="flex justify-between gap-4 text-sm bg-primary/5 rounded-xl p-3">
                   <div>
+                    <p className="text-xs text-foreground">Product:</p>
                     <p className="text-dark font-medium">{item.name}</p>
-                    <p className="text-xs text-foreground">
-                      Qty: {item.quantity}
-                      {item.variant?.name ? ` / ${item.variant.name}` : ""}
-                    </p>
+                    {item.variant?.name && (
+                      <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                    )}
+                    <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                   </div>
                   <span className="text-dark font-medium">${(Number(item.price || 0) * Number(item.quantity || 0)).toFixed(2)}</span>
                 </div>
@@ -150,6 +153,7 @@ function OrderDetailModal({
 
           <section>
             <h3 className="text-sm font-semibold text-dark mb-2">Status Actions</h3>
+            <p className="text-[11px] text-foreground/70 mb-2">Click a status to update this order. Shipped or Delivered will reduce your stock automatically.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {statuses.filter((s): s is OrderStatus => s !== "all").map((status) => (
                 <button
@@ -200,6 +204,13 @@ export default function AdminOrdersPage() {
     );
   }, []);
 
+  useEffect(() => {
+    if (modalOrder) {
+      const updated = orders.find((o) => o.firestoreId === modalOrder.firestoreId);
+      if (updated) setModalOrder(updated);
+    }
+  }, [orders]);
+
   const filtered = useMemo(() => (
     filter === "all" ? orders : orders.filter((order) => order.status === filter)
   ), [filter, orders]);
@@ -211,6 +222,32 @@ export default function AdminOrdersPage() {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
+
+      if (newStatus === "shipped" || newStatus === "delivered") {
+        const order = orders.find((o) => o.firestoreId === orderId);
+        if (order && order.status !== "shipped" && order.status !== "delivered") {
+          for (const item of order.items) {
+            const productRef = doc(db, "products", item.productId);
+            const productSnap = await getDoc(productRef);
+            if (!productSnap.exists()) continue;
+            const productData = productSnap.data();
+
+            if (item.variant?.id && productData.variants) {
+              const updatedVariants = productData.variants.map(
+                (v: { id?: string; stock?: number }) =>
+                  v.id === item.variant!.id
+                    ? { ...v, stock: Math.max(0, (v.stock ?? 0) - item.quantity) }
+                    : v
+              );
+              await updateDoc(productRef, { variants: updatedVariants });
+            } else {
+              const currentStock = productData.stock ?? 0;
+              await updateDoc(productRef, { stock: Math.max(0, currentStock - item.quantity) });
+            }
+          }
+        }
+      }
+
       showToast(`Order ${orderId.slice(-8)} marked ${newStatus}`, "success");
     } catch {
       showToast("Failed to update order status", "error");
@@ -225,6 +262,7 @@ export default function AdminOrdersPage() {
         <div>
           <h1 className="text-2xl font-bold text-dark">Orders</h1>
           <p className="text-sm text-foreground mt-1">Review customer details and manage fulfillment status.</p>
+          <p className="text-[11px] text-foreground/70 mt-1">Click any order to see customer details. Use the status buttons to update fulfillment. Setting to Shipped or Delivered will automatically deduct from your stock.</p>
         </div>
         <p className="text-sm text-foreground">{filtered.length} of {orders.length} orders</p>
       </div>
@@ -283,7 +321,7 @@ export default function AdminOrdersPage() {
                     <div className="font-medium text-dark">{order.customerName}</div>
                     <div className="text-xs">{order.customerEmail}</div>
                   </td>
-                  <td className="px-4 py-3 text-foreground hidden sm:table-cell">{order.items?.length || 0}</td>
+                  <td className="px-4 py-3 text-foreground hidden sm:table-cell">{order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}</td>
                   <td className="px-4 py-3 text-dark font-medium">${Number(order.subtotal || 0).toFixed(2)}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{formatDate(order.createdAt)}</td>
                   <td className="px-4 py-3">

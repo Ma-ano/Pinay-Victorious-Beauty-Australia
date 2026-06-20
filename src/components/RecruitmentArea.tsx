@@ -6,7 +6,7 @@ export default function RecruitmentArea() {
   ];
 
   return (
-    <section className="relative bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/10 rounded-2xl overflow-hidden p-8 md:p-12 text-center">
+    <section className="relative bg-gradient-to-r from-primary/20 via-secondary/20 to-accent/10 p-8 md:p-12 text-center">
       <div className="absolute -top-8 -left-8 w-32 h-32 bg-accent/10 rounded-full blur-2xl" />
       <div className="absolute -bottom-8 -right-8 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
       <div className="relative z-10">

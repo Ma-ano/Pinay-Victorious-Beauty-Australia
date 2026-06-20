@@ -1,183 +1,103 @@
 "use client";
 
-import { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+import { useState, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "./ProductCard";
 import type { Product } from "@/data/products";
 
-const GAP = 20;
-const OFFSET = 4;
+interface Props {
+  products: Product[];
+  title: string;
+  description: string;
+}
 
-export default function ProductCarousel({ products, title, description }: { products: Product[]; title: string; description: string }) {
-  const loopProducts = [
-    ...products.slice(-OFFSET),
-    ...products,
-    ...products.slice(0, OFFSET),
-  ];
-  const maxIndex = OFFSET + products.length;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [cardWidth, setCardWidth] = useState(300);
-  const step = cardWidth + GAP;
-  const [currentIndex, setCurrentIndex] = useState(OFFSET);
-  const [isPaused, setIsPaused] = useState(false);
-  const [jumpDuration, setJumpDuration] = useState(0.5);
-  const [visibleCards, setVisibleCards] = useState(4);
-  const [isHovering, setIsHovering] = useState(false);
-  const pauseTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
-  const jumpRef = useRef(false);
+const PER_SLIDE = 4;
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const updateWidth = () => {
-      const w = el.clientWidth;
-      let vc = 4;
-      if (w < 640) vc = 2;
-      else if (w < 1024) vc = 3;
-      const newWidth = Math.max(180, Math.floor((w - (vc - 1) * GAP) / vc));
-      setCardWidth(newWidth);
-      setVisibleCards(vc);
-    };
-    updateWidth();
-    const ro = new ResizeObserver(updateWidth);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+function chunk<T>(arr: T[], size: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+  return result;
+}
 
-  const next = useCallback(() => {
-    setCurrentIndex((prev) => {
-      const nextVal = prev + 1;
-      if (nextVal >= maxIndex) {
-        jumpRef.current = true;
-        return OFFSET;
-      }
-      return nextVal;
-    });
-    if (jumpRef.current) {
-      jumpRef.current = false;
-      setJumpDuration(0);
-    }
-  }, [maxIndex]);
+export default function ProductCarousel({ products, title, description }: Props) {
+  const slides = useMemo(() => chunk(products, PER_SLIDE), [products]);
+  const [current, setCurrent] = useState(0);
+  const total = slides.length;
 
-  const prev = useCallback(() => {
-    setCurrentIndex((prev) => {
-      const nextVal = prev - 1;
-      if (nextVal < 0) {
-        jumpRef.current = true;
-        return maxIndex - 1;
-      }
-      return nextVal;
-    });
-    if (jumpRef.current) {
-      jumpRef.current = false;
-      setJumpDuration(0);
-    }
-  }, [maxIndex]);
+  if (total === 0) return null;
 
-  const scrollToCard = useCallback((dotIndex: number) => {
-    setCurrentIndex(OFFSET + dotIndex);
-  }, []);
-
-  const dotIndex =
-    ((currentIndex - OFFSET) % products.length + products.length) % products.length;
-
-  const pauseTemporarily = useCallback(() => {
-    setIsPaused(true);
-    clearTimeout(pauseTimeoutRef.current);
-    pauseTimeoutRef.current = setTimeout(() => setIsPaused(false), 4000);
-  }, []);
-
-  useEffect(() => {
-    if (isPaused) return;
-    const id = setInterval(next, 4000);
-    return () => clearInterval(id);
-  }, [isPaused, next]);
-
-  useLayoutEffect(() => {
-    if (jumpDuration === 0) {
-      setJumpDuration(0.6);
-    }
-  }, [currentIndex, jumpDuration]);
+  const prev = () => setCurrent((c) => Math.max(0, c - 1));
+  const next = () => setCurrent((c) => Math.min(total - 1, c + 1));
 
   return (
-    <section className="overflow-x-hidden">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center mb-10">
-        <h2 className="text-3xl md:text-4xl font-bold text-dark">{title}</h2>
-        <p className="mt-2 text-foreground">{description}</p>
-      </div>
-      <div
-        className="relative"
-        onMouseEnter={() => { setIsPaused(true); setIsHovering(true); }}
-        onMouseLeave={() => { setIsPaused(false); setIsHovering(false); }}
-        onWheel={pauseTemporarily}
-        onTouchStart={pauseTemporarily}
-      >
-        <button
-          onClick={() => { pauseTemporarily(); prev(); }}
-          className={`absolute left-0 top-0 bottom-0 z-10 w-14 flex items-center justify-center bg-gradient-to-r from-background/60 to-transparent transition-opacity ${
-            isHovering ? "opacity-100" : "opacity-0"
-          }`}
-          aria-label="Previous"
-        >
-          <svg className="w-5 h-5 text-dark drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-        <button
-          onClick={() => { pauseTemporarily(); next(); }}
-          className={`absolute right-0 top-0 bottom-0 z-10 w-14 flex items-center justify-center bg-gradient-to-l from-background/60 to-transparent transition-opacity ${
-            isHovering ? "opacity-100" : "opacity-0"
-          }`}
-          aria-label="Next"
-        >
-          <svg className="w-5 h-5 text-dark drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <div ref={containerRef} className="overflow-hidden">
-          <motion.div
-            className="flex gap-5"
-            animate={{ x: -currentIndex * step }}
-            transition={{
-              type: "tween",
-              ease: "easeOut",
-              duration: jumpDuration,
-            }}
-            drag="x"
-            dragElastic={0.2}
-            onDragEnd={(_e, info) => {
-              if (info.offset.x < -50) {
-                next();
-              } else if (info.offset.x > 50) {
-                prev();
-              }
-              pauseTemporarily();
-            }}
-          >
-            {loopProducts.map((product, i) => (
-              <div
-                key={`${product.id}-${i}`}
-                className="shrink-0"
-                style={{ width: cardWidth, minWidth: cardWidth }}
-              >
-                <ProductCard product={product} />
-              </div>
-            ))}
-          </motion.div>
+    <section>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <h2 className="text-3xl md:text-4xl font-bold text-dark">{title}</h2>
+            <p className="mt-2 text-foreground">{description}</p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={prev}
+              disabled={current === 0}
+              className="p-2 rounded-xl border border-card-border bg-card text-foreground hover:text-accent hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              aria-label="Previous slide"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <button
+              onClick={next}
+              disabled={current === total - 1}
+              className="p-2 rounded-xl border border-card-border bg-card text-foreground hover:text-accent hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              aria-label="Next slide"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
         </div>
-        <div className="flex justify-center gap-2 mt-4">
-          {products.slice(0, 10).map((_, i) => (
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
+        <div className="relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={current}
+              initial={{ opacity: 0, x: 60 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -60 }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6"
+            >
+              {slides[current].map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {total > 1 && (
+        <div className="flex justify-center gap-2 mt-6">
+          {slides.map((_, i) => (
             <button
               key={i}
-              onClick={() => { pauseTemporarily(); scrollToCard(i); }}
-              className={`w-2 h-2 rounded-full transition-all ${
-                i === dotIndex ? "bg-accent w-5" : "bg-primary/30 hover:bg-primary/50"
+              onClick={() => setCurrent(i)}
+              className={`h-2 rounded-full transition-all ${
+                i === current ? "bg-accent w-5" : "bg-primary/30 hover:bg-primary/50 w-2"
               }`}
               aria-label={`Go to slide ${i + 1}`}
             />
           ))}
         </div>
-      </div>
+      )}
     </section>
   );
 }

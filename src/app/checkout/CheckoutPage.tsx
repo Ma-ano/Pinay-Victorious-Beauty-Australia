@@ -119,7 +119,7 @@ export default function CheckoutPage() {
         items: items.map((i) => ({
           productId: i.product.id,
           name: i.product.name,
-          price: i.product.price,
+          price: i.variant?.price ?? i.product.price,
           quantity: i.quantity,
           variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
         })),
@@ -210,10 +210,14 @@ export default function CheckoutPage() {
               {items.map((item) => (
                 <div key={item.key} className="flex justify-between text-sm">
                   <div className="flex-1 min-w-0 pr-2">
+                    <p className="text-xs text-foreground">Product:</p>
                     <p className="text-dark truncate">{item.product.name}</p>
+                    {item.variant && (
+                      <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                    )}
                     <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                   </div>
-                  <span className="text-dark font-medium shrink-0">${(item.product.price * item.quantity).toFixed(2)}</span>
+                  <span className="text-dark font-medium shrink-0">${((item.variant?.price ?? item.product.price) * item.quantity).toFixed(2)}</span>
                 </div>
               ))}
             </div>

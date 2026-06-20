@@ -6,6 +6,9 @@ export const site = {
   email: "hello@pinayvictorious.com",
   phone: "+61 400 000 000",
   address: "Sydney, Australia",
+  url: "https://pinayvictorious.com",
+  locale: "en-AU",
+  keywords: ["beauty", "skincare", "cosmetics Australia", "Korean beauty", "Asian beauty", "wellness", "makeup", "K-beauty", "natural skincare", "Pinay Victorious"],
   social: {
     facebook: "#",
     instagram: "#",

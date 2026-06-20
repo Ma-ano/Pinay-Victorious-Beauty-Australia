@@ -17,6 +17,33 @@ export const metadata: Metadata = {
     template: `%s | ${site.name}`,
   },
   description: site.description,
+  keywords: site.keywords,
+  metadataBase: new URL(site.url),
+  openGraph: {
+    title: `${site.name} - ${site.tagline}`,
+    description: site.description,
+    url: site.url,
+    siteName: site.name,
+    locale: site.locale,
+    type: "website",
+    images: [{ url: "/opengraph-image.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: `${site.name} - ${site.tagline}`,
+    description: site.description,
+    images: ["/opengraph-image.png"],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 },
+  },
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 export default async function RootLayout({
