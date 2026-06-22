@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import type { FeaturedBrandConfig } from "@/lib/settings-store";
 
 const fallbackSlides: FeaturedBrandConfig[] = [
@@ -10,6 +11,12 @@ const fallbackSlides: FeaturedBrandConfig[] = [
   { brand: "", title: "New Arrivals", description: "Fresh from the latest collections.", image: "" },
   { brand: "", title: "Best Sellers", description: "Our most popular products loved by customers.", image: "" },
 ];
+
+const slideVariants = {
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
+};
 
 export default function HeroBanner({ featuredBrands }: { featuredBrands?: FeaturedBrandConfig[] }) {
   const slides = (featuredBrands?.filter((b) => b.brand || b.title) || []).length > 0
@@ -39,16 +46,20 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
-      {slides.map((slide, i) => (
-        <div
-          key={i}
-          className="absolute inset-0 transition-opacity duration-700 ease-in-out"
-          style={{ opacity: i === current ? 1 : 0 }}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={current}
+          variants={slideVariants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{ duration: 0.5, ease: "easeInOut" }}
+          className="absolute inset-0"
         >
-          {slide?.image ? (
+          {slides[current]?.image ? (
             <div className="w-full h-full">
               <Image
-                src={slide.image}
+                src={slides[current].image}
                 alt=""
                 fill
                 className="object-cover"
@@ -56,7 +67,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
                 unoptimized
-                priority={i === 0}
+                priority={current === 0}
                 sizes="100vw"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />
@@ -65,49 +76,46 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
             <div className="w-full h-full bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10" />
           )}
           <div className="absolute inset-0 bg-linear-to-r from-background/80 via-background/50 to-transparent" />
-        </div>
-      ))}
+        </motion.div>
+      </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 relative z-10 w-full">
-        {slides.map((slide, i) => (
-          <div
-            key={i}
-            className="transition-all duration-700 ease-in-out"
-            style={{
-              opacity: i === current ? 1 : 0,
-              transform: `translateY(${i === current ? "0" : "12px"})`,
-            }}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={current}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
           >
-            {i === current && (
-              <div className="max-w-lg">
-                <div className="glass-strong rounded-3xl p-6 md:p-8">
-                  {slide.brand && (
-                    <p className="text-sm md:text-base text-accent font-semibold tracking-widest uppercase">
-                      Featured Brand
-                    </p>
-                  )}
-                  <h1 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-bold text-dark leading-[1.15] tracking-tight">
-                    {slide.title}
-                  </h1>
-                  <p className="mt-3 text-sm md:text-base text-foreground leading-relaxed">
-                    {slide.description}
+            <div className="max-w-lg">
+              <div className="glass-strong rounded-3xl p-6 md:p-8">
+                {slides[current].brand && (
+                  <p className="text-sm md:text-base text-accent font-semibold tracking-widest uppercase">
+                    Featured Brand
                   </p>
-                  <div className="mt-4">
-                    <Link
-                      href="/shop"
-                      className="group inline-flex items-center gap-2 px-6 py-2.5 bg-accent text-white rounded-full font-medium text-sm hover:bg-accent/80 transition-all hover:shadow-lg hover:shadow-accent/25"
-                    >
-                      Shop Now
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                      </svg>
-                    </Link>
-                  </div>
+                )}
+                <h1 className="mt-2 text-3xl sm:text-4xl md:text-5xl font-bold text-dark leading-[1.15] tracking-tight">
+                  {slides[current].title}
+                </h1>
+                <p className="mt-3 text-sm md:text-base text-foreground leading-relaxed">
+                  {slides[current].description}
+                </p>
+                <div className="mt-4">
+                  <Link
+                    href="/shop"
+                    className="group inline-flex items-center gap-2 px-6 py-2.5 bg-accent text-white rounded-full font-medium text-sm hover:bg-accent/80 transition-all hover:shadow-lg hover:shadow-accent/25"
+                  >
+                    Shop Now
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </Link>
                 </div>
               </div>
-            )}
-          </div>
-        ))}
+            </div>
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <button

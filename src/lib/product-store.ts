@@ -11,6 +11,7 @@ import {
   where,
 } from "firebase/firestore";
 import type { Product, ProductImage, ProductVariant } from "@/data/products";
+import { roundRating } from "@/lib/review-utils";
 
 export interface ProductFormData {
   name: string;
@@ -113,7 +114,7 @@ export async function getAllReviewStats(): Promise<Record<string, { avgRating: n
     });
     const result: Record<string, { avgRating: number; reviewCount: number }> = {};
     for (const [pid, v] of Object.entries(acc)) {
-      result[pid] = { avgRating: v.total / v.count, reviewCount: v.count };
+      result[pid] = { avgRating: roundRating(v.total / v.count), reviewCount: v.count };
     }
     return result;
   } catch {
@@ -130,7 +131,7 @@ export async function getProductReviews(productId: string): Promise<{ avgRating:
     snap.docs.forEach((d) => {
       total += d.data().rating || 0;
     });
-    return { avgRating: total / snap.size, reviewCount: snap.size };
+    return { avgRating: roundRating(total / snap.size), reviewCount: snap.size };
   } catch {
     return { avgRating: 0, reviewCount: 0 };
   }

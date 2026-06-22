@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import ProductCard from "@/components/ProductCard";
 import type { Product } from "@/data/products";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
+import { getAllPromotions } from "@/lib/promotions-store";
+import type { Promotion } from "@/lib/promotions-store";
+import { isPromotionActive, calculateDiscount, findBestPromotion } from "@/lib/promotion-utils";
 
 interface SalePageProps {
   initialSaleProducts?: Product[];
@@ -13,7 +16,9 @@ interface SalePageProps {
 export default function SalePage({ initialSaleProducts, initialReviewStats }: SalePageProps) {
   const hasInitial = !!(initialSaleProducts && initialReviewStats);
   const [code, setCode] = useState("");
-  const [applied, setApplied] = useState(false);
+  const [appliedPromo, setAppliedPromo] = useState<Promotion | null>(null);
+  const [error, setError] = useState("");
+  const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
   const [saleProducts, setSaleProducts] = useState<Product[]>(() => {
     if (initialSaleProducts && initialReviewStats) {
       return initialSaleProducts.map((p) => ({
@@ -25,6 +30,10 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
     return [];
   });
   const [loading, setLoading] = useState(!hasInitial);
+
+  useEffect(() => {
+    getAllPromotions().then(setAllPromotions).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (hasInitial) return;
@@ -44,6 +53,43 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
     });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  function handleApplyCode(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setAppliedPromo(null);
+
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) {
+      setError("Please enter a discount code");
+      return;
+    }
+
+    const match = allPromotions.find(
+      (p) => p.code.toUpperCase() === trimmed
+    );
+
+    if (!match) {
+      setError("Invalid discount code");
+      return;
+    }
+
+    if (!isPromotionActive(match)) {
+      setError("This code has expired or is not yet active");
+      return;
+    }
+
+    setAppliedPromo(match);
+  }
+
+  function handleClearCode() {
+    setCode("");
+    setAppliedPromo(null);
+    setError("");
+  }
+
+  const subtotal = saleProducts.reduce((s, p) => s + p.price, 0);
+  const discount = appliedPromo ? calculateDiscount(appliedPromo, subtotal) / saleProducts.length : 0;
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent/20 via-primary/10 to-accent/5 p-8 md:p-14 text-center mb-12">
@@ -59,7 +105,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
       </div>
 
       <div className="max-w-sm mx-auto mb-12">
-        <form onSubmit={(e) => { e.preventDefault(); setApplied(true); }} className="flex gap-2">
+        <form onSubmit={handleApplyCode} className="flex gap-2">
           <input
             type="text"
             placeholder="Enter discount code"
@@ -67,11 +113,26 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
             onChange={(e) => setCode(e.target.value)}
             className="flex-1 px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
           />
-          <button type="submit" className="px-5 py-2.5 bg-accent text-white rounded-xl font-medium hover:bg-accent/80 transition-colors text-sm">
-            Apply
-          </button>
+          {appliedPromo ? (
+            <button
+              type="button"
+              onClick={handleClearCode}
+              className="px-5 py-2.5 bg-primary/10 text-dark rounded-xl font-medium hover:bg-primary/20 transition-colors text-sm"
+            >
+              Clear
+            </button>
+          ) : (
+            <button type="submit" className="px-5 py-2.5 bg-accent text-white rounded-xl font-medium hover:bg-accent/80 transition-colors text-sm">
+              Apply
+            </button>
+          )}
         </form>
-        {applied && <p className="text-green-600 text-xs mt-2 text-center">Code applied (demo)</p>}
+        {appliedPromo && (
+          <p className="text-green-600 text-xs mt-2 text-center">
+            Code applied! {appliedPromo.type === "Percentage" ? `${appliedPromo.discount}% off` : appliedPromo.type === "Fixed Amount" ? `$${appliedPromo.discount} off` : ""}
+          </p>
+        )}
+        {error && <p className="text-red-500 text-xs mt-2 text-center">{error}</p>}
       </div>
 
       {loading ? (
@@ -79,11 +140,25 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
           <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-          {saleProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        <>
+          {appliedPromo && discount > 0 && (
+            <p className="text-center text-sm text-green-600 mb-4">
+              Each item gets ${discount.toFixed(2)} off with code {appliedPromo.code}
+            </p>
+          )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
+            {saleProducts.map((product) => {
+              const discountedPrice = appliedPromo
+                ? Math.max(0, product.price - discount)
+                : product.price;
+              return (
+                <div key={product.id}>
+                  <ProductCard product={{ ...product, price: discountedPrice }} />
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {!loading && saleProducts.length === 0 && (

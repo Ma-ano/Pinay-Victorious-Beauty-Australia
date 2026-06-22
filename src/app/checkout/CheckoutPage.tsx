@@ -8,6 +8,9 @@ import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { getAllPromotions } from "@/lib/promotions-store";
+import type { Promotion } from "@/lib/promotions-store";
+import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";
 
 const defaultAddress: Address = {
   street: "",
@@ -26,6 +29,14 @@ export default function CheckoutPage() {
   const [addressDraft, setAddressDraft] = useState<Address | null>(null);
   const [saving, setSaving] = useState(false);
   const [placed, setPlaced] = useState(false);
+  const [promoCode, setPromoCode] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState<Promotion | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
+
+  useEffect(() => {
+    getAllPromotions().then(setAllPromotions).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -34,6 +45,35 @@ export default function CheckoutPage() {
   }, [loading, isAuthenticated, router]);
 
   const checkoutAddress = addressDraft || user?.address || defaultAddress;
+
+  const discount = appliedPromo ? calculateDiscount(appliedPromo, totalPrice) : 0;
+  const finalTotal = Math.max(0, totalPrice - discount);
+
+  function handleApplyCode() {
+    setPromoError("");
+    const trimmed = promoCode.trim().toUpperCase();
+    if (!trimmed) {
+      setPromoError("Please enter a discount code");
+      return;
+    }
+    const match = allPromotions.find((p) => p.code.toUpperCase() === trimmed);
+    if (!match) {
+      setPromoError("Invalid discount code");
+      return;
+    }
+    if (!isPromotionActive(match)) {
+      setPromoError("This code has expired or is not yet active");
+      return;
+    }
+    setAppliedPromo(match);
+    showToast(`Code "${match.code}" applied!`, "success");
+  }
+
+  function handleClearCode() {
+    setPromoCode("");
+    setAppliedPromo(null);
+    setPromoError("");
+  }
 
   if (loading) {
     return (
@@ -126,6 +166,9 @@ export default function CheckoutPage() {
         shipping: shippingAddress,
         paymentMethod: "cod",
         subtotal: totalPrice,
+        discount: discount,
+        discountCode: appliedPromo?.code || null,
+        total: finalTotal,
         status: "pending",
         createdAt: serverTimestamp(),
       };
@@ -221,15 +264,59 @@ export default function CheckoutPage() {
                 </div>
               ))}
             </div>
+
+            <div className="space-y-2 mb-4">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value)}
+                  placeholder={appliedPromo ? `Code: ${appliedPromo.code}` : "Discount code"}
+                  disabled={!!appliedPromo}
+                  className="flex-1 px-3 py-2 rounded-xl border border-primary/20 bg-transparent text-dark text-xs focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
+                />
+                {appliedPromo ? (
+                  <button
+                    type="button"
+                    onClick={handleClearCode}
+                    className="px-3 py-2 rounded-xl bg-primary/10 text-dark text-xs font-medium hover:bg-primary/20 transition-colors shrink-0"
+                  >
+                    Clear
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleApplyCode}
+                    className="px-3 py-2 rounded-xl bg-accent text-white text-xs font-medium hover:bg-accent/80 transition-colors shrink-0"
+                  >
+                    Apply
+                  </button>
+                )}
+              </div>
+              {promoError && <p className="text-red-500 text-xs">{promoError}</p>}
+            </div>
+
             <hr className="border-primary/10 mb-4" />
-            <div className="flex items-center justify-between text-sm mb-6">
-              <span className="font-semibold text-dark">Total</span>
-              <span className="text-lg font-bold text-accent">${totalPrice.toFixed(2)}</span>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-foreground">Subtotal</span>
+                <span className="text-dark">${totalPrice.toFixed(2)}</span>
+              </div>
+              {discount > 0 && (
+                <div className="flex items-center justify-between">
+                  <span className="text-green-600">Discount ({appliedPromo?.code})</span>
+                  <span className="text-green-600">-${discount.toFixed(2)}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between text-base pt-2 border-t border-primary/10">
+                <span className="font-semibold text-dark">Total</span>
+                <span className="text-lg font-bold text-accent">${finalTotal.toFixed(2)}</span>
+              </div>
             </div>
             <button
               onClick={handlePlaceOrder}
               disabled={saving}
-              className="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50"
+              className="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50 mt-4"
             >
               {saving ? "Placing Order..." : "Place Order"}
             </button>

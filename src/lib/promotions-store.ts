@@ -15,6 +15,7 @@ export interface PromotionData {
   code: string;
   discount: number;
   type: string;
+  startDate: string;
   expires: string;
   active: boolean;
 }

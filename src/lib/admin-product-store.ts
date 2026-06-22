@@ -1,5 +1,6 @@
 import { getAdminDb } from "@/lib/firebase-admin";
 import type { Product } from "@/data/products";
+import { roundRating } from "@/lib/review-utils";
 
 function serializeProduct(id: string, data: Record<string, unknown>): Product {
   const { createdAt, updatedAt, ...rest } = data;
@@ -26,7 +27,7 @@ export async function fetchAllReviewStats(): Promise<Record<string, { avgRating:
   });
   const result: Record<string, { avgRating: number; reviewCount: number }> = {};
   for (const [pid, v] of Object.entries(acc)) {
-    result[pid] = { avgRating: v.total / v.count, reviewCount: v.count };
+    result[pid] = { avgRating: roundRating(v.total / v.count), reviewCount: v.count };
   }
   return result;
 }

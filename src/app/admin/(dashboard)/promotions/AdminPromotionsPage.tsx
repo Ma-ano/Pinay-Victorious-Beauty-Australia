@@ -9,6 +9,7 @@ const emptyForm: PromotionData = {
   code: "",
   discount: 0,
   type: "Percentage",
+  startDate: new Date().toISOString().split("T")[0],
   expires: "",
   active: true,
 };
@@ -38,7 +39,7 @@ export default function AdminPromotionsPage() {
   }
 
   function startEdit(p: Promotion) {
-    setForm({ code: p.code, discount: p.discount, type: p.type, expires: p.expires, active: p.active });
+    setForm({ code: p.code, discount: p.discount, type: p.type, startDate: p.startDate, expires: p.expires, active: p.active });
     setEditingId(p.id);
     setShowModal(true);
   }
@@ -149,6 +150,16 @@ export default function AdminPromotionsPage() {
                     <option>Free Shipping</option>
                   </select>
                   <p className="text-[11px] text-foreground/70 mt-0.5">Percentage = % off the price. Fixed Amount = $ off. Free Shipping = no delivery fee.</p>
+                </div>
+                <div>
+                  <label className="block text-xs text-foreground mb-1">Start Date</label>
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  />
+                  <p className="text-[11px] text-foreground/70 mt-0.5">Promotion becomes active from this date. Defaults to today.</p>
                 </div>
                 <div>
                   <label className="block text-xs text-foreground mb-1">Expires *</label>

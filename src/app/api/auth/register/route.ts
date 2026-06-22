@@ -42,6 +42,8 @@ export async function POST(request: Request) {
       phone: phone?.trim() || "",
       photoURL: "",
       address: address || { street: "", city: "", state: "", postcode: "", country: "Australia" },
+      role: "customer",
+      status: "active",
       createdAt: new Date().toISOString(),
     });
 
