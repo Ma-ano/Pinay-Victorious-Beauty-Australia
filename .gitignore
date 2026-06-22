@@ -44,6 +44,3 @@ pinay-victorious-firebase-adminsdk-fbsvc-ff2f841bdb.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-.vercel
-.env*
