@@ -4,10 +4,10 @@ import { site } from "@/data/site";
 import type { Product } from "@/data/products";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const db = getAdminDb();
   let productEntries: MetadataRoute.Sitemap = [];
 
   try {
+    const db = getAdminDb();
     const snapshot = await db.collection("products").where("visible", "==", true).get();
     productEntries = snapshot.docs.map((doc) => {
       const data = doc.data() as Record<string, unknown>;

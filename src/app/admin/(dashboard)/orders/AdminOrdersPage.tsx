@@ -12,7 +12,9 @@ import {
   updateDoc,
   type Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db as firebaseDb } from "@/lib/firebase";
+
+const db = firebaseDb!;
 import { useToast } from "@/components/Toast";
 
 type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected" | "received";

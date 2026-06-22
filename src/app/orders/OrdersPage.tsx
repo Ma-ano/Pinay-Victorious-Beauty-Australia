@@ -14,7 +14,9 @@ import {
   where,
   type Timestamp,
 } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db as firebaseDb } from "@/lib/firebase";
+
+const db = firebaseDb!;
 import { useAuth } from "@/components/AuthContext";
 import { useToast } from "@/components/Toast";
 import ImagePlaceholder from "@/components/ImagePlaceholder";

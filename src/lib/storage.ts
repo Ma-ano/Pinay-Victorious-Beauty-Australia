@@ -5,8 +5,9 @@ export async function uploadImage(file: File, path: string): Promise<string> {
     throw new Error("Only JPG and PNG images are allowed");
   }
   const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
-  const { app } = await import("@/lib/firebase");
-  const storage = getStorage(app);
+  const { app: firebaseApp } = await import("@/lib/firebase");
+  if (!firebaseApp) throw new Error("Firebase not configured");
+  const storage = getStorage(firebaseApp);
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
@@ -18,8 +19,9 @@ export async function deleteImage(downloadUrl: string): Promise<void> {
     if (!url.hostname.includes("firebasestorage.googleapis.com")) return;
 
     const { getStorage, ref, deleteObject } = await import("firebase/storage");
-    const { app } = await import("@/lib/firebase");
-    const storage = getStorage(app);
+    const { app: firebaseApp } = await import("@/lib/firebase");
+    if (!firebaseApp) return;
+    const storage = getStorage(firebaseApp);
 
     const pathMatch = url.pathname.match(/\/o\/(.+)/);
     if (!pathMatch) return;

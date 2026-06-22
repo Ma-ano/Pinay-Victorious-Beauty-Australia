@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where, type Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { db as firebaseDb } from "@/lib/firebase";
+
+const db = firebaseDb!;
 import StarDisplay from "@/components/StarDisplay";
 import { roundRating } from "@/lib/review-utils";
 import { getReviewsByProductId, type Review } from "@/data/reviews";

@@ -5,7 +5,9 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { applyActionCode } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth as firebaseAuth } from "@/lib/firebase";
+
+const auth = firebaseAuth!;
 import { site } from "@/data/site";
 
 export default function VerifyPage() {

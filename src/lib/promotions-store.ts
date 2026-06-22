@@ -1,4 +1,6 @@
-import { db } from "@/lib/firebase";
+import { db as firebaseDb } from "@/lib/firebase";
+
+const db = firebaseDb!;
 import {
   collection,
   doc,

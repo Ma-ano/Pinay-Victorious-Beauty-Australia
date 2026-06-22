@@ -13,7 +13,11 @@ import {
   type User as FirebaseUser,
 } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { auth, db, googleProvider } from "@/lib/firebase";
+import { auth as firebaseAuth, db as firebaseDb, googleProvider as firebaseGoogleProvider } from "@/lib/firebase";
+
+const auth = firebaseAuth!;
+const db = firebaseDb!;
+const googleProvider = firebaseGoogleProvider!;
 
 export interface Address {
   street: string;

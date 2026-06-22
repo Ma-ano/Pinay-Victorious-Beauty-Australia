@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { auth as firebaseAuth } from "@/lib/firebase";
+
+const auth = firebaseAuth!;
 import { useToast } from "@/components/Toast";
 
 function EyeIcon({ open }: { open: boolean }) {
