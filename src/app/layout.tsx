@@ -9,7 +9,6 @@ import { CartProvider } from "@/components/CartContext";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
-import ChatWidget from "@/components/ChatWidget";
 import { site } from "@/data/site";
 
 export const metadata: Metadata = {
@@ -67,7 +66,6 @@ export default async function RootLayout({
             <CookieConsent />
             <BackToTop />
             <WhatsAppBubble />
-            <ChatWidget />
           </ToastProvider>
         </CartProvider>
         </AuthProvider>
