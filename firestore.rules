@@ -22,8 +22,8 @@ service cloud.firestore {
          resource.data.status in ["pending", "approved"]) ||
         // Customer confirms received on own delivered order
         (request.auth.uid == resource.data.userId &&
-         request.resource.data.status == "received" &&
-         resource.data.status == "delivered");
+         resource.data.status == "delivered" &&
+         request.resource.data.status in ["received", "completed"]);
       allow delete: if false;
     }
 
@@ -47,10 +47,10 @@ service cloud.firestore {
         request.auth.token.isAdmin == true;
     }
 
-    // Products - anyone read, admin write (with field validation)
+    // Products - anyone read, admin create/update (with field validation), admin delete
     match /products/{productId} {
       allow read: if true;
-      allow write: if request.auth != null &&
+      allow create, update: if request.auth != null &&
         request.auth.token.isAdmin == true &&
         request.resource.data.name is string &&
         request.resource.data.name.size() > 0 &&
@@ -72,6 +72,8 @@ service cloud.firestore {
         (!("discount" in request.resource.data) ||
           (request.resource.data.discount is number &&
            request.resource.data.discount >= 0));
+      allow delete: if request.auth != null &&
+        request.auth.token.isAdmin == true;
     }
 
     // Newsletter subscribers

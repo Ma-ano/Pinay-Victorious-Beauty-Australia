@@ -3,16 +3,20 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db as firebaseDb } from "@/lib/firebase";
+import { formatPrice } from "@/lib/format";
 
 const db = firebaseDb!;
 import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";
+
+type PaymentMethod = "cod" | "paypal";
 
 const defaultAddress: Address = {
   street: "",
@@ -35,6 +39,8 @@ export default function CheckoutPage() {
   const [appliedPromo, setAppliedPromo] = useState<Promotion | null>(null);
   const [promoError, setPromoError] = useState("");
   const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
+  const [paypalError, setPaypalError] = useState("");
 
   useEffect(() => {
     getAllPromotions().then(setAllPromotions).catch(() => {});
@@ -75,6 +81,134 @@ export default function CheckoutPage() {
     setPromoCode("");
     setAppliedPromo(null);
     setPromoError("");
+  }
+
+  function validateAddress(): boolean {
+    if (
+      !checkoutAddress.street.trim() ||
+      !checkoutAddress.city.trim() ||
+      !checkoutAddress.state.trim() ||
+      !checkoutAddress.postcode.trim() ||
+      !checkoutAddress.country.trim()
+    ) {
+      showToast("Please fill in all shipping address fields", "error");
+      return false;
+    }
+    return true;
+  }
+
+  const shippingAddress: Address = {
+    street: checkoutAddress.street.trim(),
+    city: checkoutAddress.city.trim(),
+    state: checkoutAddress.state.trim(),
+    postcode: checkoutAddress.postcode.trim(),
+    country: checkoutAddress.country.trim(),
+  };
+
+  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string) {
+    const orderData: Record<string, unknown> = {
+      userId: currentUser.uid,
+      customerName: currentUser.name,
+      customerEmail: currentUser.email,
+      customerPhone: currentUser.phone || "",
+      items: items.map((i) => ({
+        productId: i.product.id,
+        name: i.product.name,
+        price: i.variant?.price ?? i.product.price,
+        quantity: i.quantity,
+        variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
+      })),
+      shipping: shippingAddress,
+      paymentMethod,
+      subtotal: totalPrice,
+      discount,
+      discountCode: appliedPromo?.code || null,
+      total: finalTotal,
+      status: "pending",
+      createdAt: serverTimestamp(),
+    };
+
+    if (orderId) {
+      orderData.paypalOrderId = orderId;
+    }
+    if (captureId) {
+      orderData.paypalCaptureId = captureId;
+    }
+    if (paymentStatus) {
+      orderData.paymentStatus = paymentStatus;
+    }
+    if (fundingSource) {
+      orderData.fundingSource = fundingSource;
+    }
+
+    const orderRef = doc(db, "orders", `${currentUser.uid}_${Date.now()}`);
+    await setDoc(orderRef, orderData);
+  }
+
+  async function handlePlaceOrderCod() {
+    if (!validateAddress()) return;
+    setSaving(true);
+    try {
+      await createFirestoreOrder();
+      clearCart();
+      setPlaced(true);
+      showToast("Order placed successfully!", "success");
+    } catch {
+      showToast("Failed to place order. Please try again.", "error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handlePayPalCreateOrder() {
+    if (!validateAddress()) return "";
+    setPaypalError("");
+    try {
+      const res = await fetch("/api/payments/paypal/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          items: items.map((i) => ({
+            name: i.product.name,
+            quantity: i.quantity,
+            unitAmount: i.variant?.price ?? i.product.price,
+          })),
+          total: finalTotal,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create PayPal order");
+      return data.orderID as string;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "PayPal error";
+      setPaypalError(msg);
+      showToast(msg, "error");
+      return "";
+    }
+  }
+
+  async function handlePayPalApprove(data: { orderID: string }) {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/payments/paypal/capture", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderID: data.orderID }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.success) {
+        throw new Error(result.error || "Payment capture failed");
+      }
+      await createFirestoreOrder(data.orderID, "paid", result.captureId, result.fundingSource);
+      clearCart();
+      setPlaced(true);
+      showToast("Payment successful! Order placed.", "success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Payment failed";
+      showToast(msg, "error");
+    } finally {
+      setSaving(false);
+    }
   }
 
   if (loading) {
@@ -131,70 +265,15 @@ export default function CheckoutPage() {
     );
   }
 
-  async function handlePlaceOrder() {
-    if (
-      !checkoutAddress.street.trim() ||
-      !checkoutAddress.city.trim() ||
-      !checkoutAddress.state.trim() ||
-      !checkoutAddress.postcode.trim() ||
-      !checkoutAddress.country.trim()
-    ) {
-      showToast("Please fill in all shipping address fields", "error");
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const shippingAddress: Address = {
-        street: checkoutAddress.street.trim(),
-        city: checkoutAddress.city.trim(),
-        state: checkoutAddress.state.trim(),
-        postcode: checkoutAddress.postcode.trim(),
-        country: checkoutAddress.country.trim(),
-      };
-
-      const orderData = {
-        userId: currentUser.uid,
-        customerName: currentUser.name,
-        customerEmail: currentUser.email,
-        customerPhone: currentUser.phone || "",
-        items: items.map((i) => ({
-          productId: i.product.id,
-          name: i.product.name,
-          price: i.variant?.price ?? i.product.price,
-          quantity: i.quantity,
-          variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
-        })),
-        shipping: shippingAddress,
-        paymentMethod: "cod",
-        subtotal: totalPrice,
-        discount: discount,
-        discountCode: appliedPromo?.code || null,
-        total: finalTotal,
-        status: "pending",
-        createdAt: serverTimestamp(),
-      };
-
-      const orderRef = doc(db, "orders", `${currentUser.uid}_${Date.now()}`);
-      await setDoc(orderRef, orderData);
-
-      clearCart();
-      setPlaced(true);
-      showToast("Order placed successfully!", "success");
-    } catch {
-      showToast("Failed to place order. Please try again.", "error");
-    } finally {
-      setSaving(false);
-    }
-  }
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <h1 className="text-2xl md:text-3xl font-bold text-dark mb-8">Checkout</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <h1 className="text-2xl md:text-3xl font-bold text-dark mb-8 animate-fade-in-up">Checkout</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
         <div className="md:col-span-3 space-y-6">
-          <div className="bg-card border border-primary/10 rounded-2xl p-6">
+          <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-1">
             <h2 className="text-lg font-semibold text-dark mb-4">Shipping Address</h2>
             <div className="space-y-4">
               <div>
@@ -234,35 +313,68 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          <div className="bg-card border border-primary/10 rounded-2xl p-6">
+          <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-2">
             <h2 className="text-lg font-semibold text-dark mb-4">Payment Method</h2>
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-primary/10 border border-primary/20">
-              <svg className="w-6 h-6 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-              <div>
-                <p className="text-sm font-medium text-dark">Cash on Delivery</p>
-                <p className="text-xs text-foreground">Pay when your order arrives</p>
-              </div>
+            <div className="space-y-3">
+              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "cod" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cod"
+                  checked={paymentMethod === "cod"}
+                  onChange={() => setPaymentMethod("cod")}
+                  className="accent-accent"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <svg className="w-6 h-6 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-dark">Cash on Delivery</p>
+                    <p className="text-xs text-foreground">Pay when your order arrives</p>
+                  </div>
+                </div>
+              </label>
+
+              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "paypal" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="paypal"
+                  checked={paymentMethod === "paypal"}
+                  onChange={() => setPaymentMethod("paypal")}
+                  className="accent-accent"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="#003087">
+                    <path d="M7.076 21.337H2.47a.641.641 0 01-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/>
+                    <path d="M19.19 6.534c-.023.144-.047.289-.077.438-1.068 5.49-4.25 7.463-8.646 7.463h-2.19c-.524 0-.968.382-1.05.9L6.12 22.41l-.012.073a.641.641 0 00.634.742h4.08c.524 0 .968-.382 1.05-.9l1.12-7.106h.003c.082-.521.522-.9 1.05-.9h2.19c4.349 0 7.58-1.963 8.648-6.797.413-1.86.203-3.419-.69-4.486-.494-.59-1.14-1.002-1.904-1.302z" opacity=".25"/>
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-dark">PayPal</p>
+                    <p className="text-xs text-foreground">Pay securely with PayPal</p>
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
         </div>
 
         <div className="md:col-span-2">
-          <div className="bg-card border border-primary/10 rounded-2xl p-6 sticky top-24">
-            <h2 className="text-lg font-semibold text-dark mb-4">Order Summary</h2>
+          <div className="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-2xl p-6 sticky top-24 shadow-sm animate-fade-in-delay-3">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
             <div className="space-y-3 mb-4">
               {items.map((item) => (
                 <div key={item.key} className="flex justify-between text-sm">
                   <div className="flex-1 min-w-0 pr-2">
-                    <p className="text-xs text-foreground">Product:</p>
-                    <p className="text-dark truncate">{item.product.name}</p>
+                    <p className="text-xs text-gray-500">Product:</p>
+                    <p className="text-gray-900 truncate">{item.product.name}</p>
                     {item.variant && (
-                      <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                      <p className="text-xs text-gray-500">Variant: {item.variant.name}</p>
                     )}
-                    <p className="text-xs text-foreground">Qty: {item.quantity}</p>
+                    <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
                   </div>
-                  <span className="text-dark font-medium shrink-0">${((item.variant?.price ?? item.product.price) * item.quantity).toFixed(2)}</span>
+                  <span className="text-gray-900 font-medium shrink-0">{formatPrice((item.variant?.price ?? item.product.salePrice ?? item.product.price) * item.quantity)}</span>
                 </div>
               ))}
             </div>
@@ -275,13 +387,14 @@ export default function CheckoutPage() {
                   onChange={(e) => setPromoCode(e.target.value)}
                   placeholder={appliedPromo ? `Code: ${appliedPromo.code}` : "Discount code"}
                   disabled={!!appliedPromo}
-                  className="flex-1 px-3 py-2 rounded-xl border border-primary/20 bg-transparent text-dark text-xs focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
+                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-200 bg-gray-50 dark:bg-gray-50 text-gray-900 text-xs focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
+                  style={{ color: "#111827", WebkitTextFillColor: "#111827" }}
                 />
                 {appliedPromo ? (
                   <button
                     type="button"
                     onClick={handleClearCode}
-                    className="px-3 py-2 rounded-xl bg-primary/10 text-dark text-xs font-medium hover:bg-primary/20 transition-colors shrink-0"
+                    className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-200 transition-colors shrink-0"
                   >
                     Clear
                   </button>
@@ -298,31 +411,51 @@ export default function CheckoutPage() {
               {promoError && <p className="text-red-500 text-xs">{promoError}</p>}
             </div>
 
-            <hr className="border-primary/10 mb-4" />
+            <hr className="border-gray-200 dark:border-gray-200 mb-4" />
             <div className="space-y-2 text-sm">
               <div className="flex items-center justify-between">
-                <span className="text-foreground">Subtotal</span>
-                <span className="text-dark">${totalPrice.toFixed(2)}</span>
+                <span className="text-gray-600">Subtotal</span>
+                <span className="text-gray-900">{formatPrice(totalPrice)}</span>
               </div>
               {discount > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-green-600">Discount ({appliedPromo?.code})</span>
-                  <span className="text-green-600">-${discount.toFixed(2)}</span>
+                  <span className="text-green-600">-{formatPrice(discount)}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between text-base pt-2 border-t border-primary/10">
-                <span className="font-semibold text-dark">Total</span>
-                <span className="text-lg font-bold text-accent">${finalTotal.toFixed(2)}</span>
+              <div className="flex items-center justify-between text-base pt-2 border-t border-gray-200 dark:border-gray-200">
+                <span className="font-semibold text-gray-900">Total</span>
+                <span className="text-lg font-bold text-accent">{formatPrice(finalTotal)}</span>
               </div>
             </div>
-            <button
-              onClick={handlePlaceOrder}
-              disabled={saving}
-              className="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50 mt-4"
-            >
-              {saving ? "Placing Order..." : "Place Order"}
-            </button>
-            <p className="text-xs text-center text-foreground mt-3">You pay when your order arrives</p>
+
+            {paymentMethod === "paypal" && paypalClientId ? (
+              <div className="mt-4">
+                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "AUD", enableFunding: "card" }}>
+                  <PayPalButtons
+                    createOrder={handlePayPalCreateOrder}
+                    onApprove={handlePayPalApprove}
+                    disabled={saving}
+                    style={{ layout: "vertical", shape: "rect" }}
+                  />
+                </PayPalScriptProvider>
+                {paypalError && (
+                  <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
+                )}
+                <p className="text-xs text-center text-foreground mt-3">Pay securely via PayPal</p>
+              </div>
+            ) : (
+              <>
+                <button
+                  onClick={handlePlaceOrderCod}
+                  disabled={saving}
+                  className="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50 mt-4"
+                >
+                  {saving ? "Placing Order..." : "Place Order"}
+                </button>
+                <p className="text-xs text-center text-foreground mt-3">You pay when your order arrives</p>
+              </>
+            )}
           </div>
         </div>
       </div>

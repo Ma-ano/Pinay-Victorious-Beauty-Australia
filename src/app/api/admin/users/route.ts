@@ -10,6 +10,8 @@ export async function GET(request: Request) {
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20")));
 
+    const allowedAdminEmail = (process.env.ADMIN_EMAIL || "admin@glowmuse.com").toLowerCase();
+
     const auth = getAdminAuth();
     const listResult = await auth.listUsers(1000);
 
@@ -29,6 +31,7 @@ export async function GET(request: Request) {
         role: (firestoreData.role as string) || "customer",
         status: (firestoreData.status as string) || (u.disabled ? "disabled" : "active"),
         createdAt: (firestoreData.createdAt as string) || u.metadata.creationTime || "",
+        isMaster: (u.email || "").toLowerCase() === allowedAdminEmail,
         disabled: u.disabled,
         ...firestoreData,
       };

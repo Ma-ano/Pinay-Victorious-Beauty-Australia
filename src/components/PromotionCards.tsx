@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { formatPrice } from "@/lib/format";
 import { subscribePromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { getValidPromotions } from "@/lib/promotion-utils";
@@ -35,7 +36,7 @@ export default function PromotionCards() {
           style={{ backgroundImage: `linear-gradient(to bottom right, ${gradients[i % gradients.length]})` }}
         >
           <p className="text-xs font-semibold text-accent uppercase tracking-widest">
-            {promo.type === "Percentage" ? `${promo.discount}% OFF` : promo.type === "Fixed Amount" ? `$${promo.discount} OFF` : promo.type}
+            {promo.type === "Percentage" ? `${promo.discount}% OFF` : promo.type === "Fixed Amount" ? `${formatPrice(promo.discount)} OFF` : promo.type}
           </p>
           <p className="mt-2 text-sm font-medium text-dark line-clamp-2">
             {promo.code}

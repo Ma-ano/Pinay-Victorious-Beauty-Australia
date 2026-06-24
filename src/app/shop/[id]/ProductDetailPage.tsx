@@ -8,6 +8,7 @@ import StarDisplay from "@/components/StarDisplay";
 import ProductVariantSelector from "@/components/ProductVariantSelector";
 import ProductReviews from "@/components/ProductReviews";
 import WishlistButton from "@/components/WishlistButton";
+import { formatPrice } from "@/lib/format";
 import { getProductReviews } from "@/lib/product-store";
 
 interface Props {
@@ -24,9 +25,10 @@ export default function ProductDetailPage({ product }: Props) {
   const images = product.images?.length ? product.images : [{ url: "", name: product.name }];
   const currentImage = images[selectedImage] || images[0];
 
-  const displayPrice = selectedVariant?.price ?? product.price;
-  const discount = product.originalPrice
-    ? Math.round((1 - displayPrice / product.originalPrice) * 100)
+  const displayPrice = selectedVariant?.salePrice ?? selectedVariant?.price ?? product.salePrice ?? product.price;
+  const displayOriginalPrice = selectedVariant?.originalPrice ?? product.originalPrice;
+  const discount = displayOriginalPrice
+    ? Math.round((1 - displayPrice / displayOriginalPrice) * 100)
     : 0;
 
   const currentStock = selectedVariant
@@ -171,9 +173,9 @@ export default function ProductDetailPage({ product }: Props) {
           </div>
 
           <div className="mt-6 flex items-baseline gap-3">
-            <span className="text-3xl md:text-4xl font-bold text-dark">${displayPrice.toFixed(2)}</span>
-            {product.originalPrice && displayPrice < product.originalPrice && (
-              <span className="text-base text-foreground line-through">${product.originalPrice.toFixed(2)}</span>
+            <span className="text-3xl md:text-4xl font-bold text-dark">{formatPrice(displayPrice)}</span>
+            {displayOriginalPrice && displayPrice < displayOriginalPrice && (
+              <span className="text-base text-foreground line-through">{formatPrice(displayOriginalPrice)}</span>
             )}
           </div>
 

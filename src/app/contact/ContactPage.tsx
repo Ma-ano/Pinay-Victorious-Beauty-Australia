@@ -1,12 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { site } from "@/data/site";
 
 export default function ContactPage() {
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState("");
+  const [cooldown, setCooldown] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function startCooldown() {
+    setCooldown(60);
+    timerRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -21,6 +36,7 @@ export default function ContactPage() {
           name: form.get("name"),
           email: form.get("email"),
           message: form.get("message"),
+          _hp: form.get("_hp"),
         }),
       });
       if (!res.ok) {
@@ -28,6 +44,7 @@ export default function ContactPage() {
         throw new Error(data.error || "Failed to send");
       }
       setSent(true);
+      startCooldown();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -46,19 +63,23 @@ export default function ContactPage() {
 
         <div className="mt-10 grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div style={{ position: "absolute", left: "-9999px" }} aria-hidden="true">
+              <label htmlFor="_hp">Leave empty</label>
+              <input id="_hp" name="_hp" type="text" tabIndex={-1} autoComplete="off" />
+            </div>
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-dark mb-1.5">Name</label>
-              <input id="name" type="text" required
+              <input id="name" name="name" type="text" required
                 className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm" />
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-dark mb-1.5">Email</label>
-              <input id="email" type="email" required
+              <input id="email" name="email" type="email" required
                 className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm" />
             </div>
             <div>
               <label htmlFor="message" className="block text-sm font-medium text-dark mb-1.5">Message</label>
-              <textarea id="message" rows={5} required
+              <textarea id="message" name="message" rows={5} required
                 className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm resize-none" />
             </div>
             {sent ? (
@@ -66,8 +87,8 @@ export default function ContactPage() {
                 Message sent! We&apos;ll get back to you soon.
               </div>
             ) : (
-              <button type="submit" disabled={sending} className="w-full py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/80 transition-colors text-sm disabled:opacity-50">
-                {sending ? "Sending..." : "Send Message"}
+              <button type="submit" disabled={sending || cooldown > 0} className="w-full py-3 bg-accent text-white rounded-xl font-medium hover:bg-accent/80 transition-colors text-sm disabled:opacity-50">
+                {sending ? "Sending..." : cooldown > 0 ? `Wait ${cooldown}s` : "Send Message"}
               </button>
             )}
             {error && <p className="text-red-600 text-sm">{error}</p>}

@@ -54,7 +54,9 @@ export default function RegisterPage() {
     }
 
     const trimmedPhone = phone.trim();
-    if (trimmedPhone && !/^\+?[\d\s\-()]{7,15}$/.test(trimmedPhone)) {
+    if (!trimmedPhone) {
+      errs.phone = "Phone number is required";
+    } else if (!/^\+?[\d\s\-()]{7,15}$/.test(trimmedPhone)) {
       errs.phone = "Please enter a valid phone number";
     }
 
@@ -95,7 +97,7 @@ export default function RegisterPage() {
         postcode: postcode.trim(),
         country: country.trim(),
       };
-      await register(name.trim(), email.trim(), password, phone.trim() || undefined, address);
+      await register(name.trim(), email.trim(), password, phone.trim(), address);
       router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
@@ -158,7 +160,7 @@ export default function RegisterPage() {
 
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-1">
-                    Phone <span className="text-foreground/50">(optional)</span>
+                    Phone <span className="text-red-400">*</span>
                   </label>
                   <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
                     className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.phone ? "border-red-400" : "border-primary/20"}`}

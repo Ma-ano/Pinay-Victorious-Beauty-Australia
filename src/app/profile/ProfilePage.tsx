@@ -76,6 +76,10 @@ export default function ProfilePage() {
       setProfileError("Name is required");
       return;
     }
+    if (!phone.trim()) {
+      setProfileError("Phone number is required");
+      return;
+    }
     setProfileSaving(true);
     setProfileError("");
     setProfileSuccess(false);
@@ -291,7 +295,7 @@ export default function ProfilePage() {
               <p className="text-xs text-foreground/50 mt-1">Email cannot be changed here.</p>
             </div>
             <div className="md:col-span-2">
-              <label htmlFor="profile-phone" className="block text-sm font-medium text-foreground mb-1">Phone</label>
+              <label htmlFor="profile-phone" className="block text-sm font-medium text-foreground mb-1">Phone <span className="text-red-400">*</span></label>
               <input
                 id="profile-phone"
                 type="tel"

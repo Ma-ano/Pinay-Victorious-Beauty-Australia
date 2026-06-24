@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { signOut } from "firebase/auth";
+import { auth as firebaseAuth } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthContext";
+
+const auth = firebaseAuth!;
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -37,7 +41,13 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const isAdmin = await login(email, password);
-      router.push(isAdmin ? "/admin" : "/");
+      if (isAdmin) {
+        await signOut(auth);
+        setError("Admins must use the admin login page");
+        setLoading(false);
+        return;
+      }
+      router.push("/");
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
       if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
@@ -56,7 +66,12 @@ export default function LoginPage() {
     setError("");
     try {
       const isAdmin = await loginWithGoogle();
-      router.push(isAdmin ? "/admin" : "/");
+      if (isAdmin) {
+        await signOut(auth);
+        setError("Admins must use the admin login page");
+        return;
+      }
+      router.push("/");
     } catch {
       setError("Google sign-in failed. Please try again.");
     }

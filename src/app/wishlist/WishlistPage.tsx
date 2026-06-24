@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
+import { useToast } from "@/components/Toast";
 
 function getWishlist(): string[] {
   if (typeof window === "undefined") return [];
@@ -15,7 +16,13 @@ function getWishlist(): string[] {
   }
 }
 
+function setWishlist(ids: string[]) {
+  localStorage.setItem("wishlist", JSON.stringify(ids));
+  window.dispatchEvent(new Event("storage"));
+}
+
 export default function WishlistPage() {
+  const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -83,7 +90,23 @@ export default function WishlistPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <div key={product.id} className="relative group">
+              <ProductCard product={product} />
+              <button
+                onClick={() => {
+                  const ids = getWishlist().filter((id) => id !== product.id);
+                  setWishlist(ids);
+                  setProducts((prev) => prev.filter((p) => p.id !== product.id));
+                  showToast("Removed from wishlist", "info");
+                }}
+                className="absolute top-2 right-2 z-10 bg-white/90 dark:bg-gray-900/90 rounded-full p-1.5 shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 dark:hover:bg-red-900/30"
+                aria-label="Remove from wishlist"
+              >
+                <svg className="w-4 h-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           ))}
         </div>
       )}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import { formatPrice } from "@/lib/format";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -200,7 +201,7 @@ export default function CustomerNavbar() {
                                         <p className="text-sm font-medium text-dark truncate">{product.name}</p>
                                         <p className="text-xs text-foreground">{product.brand}</p>
                                       </div>
-                                      <span className="text-sm font-semibold text-accent shrink-0">${product.price.toFixed(2)}</span>
+                                      <span className="text-sm font-semibold text-accent shrink-0">{formatPrice(product.price)}</span>
                                     </Link>
                                   ))}
                                   <Link
@@ -549,7 +550,7 @@ export default function CustomerNavbar() {
                         </p>
                       )}
                       <p className="text-xs text-foreground mt-0.5">
-                        Price: <span className="text-sm font-semibold text-dark">${(item.variant?.price ?? item.product.price).toFixed(2)}</span>
+                        Price: <span className="text-sm font-semibold text-dark">{formatPrice(item.variant?.price ?? item.product.price)}</span>
                       </p>
                       <div className="flex items-center gap-2 mt-1.5">
                         <button
@@ -582,7 +583,7 @@ export default function CustomerNavbar() {
               <div className="p-6 glass border-t border-primary/10 space-y-3">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-foreground">Subtotal</span>
-                  <span className="font-semibold text-dark">${totalPrice.toFixed(2)}</span>
+                  <span className="font-semibold text-dark">{formatPrice(totalPrice)}</span>
                 </div>
                 <button
                   onClick={() => {

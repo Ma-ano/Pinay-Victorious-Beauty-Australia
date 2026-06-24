@@ -6,6 +6,7 @@ import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
 import { categories } from "@/data/categories";
 import { productTypes } from "@/data/productTypes";
+import { formatPrice } from "@/lib/format";
 import { brands } from "@/data/brands";
 
 type Sort = "default" | "price-asc" | "price-desc" | "name";
@@ -225,7 +226,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
       </div>
 
       <div className="flex items-center gap-4 mb-6">
-        <span className="text-xs text-foreground whitespace-nowrap">Price: ${priceRange[0]} — ${priceRange[1]}</span>
+        <span className="text-xs text-foreground whitespace-nowrap">Price: {formatPrice(priceRange[0])} — {formatPrice(priceRange[1])}</span>
         <input
           type="range"
           min={0}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { subscribePromotions, savePromotion, deletePromotion } from "@/lib/promotions-store";
 import type { Promotion, PromotionData } from "@/lib/promotions-store";
 import { useToast } from "@/components/Toast";
+import { formatPrice } from "@/lib/format";
 
 const emptyForm: PromotionData = {
   code: "",
@@ -89,8 +90,8 @@ export default function AdminPromotionsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-dark">Promotions</h1>
-          <p className="text-sm text-foreground mt-1">{promos.length} promotions</p>
+          <h1 className="text-2xl font-bold text-dark">Create Voucher Code</h1>
+          <p className="text-sm text-foreground mt-1">{promos.length} voucher codes</p>
           <p className="text-[11px] text-foreground/70 mt-1">Create discount codes that customers can enter at checkout. Expired or inactive codes won't work.</p>
         </div>
         <button
@@ -227,7 +228,7 @@ export default function AdminPromotionsPage() {
                 <tr key={promo.id} className="hover:bg-primary/5">
                   <td className="px-4 py-3 font-mono font-medium text-dark">{promo.code}</td>
                   <td className="px-4 py-3 text-foreground hidden sm:table-cell">
-                    {promo.type === "Free Shipping" ? "—" : `${promo.discount}${promo.type === "Percentage" ? "%" : "$"}`}
+                    {promo.type === "Free Shipping" ? "—" : promo.type === "Percentage" ? `${promo.discount}%` : formatPrice(promo.discount)}
                   </td>
                   <td className="px-4 py-3 text-foreground hidden sm:table-cell">{promo.type}</td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{promo.expires}</td>

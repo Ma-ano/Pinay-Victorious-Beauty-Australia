@@ -43,6 +43,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   needsVerification: boolean;
   isAdmin: boolean;
+  isMasterAdmin: boolean;
   login: (email: string, password: string) => Promise<boolean>;
   register: (name: string, email: string, password: string, phone?: string, address?: Address) => Promise<void>;
   loginWithGoogle: () => Promise<boolean>;
@@ -50,6 +51,7 @@ interface AuthContextType {
   updateProfile: (data: { name?: string; phone?: string; photoURL?: string; address?: Address }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   resendVerification: () => Promise<void>;
+  getIdToken: () => Promise<string | null>;
 }
 
 const defaultAddress: Address = { street: "", city: "", state: "", postcode: "", country: "Australia" };
@@ -94,6 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [emailVerified, setEmailVerified] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isMasterAdmin, setIsMasterAdmin] = useState(false);
 
   const isAuthenticated = user !== null && emailVerified;
   const needsVerification = user !== null && !emailVerified;
@@ -102,8 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const tokenResult = await fu.getIdTokenResult();
       setIsAdmin(tokenResult.claims.isAdmin === true);
+      setIsMasterAdmin(tokenResult.claims.isMasterAdmin === true);
     } catch {
       setIsAdmin(false);
+      setIsMasterAdmin(false);
     }
   }
 
@@ -133,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setEmailVerified(false);
         setIsAdmin(false);
+        setIsMasterAdmin(false);
         await syncSession(null);
       }
       setLoading(false);
@@ -163,13 +169,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "", ...defaultUser });
     }
-    await syncSession(fu);
-    try {
-      const tr = await fu.getIdTokenResult();
-      return tr.claims.isAdmin === true;
-    } catch {
-      return false;
-    }
+    const tr = await fu.getIdTokenResult();
+    return tr.claims.isAdmin === true;
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string, phone?: string, address?: Address) => {
@@ -296,8 +297,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updatePassword(fu, newPassword);
   }, [user]);
 
+  const getIdToken = useCallback(async (): Promise<string | null> => {
+    try {
+      const fu = auth.currentUser;
+      if (!fu) return null;
+      return await fu.getIdToken(true);
+    } catch {
+      return null;
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, emailVerified, isAuthenticated, needsVerification, isAdmin, login, register, loginWithGoogle, logout, updateProfile, changePassword, resendVerification }}>
+    <AuthContext.Provider value={{ user, loading, emailVerified, isAuthenticated, needsVerification, isAdmin, isMasterAdmin, login, register, loginWithGoogle, logout, updateProfile, changePassword, resendVerification, getIdToken }}>
       {children}
     </AuthContext.Provider>
   );

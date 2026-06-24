@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useCart } from "./CartContext";
 import { useToast } from "./Toast";
+import { formatPrice } from "@/lib/format";
 import type { Product, ProductVariant } from "@/data/products";
 
 export default function AddToCartButton({ product, selectedVariant }: { product: Product; selectedVariant?: ProductVariant }) {
@@ -33,7 +34,7 @@ export default function AddToCartButton({ product, selectedVariant }: { product:
           : "bg-secondary text-dark dark:text-gray-900 hover:bg-secondary/80 hover:shadow-lg hover:shadow-secondary/25"
       }`}
     >
-      {outOfStock ? "Out of Stock" : `Add to Cart — $${displayPrice.toFixed(2)}`}
+      {outOfStock ? "Out of Stock" : `Add to Cart — ${formatPrice(displayPrice)}`}
     </button>
   );
 }

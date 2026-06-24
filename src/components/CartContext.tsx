@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import type { Product, ProductVariant } from "@/data/products";
+import { subscribeProducts } from "@/lib/product-store";
 import { getCookie, setCookie } from "@/lib/cookies";
 
 export interface CartItem {
@@ -69,6 +70,21 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, [items, hydrated]);
 
+  useEffect(() => {
+    const unsub = subscribeProducts((products) => {
+      setItems((prev) => prev.map((item) => {
+        const fresh = products.find((p) => p.id === item.product.id);
+        if (!fresh) return item;
+        const variantId = item.variant?.id;
+        const updatedVariant = variantId
+          ? fresh.variants?.find((v) => v.id === variantId) ?? item.variant
+          : undefined;
+        return { ...item, product: fresh, variant: updatedVariant };
+      }));
+    });
+    return unsub;
+  }, []);
+
   const addItem = useCallback((product: Product, variant?: ProductVariant) => {
     const key = makeKey(product.id, variant?.id);
     setItems((prev) => {
@@ -101,7 +117,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const totalItems = items.reduce((s, i) => s + i.quantity, 0);
-  const totalPrice = items.reduce((s, i) => s + (i.variant?.price ?? i.product.price) * i.quantity, 0);
+  const totalPrice = items.reduce((s, i) => {
+    const itemPrice = i.variant?.price ?? i.product.salePrice ?? i.product.price;
+    return s + itemPrice * i.quantity;
+  }, 0);
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice }}>

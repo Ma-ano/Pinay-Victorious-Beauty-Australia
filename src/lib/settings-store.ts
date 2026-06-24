@@ -14,6 +14,9 @@ export interface FeaturedBrandConfig {
 export interface SiteSettings {
   featuredBrands: FeaturedBrandConfig[];
   categoryImages?: Record<string, string>;
+  saleBannerTitle?: string;
+  saleBannerSubtitle?: string;
+  saleBannerDiscount?: string;
 }
 
 const emptyBrand: FeaturedBrandConfig = { brand: "", title: "", description: "", image: "" };

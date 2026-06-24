@@ -1,16 +1,26 @@
 import Link from "next/link";
 
-export default function SaleBanner() {
+export default function SaleBanner({
+  title,
+  subtitle,
+  discount,
+}: {
+  title?: string | null;
+  subtitle?: string | null;
+  discount?: string | null;
+}) {
   return (
     <section className="relative bg-gradient-to-r from-accent/20 via-primary/20 to-accent/10">
       <div className="p-8 md:p-12 flex flex-col md:flex-row items-center justify-between gap-6">
         <div>
-          <p className="text-accent font-semibold text-sm uppercase tracking-wider">Limited Time</p>
+          <p className="text-accent font-semibold text-sm uppercase tracking-wider">
+            {title || "Limited Time"}
+          </p>
           <h2 className="text-2xl md:text-4xl font-bold text-dark mt-2">
-            Up to 30% Off
+            {discount ? `Up to ${discount}% Off` : "Up to 30% Off"}
           </h2>
           <p className="text-foreground mt-2">
-            On selected skincare and makeup essentials
+            {subtitle || "On selected skincare and makeup essentials"}
           </p>
         </div>
         <Link

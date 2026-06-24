@@ -6,6 +6,7 @@ import type { Product } from "@/data/products";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
+import { formatPrice } from "@/lib/format";
 import { isPromotionActive, calculateDiscount, findBestPromotion } from "@/lib/promotion-utils";
 
 interface SalePageProps {
@@ -129,7 +130,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
         </form>
         {appliedPromo && (
           <p className="text-green-600 text-xs mt-2 text-center">
-            Code applied! {appliedPromo.type === "Percentage" ? `${appliedPromo.discount}% off` : appliedPromo.type === "Fixed Amount" ? `$${appliedPromo.discount} off` : ""}
+            Code applied! {appliedPromo.type === "Percentage" ? `${appliedPromo.discount}% off` : appliedPromo.type === "Fixed Amount" ? `${formatPrice(appliedPromo.discount)} off` : ""}
           </p>
         )}
         {error && <p className="text-red-500 text-xs mt-2 text-center">{error}</p>}
@@ -143,7 +144,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
         <>
           {appliedPromo && discount > 0 && (
             <p className="text-center text-sm text-green-600 mb-4">
-              Each item gets ${discount.toFixed(2)} off with code {appliedPromo.code}
+              Each item gets {formatPrice(discount)} off with code {appliedPromo.code}
             </p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">

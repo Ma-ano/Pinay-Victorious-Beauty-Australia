@@ -6,18 +6,20 @@ import { useAuth } from "./AuthContext";
 import ThemeToggle from "./ThemeToggle";
 
 const links = [
-  { label: "Dashboard", href: "/admin", icon: "◈" },
-  { label: "Products", href: "/admin/products", icon: "⊡" },
-  { label: "Orders", href: "/admin/orders", icon: "☰" },
-  { label: "Users", href: "/admin/users", icon: "◉" },
-  { label: "Promotions", href: "/admin/promotions", icon: "♢" },
-  { label: "Settings", href: "/admin/settings", icon: "⚙" },
+  { label: "Dashboard", href: "/admin", icon: "◈", requireMaster: false },
+  { label: "Products", href: "/admin/products", icon: "⊡", requireMaster: false },
+  { label: "Orders", href: "/admin/orders", icon: "☰", requireMaster: false },
+  { label: "Users", href: "/admin/users", icon: "◉", requireMaster: true },
+  { label: "Promotions", href: "/admin/promotions", icon: "♢", requireMaster: false },
+  { label: "Settings", href: "/admin/settings", icon: "⚙", requireMaster: false },
 ];
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, isMasterAdmin } = useAuth();
+
+  const visibleLinks = links.filter((l) => !l.requireMaster || isMasterAdmin);
 
   async function handleLogout() {
     await logout();
@@ -28,7 +30,7 @@ export default function AdminSidebar() {
     <aside className="w-64 bg-card border-r border-card-border min-h-screen p-6 hidden md:flex md:flex-col">
       <Link href="/admin" className="text-lg font-bold text-dark block mb-8">Admin Panel</Link>
       <nav className="space-y-1 flex-1">
-        {links.map((link) => {
+        {visibleLinks.map((link) => {
           const isActive = pathname === link.href;
           return (
             <Link

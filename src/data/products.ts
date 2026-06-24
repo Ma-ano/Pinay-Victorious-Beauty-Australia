@@ -9,6 +9,8 @@ export interface ProductVariant {
   inStock: boolean;
   stock?: number;
   price?: number;
+  originalPrice?: number;
+  salePrice?: number;
 }
 
 export interface Product {
@@ -20,6 +22,7 @@ export interface Product {
   brand: string;
   price: number;
   originalPrice?: number;
+  salePrice?: number;
   description: string;
   detail: string;
   shippingReturns: string;

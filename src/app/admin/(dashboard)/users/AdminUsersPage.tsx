@@ -10,6 +10,7 @@ interface AdminUser {
   role: string;
   status: string;
   createdAt: string;
+  isMaster: boolean;
 }
 
 interface ListResponse {
@@ -32,6 +33,9 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newAdminEmail, setNewAdminEmail] = useState("");
+  const [creating, setCreating] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -115,6 +119,29 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleCreateAdmin(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newAdminEmail.trim()) return;
+    setCreating(true);
+    try {
+      const res = await fetch("/api/admin/users/create-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: newAdminEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create admin");
+      showToast(`Admin created: ${newAdminEmail.trim()}`, "success");
+      setShowCreateModal(false);
+      setNewAdminEmail("");
+      fetchUsers();
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to create admin", "error");
+    } finally {
+      setCreating(false);
+    }
+  }
+
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -130,6 +157,12 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-bold text-dark">Users</h1>
           <p className="text-sm text-foreground mt-1">{total} users</p>
         </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-4 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/80 transition-colors"
+        >
+          Create Admin
+        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -206,7 +239,14 @@ export default function AdminUsersPage() {
                       <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent shrink-0">
                         {u.name.charAt(0).toUpperCase()}
                       </div>
-                      <span className="text-dark font-medium truncate max-w-[120px]">{u.name}</span>
+                      <div className="min-w-0">
+                        <span className="text-dark font-medium truncate block max-w-[120px]">{u.name}</span>
+                        {u.isMaster && (
+                          <span className="text-[10px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">
+                            Master Admin
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-foreground hidden sm:table-cell">{u.email}</td>
@@ -214,7 +254,7 @@ export default function AdminUsersPage() {
                     <select
                       value={u.role}
                       onChange={(e) => handleRoleChange(u.uid, e.target.value)}
-                      disabled={processing === u.uid}
+                      disabled={processing === u.uid || u.isMaster}
                       className="text-xs px-2 py-1 rounded-lg border border-card-border bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50"
                     >
                       <option value="customer">Customer</option>
@@ -232,33 +272,35 @@ export default function AdminUsersPage() {
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => handleStatusToggle(u.uid, u.status)}
-                        disabled={processing === u.uid}
-                        className="text-xs font-medium text-accent hover:text-accent/80 disabled:opacity-50"
-                      >
-                        {u.status === "active" ? "Disable" : "Enable"}
-                      </button>
-                      {deleteConfirm === u.uid ? (
-                        <span className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleDelete(u.uid)}
-                            disabled={processing === u.uid}
-                            className="text-red-500 hover:text-red-600 text-xs font-medium disabled:opacity-50"
-                          >
-                            Confirm
-                          </button>
-                          <button onClick={() => setDeleteConfirm(null)} className="text-foreground hover:text-dark text-xs">
-                            Cancel
-                          </button>
-                        </span>
-                      ) : (
-                        <button onClick={() => setDeleteConfirm(u.uid)} className="text-red-400 hover:text-red-500 text-xs font-medium">
-                          Delete
+                    {!u.isMaster && (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleStatusToggle(u.uid, u.status)}
+                          disabled={processing === u.uid}
+                          className="text-xs font-medium text-accent hover:text-accent/80 disabled:opacity-50"
+                        >
+                          {u.status === "active" ? "Disable" : "Enable"}
                         </button>
-                      )}
-                    </div>
+                        {deleteConfirm === u.uid ? (
+                          <span className="flex items-center gap-1">
+                            <button
+                              onClick={() => handleDelete(u.uid)}
+                              disabled={processing === u.uid}
+                              className="text-red-500 hover:text-red-600 text-xs font-medium disabled:opacity-50"
+                            >
+                              Confirm
+                            </button>
+                            <button onClick={() => setDeleteConfirm(null)} className="text-foreground hover:text-dark text-xs">
+                              Cancel
+                            </button>
+                          </span>
+                        ) : (
+                          <button onClick={() => setDeleteConfirm(u.uid)} className="text-red-400 hover:text-red-500 text-xs font-medium">
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))
@@ -294,6 +336,49 @@ export default function AdminUsersPage() {
           >
             Next
           </button>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40">
+          <div className="bg-card rounded-2xl p-6 w-full max-w-sm border border-primary/10 shadow-xl">
+            <h2 className="text-lg font-semibold text-dark mb-4">Create Admin</h2>
+            <form onSubmit={handleCreateAdmin} className="space-y-4">
+              <div>
+                <label htmlFor="new-admin-email" className="block text-sm font-medium text-foreground mb-1">
+                  User Email
+                </label>
+                <input
+                  id="new-admin-email"
+                  type="email"
+                  value={newAdminEmail}
+                  onChange={(e) => setNewAdminEmail(e.target.value)}
+                  placeholder="user@example.com"
+                  required
+                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
+                />
+                <p className="text-xs text-foreground mt-1.5">
+                  The user must already have a registered account.
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => { setShowCreateModal(false); setNewAdminEmail(""); }}
+                  className="flex-1 px-4 py-2.5 rounded-xl border border-primary/20 text-sm font-medium text-foreground hover:bg-primary/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creating || !newAdminEmail.trim()}
+                  className="flex-1 px-4 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/80 transition-colors disabled:opacity-50"
+                >
+                  {creating ? "Creating..." : "Create Admin"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>

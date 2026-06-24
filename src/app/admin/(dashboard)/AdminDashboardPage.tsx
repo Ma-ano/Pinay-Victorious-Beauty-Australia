@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
 import { db as firebaseDb } from "@/lib/firebase";
+import { formatPrice } from "@/lib/format";
 
 const db = firebaseDb!;
 import Link from "next/link";
@@ -58,7 +59,7 @@ export default function AdminDashboardPage() {
   }
 
   const cards = [
-    { label: "Total Revenue", value: `$${stats.totalRevenue.toLocaleString()}`, change: 0 },
+    { label: "Total Revenue", value: formatPrice(stats.totalRevenue), change: 0 },
     { label: "Total Orders", value: stats.totalOrders.toLocaleString(), change: 0 },
     { label: "Products", value: stats.totalProducts.toLocaleString(), change: 0 },
     { label: "Customers", value: stats.totalCustomers.toLocaleString(), change: 0 },

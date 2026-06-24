@@ -18,7 +18,7 @@ export async function deleteImage(downloadUrl: string): Promise<void> {
     const url = new URL(downloadUrl);
     if (!url.hostname.includes("firebasestorage.googleapis.com")) return;
 
-    const { getStorage, ref, deleteObject } = await import("firebase/storage");
+    const { getStorage, ref, deleteObject, getMetadata } = await import("firebase/storage");
     const { app: firebaseApp } = await import("@/lib/firebase");
     if (!firebaseApp) return;
     const storage = getStorage(firebaseApp);
@@ -28,6 +28,12 @@ export async function deleteImage(downloadUrl: string): Promise<void> {
 
     const decodedPath = decodeURIComponent(pathMatch[1]);
     const storageRef = ref(storage, decodedPath);
+    try {
+      await getMetadata(storageRef);
+    } catch {
+      return;
+    }
+
     await deleteObject(storageRef);
   } catch {
     // Old image deletion is best-effort

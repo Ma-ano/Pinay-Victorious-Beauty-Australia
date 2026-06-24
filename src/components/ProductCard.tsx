@@ -5,6 +5,7 @@ import WishlistButton from "./WishlistButton";
 import ImagePlaceholder from "./ImagePlaceholder";
 import StarDisplay from "./StarDisplay";
 import { useToast } from "./Toast";
+import { formatPrice } from "@/lib/format";
 import type { Product } from "@/data/products";
 
 import { useCart } from "./CartContext";
@@ -12,11 +13,14 @@ import { useCart } from "./CartContext";
 export default function ProductCard({ product }: { product: Product }) {
   const { showToast } = useToast();
   const { addItem } = useCart();
-  const discount = product.originalPrice
-    ? Math.round((1 - product.price / product.originalPrice) * 100)
+  const displayVariant = product.variants?.[0];
+  const displayPrice = displayVariant?.salePrice ?? displayVariant?.price ?? product.salePrice ?? product.price;
+  const displayOriginalPrice = displayVariant?.originalPrice ?? product.originalPrice;
+  const discount = displayOriginalPrice && displayOriginalPrice > displayPrice
+    ? Math.round((1 - displayPrice / displayOriginalPrice) * 100)
     : 0;
 
-  const quickAddVariant = product.variants?.[0];
+  const quickAddVariant = displayVariant;
   const quickAddStock = quickAddVariant
     ? (quickAddVariant as { stock?: number }).stock
     : product.stock;
@@ -53,7 +57,9 @@ export default function ProductCard({ product }: { product: Product }) {
             </span>
           )}
 
-          <WishlistButton productId={product.id} />
+          <div className="absolute top-3 right-3 z-10">
+            <WishlistButton productId={product.id} />
+          </div>
 
             <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
               <button
@@ -78,10 +84,10 @@ export default function ProductCard({ product }: { product: Product }) {
             {product.name}
           </h3>
           <div className="mt-2 flex items-center gap-2">
-            <span className="text-base font-bold text-dark">${product.price.toFixed(2)}</span>
-            {product.originalPrice && (
+            <span className="text-base font-bold text-dark">{formatPrice(displayPrice)}</span>
+            {displayOriginalPrice && displayPrice < displayOriginalPrice && (
               <span className="text-xs text-foreground line-through">
-                ${product.originalPrice.toFixed(2)}
+                {formatPrice(displayOriginalPrice)}
               </span>
             )}
           </div>

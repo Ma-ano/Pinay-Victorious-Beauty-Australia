@@ -3,36 +3,57 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 
 export class FirebaseAdminNotConfigured extends Error {
-  constructor() {
-    super("Firebase Admin SDK not configured");
+  missing: string[];
+
+  constructor(missing: string[] = []) {
+    const msg = missing.length
+      ? `Firebase Admin SDK not configured — missing: ${missing.join(", ")}`
+      : "Firebase Admin SDK not configured";
+    super(msg);
     this.name = "FirebaseAdminNotConfigured";
+    this.missing = missing;
   }
 }
 
-let _initAttempted = false;
+function cleanPrivateKey(key: string | undefined): string {
+  if (!key) return "";
+  let cleaned = key.trim();
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+    cleaned = cleaned.slice(1, -1);
+  }
+  return cleaned.replace(/\\n/g, "\n");
+}
 
 export function getAdminApp() {
   const apps = getApps();
   if (apps.length > 0) return apps[0];
 
-  if (_initAttempted) throw new FirebaseAdminNotConfigured();
-
   const projectId = process.env.FIREBASE_ADMIN_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
   const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY;
 
-  if (!clientEmail || !privateKey) {
-    _initAttempted = true;
-    throw new FirebaseAdminNotConfigured();
+  const missing: string[] = [];
+  if (!projectId) missing.push("FIREBASE_ADMIN_PROJECT_ID");
+  if (!clientEmail) missing.push("FIREBASE_ADMIN_CLIENT_EMAIL");
+  if (!privateKey) missing.push("FIREBASE_ADMIN_PRIVATE_KEY");
+
+  if (missing.length > 0) {
+    throw new FirebaseAdminNotConfigured(missing);
   }
 
-  return initializeApp({
-    credential: cert({
-      projectId,
-      clientEmail,
-      privateKey: privateKey.replace(/\\n/g, "\n"),
-    }),
-  });
+  try {
+    return initializeApp({
+      credential: cert({
+        projectId,
+        clientEmail,
+        privateKey: cleanPrivateKey(privateKey),
+      }),
+    });
+  } catch (err) {
+    throw new Error(
+      `Firebase Admin SDK initialization failed: ${err instanceof Error ? err.message : err}`,
+    );
+  }
 }
 
 export function getAdminAuth() {

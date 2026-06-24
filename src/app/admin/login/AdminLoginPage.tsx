@@ -42,27 +42,17 @@ export default function AdminLoginPage() {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       const fu = credential.user;
 
-      const res = await fetch("/api/auth/set-admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: fu.email }),
-      });
-
-      const result = await res.json();
-      if (!res.ok && !result.error?.includes("already")) {
-        setError(result.error || "Admin promotion failed");
-        setLoading(false);
-        return;
-      }
-
-      await fu.getIdToken(true);
-
       const idToken = await fu.getIdToken();
-      await fetch("/api/auth/session", {
+      const res = await fetch("/api/auth/admin-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
       });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Admin login failed");
+      }
 
       showToast("Welcome Admin", "success");
       router.push("/admin");
@@ -73,7 +63,7 @@ export default function AdminLoginPage() {
       } else if (code === "auth/too-many-requests") {
         setError("Too many attempts. Please try again later.");
       } else {
-        setError("Login failed. Please try again.");
+        setError(err instanceof Error ? err.message : "Login failed. Please try again.");
       }
     } finally {
       setLoading(false);

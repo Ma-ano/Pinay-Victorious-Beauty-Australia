@@ -11,6 +11,8 @@ import {
   serverTimestamp,
   query,
   where,
+  onSnapshot,
+  FirestoreError,
 } from "firebase/firestore";
 import type { Product, ProductImage, ProductVariant } from "@/data/products";
 import { roundRating } from "@/lib/review-utils";
@@ -23,6 +25,7 @@ export interface ProductFormData {
   brand: string;
   price: number;
   originalPrice?: number;
+  salePrice?: number;
   description: string;
   detail: string;
   shippingReturns: string;
@@ -72,6 +75,24 @@ export async function getAllProducts(): Promise<Product[]> {
   return result;
 }
 
+export function subscribeProducts(callback: (products: Product[]) => void): () => void {
+  return onSnapshot(collection(db, "products"), (snapshot) => {
+    callback(snapshot.docs.map((docSnap) => {
+      const data = docSnap.data() as Product;
+      return {
+        ...data,
+        id: docSnap.id,
+        rating: data.rating ?? 0,
+        reviews: data.reviews ?? 0,
+        sold: data.sold ?? 0,
+        images: data.images ?? [],
+        stock: data.stock ?? 0,
+        variants: data.variants ?? [],
+      };
+    }));
+  });
+}
+
 export async function getProductById(id: string): Promise<Product | null> {
   const snap = await getDoc(doc(db, "products", id));
   if (!snap.exists()) return null;
@@ -99,7 +120,14 @@ export async function saveProduct(
 }
 
 export async function deleteProduct(id: string): Promise<void> {
-  await deleteDoc(doc(db, "products", id));
+  try {
+    await deleteDoc(doc(db, "products", id));
+  } catch (err) {
+    if (err instanceof FirestoreError && err.code === "permission-denied") {
+      throw new Error("permission-denied");
+    }
+    throw err;
+  }
 }
 
 export async function getAllReviewStats(): Promise<Record<string, { avgRating: number; reviewCount: number }>> {

@@ -12,6 +12,9 @@ export default function AdminSettingsPage() {
   const { showToast } = useToast();
   const [brands, setBrands] = useState<FeaturedBrandConfig[]>([emptyBrand, emptyBrand, emptyBrand]);
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
+  const [saleBannerTitle, setSaleBannerTitle] = useState("");
+  const [saleBannerSubtitle, setSaleBannerSubtitle] = useState("");
+  const [saleBannerDiscount, setSaleBannerDiscount] = useState("");
   const [uploading, setUploading] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [loading, setLoading] = useState(true);
@@ -21,6 +24,9 @@ export default function AdminSettingsPage() {
     getSettings().then((s) => {
       setBrands(s.featuredBrands);
       setCategoryImages(s.categoryImages || {});
+      setSaleBannerTitle(s.saleBannerTitle || "");
+      setSaleBannerSubtitle(s.saleBannerSubtitle || "");
+      setSaleBannerDiscount(s.saleBannerDiscount || "");
       setLoading(false);
     });
   }, []);
@@ -69,7 +75,13 @@ export default function AdminSettingsPage() {
       for (const [slug, url] of Object.entries(categoryImages)) {
         if (url) cleaned[slug] = url;
       }
-      const data: SiteSettings = { featuredBrands: brands, categoryImages: cleaned };
+      const data: SiteSettings = {
+        featuredBrands: brands,
+        categoryImages: cleaned,
+        saleBannerTitle,
+        saleBannerSubtitle,
+        saleBannerDiscount,
+      };
       await saveSettings(data);
       showToast("Settings saved", "success");
     } catch {
@@ -197,6 +209,36 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div className="bg-card rounded-2xl border border-card-border p-6 space-y-4 mb-6">
+        <h2 className="font-semibold text-dark text-sm">Sale Banner</h2>
+        <p className="text-xs text-foreground -mt-2">
+          Customize the sale banner shown on the homepage.
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-xs text-foreground mb-1">Title</label>
+            <input type="text" value={saleBannerTitle}
+              onChange={(e) => setSaleBannerTitle(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              placeholder="Limited Time" />
+          </div>
+          <div>
+            <label className="block text-xs text-foreground mb-1">Subtitle</label>
+            <input type="text" value={saleBannerSubtitle}
+              onChange={(e) => setSaleBannerSubtitle(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              placeholder="On selected skincare and makeup essentials" />
+          </div>
+          <div>
+            <label className="block text-xs text-foreground mb-1">Discount %</label>
+            <input type="text" value={saleBannerDiscount}
+              onChange={(e) => setSaleBannerDiscount(e.target.value)}
+              className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              placeholder="30" />
+          </div>
+        </div>
       </div>
 
       <div className="bg-card rounded-2xl border border-card-border p-6 space-y-6 mb-6">

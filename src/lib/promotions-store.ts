@@ -41,8 +41,7 @@ export async function savePromotion(id: string | null, data: PromotionData): Pro
   const promoId = id || doc(collection(db, "promotions")).id;
   await setDoc(doc(db, "promotions", promoId), {
     ...data,
-    createdAt: id ? undefined : serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    ...(id ? { updatedAt: serverTimestamp() } : { createdAt: serverTimestamp(), updatedAt: serverTimestamp() }),
   });
   return promoId;
 }

@@ -21,8 +21,9 @@ import { useAuth } from "@/components/AuthContext";
 import { useToast } from "@/components/Toast";
 import ImagePlaceholder from "@/components/ImagePlaceholder";
 import { getAllProducts } from "@/lib/product-store";
+import { formatPrice } from "@/lib/format";
 
-type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected" | "received";
+type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected" | "received" | "paid" | "completed";
 
 interface OrderItem {
   productId: string;
@@ -48,7 +49,14 @@ interface CustomerOrder {
   shipping: ShippingAddress;
   paymentMethod: string;
   subtotal: number;
+  total: number;
+  paymentStatus?: string;
   status: OrderStatus;
+  trackingNumber?: string;
+  courier?: string;
+  fundingSource?: string;
+  discount?: number;
+  discountCode?: string | null;
   createdAt?: Timestamp;
 }
 
@@ -57,15 +65,24 @@ interface CustomerReview {
   productId: string;
 }
 
-const statusColors: Record<OrderStatus, string> = {
+const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
+  paid: "bg-blue-100 text-blue-700",
   approved: "bg-blue-100 text-blue-700",
   shipped: "bg-violet-100 text-violet-700",
   delivered: "bg-green-100 text-green-700",
   received: "bg-emerald-100 text-emerald-700",
+  completed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
 };
+
+const COURIERS = ["JNT", "LBC", "DHL"];
+
+function getTrackingLink(courier: string, tracking: string): string | null {
+  if (courier === "JNT") return `https://jtexpress.ph/track?code=${encodeURIComponent(tracking)}`;
+  return null;
+}
 
 async function getProductInfoMap(): Promise<{ slug: Map<string, string>; image: Map<string, string> }> {
   try {
@@ -90,6 +107,46 @@ function formatDate(ts?: Timestamp): string {
 
 function reviewDocId(orderId: string, productId: string) {
   return `${orderId}_${productId}`.replaceAll("/", "_");
+}
+
+const STEPS_PAYPAL: OrderStatus[] = ["pending", "paid", "shipped", "completed"];
+const STEPS_COD: OrderStatus[] = ["pending", "approved", "shipped", "delivered"];
+
+function OrderProgress({ status, paymentMethod }: { status: OrderStatus; paymentMethod: string }) {
+  const steps = paymentMethod === "paypal" ? STEPS_PAYPAL : STEPS_COD;
+  const currentIndex = steps.indexOf(status);
+
+  if (currentIndex < 0 || ["cancelled", "rejected"].includes(status)) return null;
+
+  return (
+    <div className="flex items-center gap-1 mb-3">
+      {steps.map((step, i) => {
+        const isActive = i <= currentIndex;
+        const isCurrent = i === currentIndex;
+        return (
+          <div key={step} className="flex items-center gap-1 flex-1">
+            <div className={`flex items-center gap-1.5 ${isActive ? "text-accent" : "text-foreground/40"}`}>
+              <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                isCurrent
+                  ? "bg-accent text-white"
+                  : isActive
+                    ? "bg-accent/20 text-accent"
+                    : "bg-primary/10 text-foreground/40"
+              }`}>
+                {i + 1}
+              </div>
+              <span className={`text-[10px] font-medium capitalize ${isCurrent ? "font-semibold" : ""}`}>
+                {step}
+              </span>
+            </div>
+            {i < steps.length - 1 && (
+              <div className={`flex-1 h-px mx-1 ${i < currentIndex ? "bg-accent" : "bg-primary/10"}`} />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function OrdersPage() {
@@ -228,8 +285,10 @@ export default function OrdersPage() {
 
   async function handleReceive(orderId: string) {
     try {
+      const order = orders.find((o) => o.firestoreId === orderId);
+      const finalStatus = order?.paymentMethod === "paypal" ? "completed" : "received";
       await updateDoc(doc(db, "orders", orderId), {
-        status: "received",
+        status: finalStatus,
         updatedAt: serverTimestamp(),
       });
       setReceiveConfirmId(null);
@@ -280,169 +339,208 @@ export default function OrdersPage() {
         </div>
       ) : (
         <div className="space-y-5">
-          {orders.map((order) => (
-            <article key={order.firestoreId} className="bg-card border border-card-border rounded-2xl overflow-hidden">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 bg-primary/10">
-                <div>
-                  <p className="text-sm font-semibold text-dark">Order #{order.firestoreId.slice(-8)}</p>
-                  <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {order.paymentMethod || "cod"}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {(order.status === "pending" || order.status === "approved") && (
-                    cancelConfirmId === order.firestoreId ? (
-                      <span className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleCancel(order.firestoreId)}
-                          className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-full transition-all"
-                        >
-                          Confirm Cancel?
-                        </button>
-                        <button
-                          onClick={() => setCancelConfirmId(null)}
-                          className="text-xs text-foreground hover:text-dark transition-colors"
-                        >
-                          Keep
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setCancelConfirmId(order.firestoreId)}
-                        className="text-xs font-medium text-red-500 hover:text-red-600 px-2.5 py-1 rounded-full border border-red-200 hover:border-red-300 transition-all"
-                      >
-                        Cancel
-                      </button>
-                    )
-                  )}
-                  {order.status === "delivered" && (
-                    receiveConfirmId === order.firestoreId ? (
-                      <span className="flex items-center gap-1">
-                        <button
-                          onClick={() => handleReceive(order.firestoreId)}
-                          className="text-xs font-medium text-white bg-emerald-500 hover:bg-emerald-600 px-2.5 py-1 rounded-full transition-all"
-                        >
-                          Confirm Received?
-                        </button>
-                        <button
-                          onClick={() => setReceiveConfirmId(null)}
-                          className="text-xs text-foreground hover:text-dark transition-colors"
-                        >
-                          Keep
-                        </button>
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => setReceiveConfirmId(order.firestoreId)}
-                        className="text-xs font-medium text-emerald-600 hover:text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:border-emerald-300 transition-all"
-                      >
-                        Mark as Received
-                      </button>
-                    )
-                  )}
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-700"}`}>
-                    {order.status}
-                  </span>
-                          <span className="text-sm font-bold text-accent">Total to pay: ${Number(order.subtotal || 0).toFixed(2)}</span>
-                </div>
-              </div>
+          {orders.map((order) => {
+            const isPaypal = order.paymentMethod === "paypal";
+            const canCancel = order.status === "pending" || order.status === "approved" || order.status === "paid";
+            const canReceive = order.status === "delivered";
+            const trackingLink = order.trackingNumber && order.courier ? getTrackingLink(order.courier, order.trackingNumber) : null;
 
-              <div className="divide-y divide-primary/10">
-                {(order.items || []).map((item, index) => {
-                  const key = reviewDocId(order.firestoreId, item.productId);
-                  const reviewed = reviewedKeys.has(key);
-                  const productSlug = productSlugById.get(item.productId);
-                  return (
-                    <div key={`${item.productId}-${index}`} className="px-5 py-4">
-                      <div className="flex gap-3 items-start">
-                        <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-primary/10">
-                          <ImagePlaceholder category="" name={item.name} imageUrl={productImageById.get(item.productId) || ""} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs text-foreground">Product:</p>
-                          {productSlug ? (
-                            <Link href={`/shop/${productSlug}`} className="text-sm font-semibold text-dark hover:text-accent transition-colors truncate block">
-                              {item.name}
-                            </Link>
-                          ) : (
-                            <p className="text-sm font-semibold text-dark truncate">{item.name}</p>
-                          )}
-                          {item.variant?.name && (
-                            <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
-                          )}
-                          <p className="text-xs text-foreground">Qty: {item.quantity}</p>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          {order.status === "received" && (
-                            reviewed ? (
-                              <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">Reviewed</span>
+            return (
+              <article key={order.firestoreId} className="bg-card border border-card-border rounded-2xl overflow-hidden">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 bg-primary/10">
+                  <div>
+                    <p className="text-sm font-semibold text-dark">Order #{order.firestoreId.slice(-8)}</p>
+                    <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {order.paymentMethod || "cod"}
+                      {order.fundingSource === "card" && <span> via Debit / Credit Card</span>}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {canCancel && (
+                      cancelConfirmId === order.firestoreId ? (
+                        <span className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleCancel(order.firestoreId)}
+                            className="text-xs font-medium text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-full transition-all"
+                          >
+                            Confirm Cancel?
+                          </button>
+                          <button
+                            onClick={() => setCancelConfirmId(null)}
+                            className="text-xs text-foreground hover:text-dark transition-colors"
+                          >
+                            Keep
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setCancelConfirmId(order.firestoreId)}
+                          className="text-xs font-medium text-red-500 hover:text-red-600 px-2.5 py-1 rounded-full border border-red-200 hover:border-red-300 transition-all"
+                        >
+                          Cancel
+                        </button>
+                      )
+                    )}
+                    {canReceive && (
+                      receiveConfirmId === order.firestoreId ? (
+                        <span className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleReceive(order.firestoreId)}
+                            className="text-xs font-medium text-white bg-emerald-500 hover:bg-emerald-600 px-2.5 py-1 rounded-full transition-all"
+                          >
+                            Confirm Received?
+                          </button>
+                          <button
+                            onClick={() => setReceiveConfirmId(null)}
+                            className="text-xs text-foreground hover:text-dark transition-colors"
+                          >
+                            Keep
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setReceiveConfirmId(order.firestoreId)}
+                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:border-emerald-300 transition-all"
+                        >
+                          {isPaypal ? "Mark as Completed" : "Mark as Received"}
+                        </button>
+                      )
+                    )}
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-700"}`}>
+                      {order.status}
+                    </span>
+                    {Number(order.total || order.subtotal || 0) > 0 && (
+                      <span className="text-sm font-bold text-accent">{formatPrice(Number(order.total || order.subtotal || 0))}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="px-5 py-3 bg-background/50 border-b border-primary/5">
+                  <OrderProgress status={order.status} paymentMethod={order.paymentMethod || "cod"} />
+                </div>
+
+                {order.trackingNumber && (
+                  <div className="px-5 py-2 bg-accent/5 border-b border-primary/5">
+                    <p className="text-xs text-foreground">
+                      Courier: <span className="font-medium text-dark">{order.courier || "-"}</span>{" "}
+                      | Tracking:{" "}
+                      {trackingLink ? (
+                        <a href={trackingLink} target="_blank" rel="noopener noreferrer"
+                          className="text-accent hover:underline font-medium">
+                          {order.trackingNumber}
+                        </a>
+                      ) : (
+                        <span className="font-medium text-dark">{order.trackingNumber}</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                {order.discount != null && order.discount > 0 && (
+                  <div className="px-5 py-2 bg-green-50 border-b border-primary/5">
+                    <p className="text-xs text-green-700">
+                      Discount applied{order.discountCode ? ` (${order.discountCode})` : ""}: -{formatPrice(order.discount)}
+                    </p>
+                  </div>
+                )}
+
+                <div className="divide-y divide-primary/10">
+                  {(order.items || []).map((item, index) => {
+                    const key = reviewDocId(order.firestoreId, item.productId);
+                    const reviewed = reviewedKeys.has(key);
+                    const productSlug = productSlugById.get(item.productId);
+                    return (
+                      <div key={`${item.productId}-${index}`} className="px-5 py-4">
+                        <div className="flex gap-3 items-start">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-primary/10">
+                            <ImagePlaceholder category="" name={item.name} imageUrl={productImageById.get(item.productId) || ""} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-foreground">Product:</p>
+                            {productSlug ? (
+                              <Link href={`/shop/${productSlug}`} className="text-sm font-semibold text-dark hover:text-accent transition-colors truncate block">
+                                {item.name}
+                              </Link>
                             ) : (
+                              <p className="text-sm font-semibold text-dark truncate">{item.name}</p>
+                            )}
+                            {item.variant?.name && (
+                              <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                            )}
+                            <p className="text-xs text-foreground">Qty: {item.quantity}</p>
+                          </div>
+                          <div className="flex items-center gap-3 shrink-0">
+                            {(order.status === "received" || order.status === "completed") && (
+                              reviewed ? (
+                                <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">Reviewed</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => startReview(order, item)}
+                                  className="text-xs font-medium text-white bg-accent hover:bg-accent/80 px-3 py-1.5 rounded-full transition-all"
+                                >
+                                  Review
+                                </button>
+                              )
+                            )}
+                          </div>
+                        </div>
+
+                        {activeReviewKey === key && (
+                          <form onSubmit={submitReview} className="mt-4 rounded-xl border border-card-border bg-background p-4 space-y-3">
+                            <div>
+                              <p className="text-sm font-medium text-dark mb-2">Rate {item.name}</p>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: 5 }).map((_, starIndex) => (
+                                  <button
+                                    key={starIndex}
+                                    type="button"
+                                    onClick={() => setRating(starIndex + 1)}
+                                    className="p-0.5 focus:outline-none"
+                                    aria-label={`${starIndex + 1} stars`}
+                                  >
+                                    <svg className={`w-7 h-7 ${rating > starIndex ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
+                                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <textarea
+                              value={content}
+                              onChange={(event) => setContent(event.target.value)}
+                              rows={3}
+                              maxLength={1000}
+                              className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card text-dark text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
+                              placeholder="Share what you liked, how it felt, or who you would recommend it to."
+                            />
+                            <div className="text-right text-[11px] text-foreground">{content.length}/1000</div>
+                            <div className="flex justify-end gap-2">
                               <button
                                 type="button"
-                                onClick={() => startReview(order, item)}
-                                className="text-xs font-medium text-white bg-accent hover:bg-accent/80 px-3 py-1.5 rounded-full transition-all"
+                                onClick={() => setActiveReviewKey(null)}
+                                className="px-4 py-2 rounded-xl text-sm text-foreground hover:text-dark transition-colors"
                               >
-                                Review
+                                Cancel
                               </button>
-                            )
-                          )}
-                        </div>
-                      </div>
-
-                      {activeReviewKey === key && (
-                        <form onSubmit={submitReview} className="mt-4 rounded-xl border border-card-border bg-background p-4 space-y-3">
-                          <div>
-                            <p className="text-sm font-medium text-dark mb-2">Rate {item.name}</p>
-                            <div className="flex items-center gap-1">
-                              {Array.from({ length: 5 }).map((_, starIndex) => (
-                                <button
-                                  key={starIndex}
-                                  type="button"
-                                  onClick={() => setRating(starIndex + 1)}
-                                  className="p-0.5 focus:outline-none"
-                                  aria-label={`${starIndex + 1} stars`}
-                                >
-                                  <svg className={`w-7 h-7 ${rating > starIndex ? "text-yellow-400" : "text-gray-200"}`} fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                  </svg>
-                                </button>
-                              ))}
+                              <button
+                                type="submit"
+                                disabled={savingReview}
+                                className="px-5 py-2 rounded-xl text-sm font-medium bg-accent text-white hover:bg-accent/80 transition-all disabled:opacity-50"
+                              >
+                                {savingReview ? "Submitting..." : "Submit Review"}
+                              </button>
                             </div>
-                          </div>
-                          <textarea
-                            value={content}
-                            onChange={(event) => setContent(event.target.value)}
-                            rows={3}
-                            maxLength={1000}
-                            className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card text-dark text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                            placeholder="Share what you liked, how it felt, or who you would recommend it to."
-                          />
-                          <div className="text-right text-[11px] text-foreground">{content.length}/1000</div>
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setActiveReviewKey(null)}
-                              className="px-4 py-2 rounded-xl text-sm text-foreground hover:text-dark transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="submit"
-                              disabled={savingReview}
-                              className="px-5 py-2 rounded-xl text-sm font-medium bg-accent text-white hover:bg-accent/80 transition-all disabled:opacity-50"
-                            >
-                              {savingReview ? "Submitting..." : "Submit Review"}
-                            </button>
-                          </div>
-                        </form>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </article>
-          ))}
+                          </form>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
-

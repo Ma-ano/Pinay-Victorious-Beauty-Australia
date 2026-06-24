@@ -14,7 +14,7 @@ export default function TermsPage() {
         </section>
         <section>
           <h2 className="text-base font-semibold text-dark mb-2">Orders & Payment</h2>
-          <p>All prices are listed in USD. We reserve the right to modify prices at any time. Payment is processed securely through PayPal. Your order is confirmed once payment is received.</p>
+          <p>All prices are listed in AUD. We reserve the right to modify prices at any time. Payment is processed securely through PayPal. Your order is confirmed once payment is received.</p>
         </section>
         <section>
           <h2 className="text-base font-semibold text-dark mb-2">Shipping & Delivery</h2>
