@@ -1,5 +1,12 @@
 export const productTypes = [
+  "cream",
+  "lotion",
+  "gel",
   "serum",
+  "soap",
+  "capsule-topical",
+  "capsule-oral",
+  "powder-drink",
   "moisturizer",
   "lipstick",
   "foundation",

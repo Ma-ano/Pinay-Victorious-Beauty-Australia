@@ -6,6 +6,7 @@ export interface Review {
   content: string;
   date: string;
   isVerified: boolean;
+  variantName?: string;
 }
 
 export const reviews: Review[] = [

@@ -72,8 +72,8 @@ export default function LoginPage() {
         return;
       }
       router.push("/");
-    } catch {
-      setError("Google sign-in failed. Please try again.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
     }
   };
 

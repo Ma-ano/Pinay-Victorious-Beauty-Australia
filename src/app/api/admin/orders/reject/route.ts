@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const orderData = orderSnap.data()!;
 
-    if (orderData.paymentStatus === "paid" && orderData.paypalCaptureId) {
+    if ((orderData.status === "paid" || orderData.paymentStatus === "paid") && orderData.paypalCaptureId) {
       try {
         await refundPayPalOrder(orderData.paypalCaptureId);
       } catch (refundErr) {

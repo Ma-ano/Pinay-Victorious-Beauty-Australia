@@ -10,7 +10,7 @@ export default function Footer() {
             <div>
               <Link href="/" className="inline-block">
                 <Image
-                  src="/images/PinayVictoriousLogo.jpg"
+                  src="/images/PinayVictoriousLogo.png"
                   alt={site.name}
                   width={0}
                   height={0}

@@ -72,9 +72,10 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
     const result = products.filter((p) => {
       const matchesSearch =
         p.name.toLowerCase().includes(search.toLowerCase()) ||
-        p.category.toLowerCase().includes(search.toLowerCase());
+        p.category.toLowerCase().includes(search.toLowerCase()) ||
+        (p.subcategory || "").toLowerCase().includes(search.toLowerCase());
       const matchesCategory =
-        selectedCategory === "all" || p.category === selectedCategory;
+        selectedCategory === "all" || p.category === selectedCategory || p.subcategory === selectedCategory;
       const matchesType =
         selectedType === "all" || p.type === selectedType;
       const matchesBrand =

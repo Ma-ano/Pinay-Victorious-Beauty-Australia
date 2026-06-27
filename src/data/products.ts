@@ -18,6 +18,7 @@ export interface Product {
   name: string;
   slug: string;
   category: string;
+  subcategory?: string;
   type: string;
   brand: string;
   price: number;

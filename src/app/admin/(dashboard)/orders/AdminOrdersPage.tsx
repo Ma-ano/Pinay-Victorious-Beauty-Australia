@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
-  getDoc,
   onSnapshot,
   orderBy,
   query,
@@ -19,9 +18,9 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/components/AuthContext";
 import { formatPrice } from "@/lib/format";
 
-type OrderStatus = "pending" | "approved" | "paid" | "shipped" | "delivered" | "cancelled" | "rejected" | "received" | "completed";
+type OrderStatus = "pending" | "approved" | "paid" | "cancelled" | "rejected" | "completed";
 
-type PaymentFilter = "all" | "cod" | "paypal";
+type PaymentFilter = "all" | "cod" | "paypal" | "card";
 
 interface OrderItem {
   productId: string;
@@ -50,44 +49,39 @@ interface FirestoreOrder {
   paymentMethod: string;
   subtotal: number;
   total: number;
+  discount?: number;
+  discountCode?: string | null;
   paymentStatus?: string;
   paypalOrderId?: string;
   paypalCaptureId?: string;
   status: OrderStatus;
-  trackingNumber?: string;
-  courier?: string;
   fundingSource?: string;
+  cardBrand?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
-const statuses: Array<OrderStatus | "all"> = ["all", "pending", "paid", "approved", "shipped", "delivered", "received", "completed", "cancelled", "rejected"];
+const statuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "paid", "completed", "cancelled", "rejected"];
 
-const codStatuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "shipped", "delivered", "received", "cancelled", "rejected"];
-const paypalStatuses: Array<OrderStatus | "all"> = ["all", "pending", "paid", "shipped", "delivered", "completed", "cancelled", "rejected"];
+const codStatuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "completed", "cancelled", "rejected"];
+const paypalStatuses: Array<OrderStatus | "all"> = ["all", "pending", "paid", "completed", "cancelled", "rejected"];
 
 function getValidTransitions(status: OrderStatus, paymentMethod: string): OrderStatus[] {
   if (paymentMethod === "paypal") {
     const map: Record<OrderStatus, OrderStatus[]> = {
-      pending: ["paid", "rejected", "cancelled"],
-      paid: ["shipped", "cancelled", "rejected"],
+      pending: ["paid", "cancelled", "rejected"],
+      paid: ["completed", "cancelled", "rejected"],
       approved: [],
-      shipped: ["delivered"],
-      delivered: ["completed"],
       completed: [],
-      received: [],
       cancelled: [],
       rejected: [],
     };
     return map[status] || [];
   }
   const map: Record<OrderStatus, OrderStatus[]> = {
-    pending: ["approved", "rejected", "cancelled"],
+    pending: ["approved", "cancelled", "rejected"],
+    approved: ["completed", "cancelled", "rejected"],
     paid: [],
-    approved: ["shipped", "cancelled", "rejected"],
-    shipped: ["delivered"],
-    delivered: ["received"],
-    received: [],
     completed: [],
     cancelled: [],
     rejected: [],
@@ -97,11 +91,8 @@ function getValidTransitions(status: OrderStatus, paymentMethod: string): OrderS
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
+  approved: "bg-purple-100 text-purple-700",
   paid: "bg-blue-100 text-blue-700",
-  approved: "bg-blue-100 text-blue-700",
-  shipped: "bg-violet-100 text-violet-700",
-  delivered: "bg-green-100 text-green-700",
-  received: "bg-emerald-100 text-emerald-700",
   completed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
@@ -120,30 +111,19 @@ function statusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function getTrackingLink(courier: string, tracking: string): string | null {
-  if (courier === "JNT") return `https://jtexpress.ph/track?code=${encodeURIComponent(tracking)}`;
-  return null;
-}
-
 function OrderDetailModal({
   order,
   onClose,
   onStatusChange,
   updatingId,
-  trackingInputs,
-  setTrackingInputs,
 }: {
   order: FirestoreOrder;
   onClose: () => void;
   onStatusChange: (orderId: string, status: OrderStatus) => void;
   updatingId: string | null;
-  trackingInputs: { trackingNumber: string; courier: string };
-  setTrackingInputs: (v: { trackingNumber: string; courier: string }) => void;
 }) {
   const isPaypal = order.paymentMethod === "paypal";
   const allowedNext = getValidTransitions(order.status, order.paymentMethod || "cod");
-  const trackingLink = order.trackingNumber && order.courier ? getTrackingLink(order.courier, order.trackingNumber) : null;
-  const showTrackingFields = (order.status === "approved" && !isPaypal) || (order.status === "paid" && isPaypal) || order.status === "shipped";
 
   return (
     <div
@@ -178,8 +158,14 @@ function OrderDetailModal({
               <p><span className="font-medium text-foreground">Phone:</span> {order.customerPhone || "-"}</p>
               <p><span className="font-medium text-foreground">Payment:</span> {order.paymentMethod || "cod"}
                 {order.paymentStatus && <span className="ml-1">({order.paymentStatus})</span>}
-                {order.fundingSource === "card" && <span className="ml-1">via Debit / Credit Card</span>}
+                {order.cardBrand && <span className="ml-1">({order.cardBrand})</span>}
               </p>
+              {order.paypalCaptureId && (
+                <p><span className="font-medium text-foreground">Transaction ID:</span> {order.paypalCaptureId}</p>
+              )}
+              {order.paypalOrderId && !order.paypalCaptureId && (
+                <p><span className="font-medium text-foreground">Order ID:</span> {order.paypalOrderId}</p>
+              )}
             </div>
           </section>
 
@@ -215,79 +201,28 @@ function OrderDetailModal({
             </div>
           </section>
 
-          {order.trackingNumber && (
-            <section>
-              <h3 className="text-sm font-semibold text-foreground mb-2">Tracking Info</h3>
-              <div className="space-y-1 text-sm text-foreground bg-primary/5 rounded-xl p-3">
-                <p><span className="font-medium text-foreground">Courier:</span> {order.courier}</p>
-                <p>
-                  <span className="font-medium text-foreground">Tracking #:</span>{" "}
-                  {trackingLink ? (
-                    <a href={trackingLink} target="_blank" rel="noopener noreferrer"
-                      className="text-accent hover:underline">
-                      {order.trackingNumber}
-                    </a>
-                  ) : order.trackingNumber}
-                </p>
-              </div>
-            </section>
-          )}
-
           <section>
-            <h3 className="text-sm font-semibold text-foreground mb-2">
-              {order.status === "shipped" ? "Update Tracking"
-                : (isPaypal && order.status === "paid") || (!isPaypal && order.status === "approved")
-                  ? "Add Tracking & Ship"
-                  : "Status Actions"}
-            </h3>
+            <h3 className="text-sm font-semibold text-foreground mb-2">Status Actions</h3>
             <p className="text-[11px] text-foreground/70 mb-2">
-              {order.status === "paid" || order.status === "approved"
-                ? "Enter tracking details before marking as shipped."
-                : "Click a status to update this order."}
+              Click a status to update this order.
             </p>
 
-            {showTrackingFields && (
-              <div className="mb-3 p-3 bg-primary/5 rounded-xl space-y-2">
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <label className="block text-xs text-foreground mb-1">Tracking Number</label>
-                    <input type="text" value={trackingInputs.trackingNumber}
-                      onChange={(e) => setTrackingInputs({ ...trackingInputs, trackingNumber: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
-                      placeholder="e.g. JNT123456789" />
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-foreground mb-1">Courier</label>
-                    <input type="text" value={trackingInputs.courier}
-                      onChange={(e) => setTrackingInputs({ ...trackingInputs, courier: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
-                      placeholder="e.g. JNT, LBC, DHL, Flash Express" />
-                  </div>
-                </div>
-              </div>
-            )}
-
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {allowedNext.map((status) => {
-                const isShippedFromPrev = status === "shipped" && ((!isPaypal && order.status === "approved") || (isPaypal && order.status === "paid"));
-                const needsTracking = isShippedFromPrev && (!trackingInputs.trackingNumber || !trackingInputs.courier);
-                return (
-                  <button
-                    key={status}
-                    type="button"
-                    disabled={updatingId === order.firestoreId || (isShippedFromPrev && needsTracking)}
-                    onClick={() => onStatusChange(order.firestoreId, status)}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold capitalize border transition-all disabled:opacity-50 ${
-                      order.status === status
-                        ? "bg-accent text-white border-accent"
-                        : "bg-background text-foreground border-card-border hover:border-accent/60 hover:text-accent"
-                    }`}
-                    title={isShippedFromPrev && needsTracking ? "Fill tracking number and courier first" : undefined}
-                  >
-                    {isShippedFromPrev ? "Mark as Shipped" : statusLabel(status)}
-                  </button>
-                );
-              })}
+              {allowedNext.map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  disabled={updatingId === order.firestoreId}
+                  onClick={() => onStatusChange(order.firestoreId, status)}
+                  className={`px-3 py-2 rounded-xl text-xs font-semibold capitalize border transition-all disabled:opacity-50 ${
+                    order.status === status
+                      ? "bg-accent text-white border-accent"
+                      : "bg-background text-foreground border-card-border hover:border-accent/60 hover:text-accent"
+                  }`}
+                >
+                  {statusLabel(status)}
+                </button>
+              ))}
             </div>
           </section>
         </div>
@@ -305,7 +240,6 @@ export default function AdminOrdersPage() {
   const [modalOrder, setModalOrder] = useState<FirestoreOrder | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [trackingInputs, setTrackingInputs] = useState({ trackingNumber: "", courier: "" });
 
   useEffect(() => {
     const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
@@ -330,10 +264,6 @@ export default function AdminOrdersPage() {
       const updated = orders.find((o) => o.firestoreId === modalOrder.firestoreId);
       if (updated) {
         setModalOrder(updated);
-        setTrackingInputs({
-          trackingNumber: updated.trackingNumber || "",
-          courier: updated.courier || "",
-        });
       }
     }
   }, [orders]);
@@ -341,7 +271,9 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     let result = orders;
     if (paymentFilter !== "all") {
-      result = result.filter((o) => o.paymentMethod === paymentFilter);
+      result = result.filter((o) =>
+        o.paymentMethod === paymentFilter
+      );
     }
     if (filter !== "all") {
       result = result.filter((o) => o.status === filter);
@@ -350,7 +282,7 @@ export default function AdminOrdersPage() {
   }, [paymentFilter, filter, orders]);
 
   const visibleStatuses = useMemo(() => {
-    if (paymentFilter === "paypal") return paypalStatuses;
+    if (paymentFilter === "paypal" || paymentFilter === "card") return paypalStatuses;
     if (paymentFilter === "cod") return codStatuses;
     return statuses;
   }, [paymentFilter]);
@@ -365,15 +297,16 @@ export default function AdminOrdersPage() {
   }, [paymentFilter, visibleStatuses, filter]);
 
   const paymentCounts = useMemo(() => {
-    const cod = orders.filter((o) => o.paymentMethod !== "paypal").length;
+    const cod = orders.filter((o) => o.paymentMethod === "cod" || !o.paymentMethod).length;
     const paypal = orders.filter((o) => o.paymentMethod === "paypal").length;
-    return { cod, paypal };
+    const card = orders.filter((o) => o.paymentMethod === "card").length;
+    return { cod, paypal, card };
   }, [orders]);
 
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
     setUpdatingId(orderId);
     try {
-      if (newStatus === "approved" || newStatus === "rejected" || newStatus === "paid") {
+      if (newStatus === "paid" || newStatus === "rejected") {
         const token = await getIdToken();
         if (!token) {
           showToast("Authentication required", "error");
@@ -391,84 +324,10 @@ export default function AdminOrdersPage() {
         return;
       }
 
-      const order = orders.find((o) => o.firestoreId === orderId);
-      if (!order) return;
-
-      if (newStatus === "shipped" && (order.status === "approved" || order.status === "paid")) {
-        const trackingNumber = trackingInputs.trackingNumber.trim();
-        const courier = trackingInputs.courier;
-        if (!trackingNumber || !courier) {
-          showToast("Tracking number and courier are required", "error");
-          return;
-        }
-        await updateDoc(doc(db, "orders", orderId), {
-          status: "shipped",
-          trackingNumber,
-          courier,
-          updatedAt: serverTimestamp(),
-        });
-
-        if (order.paymentMethod === "paypal" && order.paypalCaptureId) {
-          try {
-            const { sendPayPalTracking } = await import("@/lib/paypal");
-            await sendPayPalTracking(order.paypalCaptureId, trackingNumber, courier);
-          } catch {
-            console.error("Failed to send tracking to PayPal");
-          }
-        }
-
-        for (const item of order.items) {
-          const productRef = doc(db, "products", item.productId);
-          const productSnap = await getDoc(productRef);
-          if (!productSnap.exists()) continue;
-          const productData = productSnap.data();
-
-          if (item.variant?.id && productData.variants) {
-            const updatedVariants = productData.variants.map(
-              (v: { id?: string; stock?: number }) =>
-                v.id === item.variant!.id
-                  ? { ...v, stock: Math.max(0, (v.stock ?? 0) - item.quantity) }
-                  : v
-            );
-            await updateDoc(productRef, { variants: updatedVariants });
-          } else {
-            const currentStock = productData.stock ?? 0;
-            await updateDoc(productRef, { stock: Math.max(0, currentStock - item.quantity) });
-          }
-        }
-
-        showToast(`Order ${orderId.slice(-8)} marked shipped`, "success");
-        return;
-      }
-
       await updateDoc(doc(db, "orders", orderId), {
         status: newStatus,
         updatedAt: serverTimestamp(),
       });
-
-      if (newStatus === "delivered" && order) {
-        if (order.status !== "shipped") {
-          for (const item of order.items) {
-            const productRef = doc(db, "products", item.productId);
-            const productSnap = await getDoc(productRef);
-            if (!productSnap.exists()) continue;
-            const productData = productSnap.data();
-
-            if (item.variant?.id && productData.variants) {
-              const updatedVariants = productData.variants.map(
-                (v: { id?: string; stock?: number }) =>
-                  v.id === item.variant!.id
-                    ? { ...v, stock: Math.max(0, (v.stock ?? 0) - item.quantity) }
-                    : v
-              );
-              await updateDoc(productRef, { variants: updatedVariants });
-            } else {
-              const currentStock = productData.stock ?? 0;
-              await updateDoc(productRef, { stock: Math.max(0, currentStock - item.quantity) });
-            }
-          }
-        }
-      }
 
       showToast(`Order ${orderId.slice(-8)} marked ${newStatus}`, "success");
     } catch (err) {
@@ -493,7 +352,7 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {(["all", "cod", "paypal"] as PaymentFilter[]).map((pm) => (
+        {(["all", "cod", "paypal", "card"] as PaymentFilter[]).map((pm) => (
           <button
             key={pm}
             type="button"
@@ -504,7 +363,7 @@ export default function AdminOrdersPage() {
                 : "bg-card text-foreground border border-card-border hover:border-accent/50"
             }`}
           >
-            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : `PayPal (${paymentCounts.paypal})`}
+            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : pm === "paypal" ? `PayPal (${paymentCounts.paypal})` : `Card (${paymentCounts.card})`}
           </button>
         ))}
       </div>
@@ -557,13 +416,7 @@ export default function AdminOrdersPage() {
                 <tr
                   key={order.firestoreId}
                   className="hover:bg-primary/5 cursor-pointer"
-                  onClick={() => {
-                    setModalOrder(order);
-                    setTrackingInputs({
-                      trackingNumber: order.trackingNumber || "",
-                      courier: order.courier || "",
-                    });
-                  }}
+                  onClick={() => setModalOrder(order)}
                 >
                   <td className="px-4 py-3 font-medium text-dark">#{order.firestoreId.slice(-8)}</td>
                   <td className="px-4 py-3 text-foreground">
@@ -576,6 +429,9 @@ export default function AdminOrdersPage() {
                     <span className="capitalize">{order.paymentMethod || "cod"}</span>
                     {order.paymentStatus && (
                       <span className="text-xs ml-1">({order.paymentStatus})</span>
+                    )}
+                    {order.cardBrand && (
+                      <span className="text-xs ml-1 text-foreground/70">({order.cardBrand})</span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{formatDate(order.createdAt)}</td>
@@ -597,8 +453,6 @@ export default function AdminOrdersPage() {
           onClose={() => setModalOrder(null)}
           onStatusChange={handleStatusChange}
           updatingId={updatingId}
-          trackingInputs={trackingInputs}
-          setTrackingInputs={setTrackingInputs}
         />
       )}
     </div>

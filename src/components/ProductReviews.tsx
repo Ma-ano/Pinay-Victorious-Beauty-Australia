@@ -19,6 +19,7 @@ interface FirestoreReview {
   author: string;
   rating: number;
   content: string;
+  variantName?: string | null;
   isVerified: boolean;
   createdAt?: Timestamp;
 }
@@ -55,6 +56,7 @@ function mapFirestoreReview(id: string, review: FirestoreReview): Review {
       ? review.createdAt.toDate().toISOString().split("T")[0]
       : new Date().toISOString().split("T")[0],
     isVerified: review.isVerified === true,
+    variantName: review.variantName || undefined,
   };
 }
 
@@ -149,6 +151,11 @@ export default function ProductReviews({ productId, productName }: ProductReview
                         <StarDisplay rating={review.rating} />
                       </div>
                       <span className="text-xs text-foreground">{review.date}</span>
+                      {review.variantName && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-foreground">
+                          {review.variantName}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

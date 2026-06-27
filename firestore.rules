@@ -16,14 +16,10 @@ service cloud.firestore {
       allow create: if request.auth != null &&
         request.auth.uid == request.resource.data.userId;
       allow update: if request.auth != null && request.auth.token.isAdmin == true ||
-        // Customer cancels own pending/approved order
+        // Customer cancels own pending/paid/approved order
         (request.auth.uid == resource.data.userId &&
          request.resource.data.status == "cancelled" &&
-         resource.data.status in ["pending", "approved"]) ||
-        // Customer confirms received on own delivered order
-        (request.auth.uid == resource.data.userId &&
-         resource.data.status == "delivered" &&
-         request.resource.data.status in ["received", "completed"]);
+         resource.data.status in ["pending", "paid", "approved"]);
       allow delete: if false;
     }
 
@@ -42,7 +38,7 @@ service cloud.firestore {
         request.resource.data.rating <= 5 &&
         request.resource.data.isVerified == true &&
         get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.userId == request.auth.uid &&
-        get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.status in ["delivered", "received"];
+        get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.status in ["completed", "approved", "delivered", "received"];
       allow update, delete: if request.auth != null &&
         request.auth.token.isAdmin == true;
     }

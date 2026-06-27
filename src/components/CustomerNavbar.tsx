@@ -115,7 +115,7 @@ export default function CustomerNavbar() {
           <div className="flex items-center justify-between">
             <Link href="/" className="h-14 md:h-20 shrink-0">
               <Image
-                src="/images/PinayVictoriousLogo.jpg"
+                src="/images/PinayVictoriousLogo.png"
                 alt={site.name}
                 width={0}
                 height={0}

@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
     const orderData = orderSnap.data()!;
-    const nextStatus = orderData.paymentMethod === "paypal" ? "paid" : "approved";
+    const nextStatus = orderData.paymentMethod === "paypal" ? "paid" : "completed";
 
     await getAdminDb().collection("orders").doc(orderId).update({
       status: nextStatus,

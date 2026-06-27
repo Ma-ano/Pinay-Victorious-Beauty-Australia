@@ -8,6 +8,7 @@ import { getAllProducts, saveProduct, deleteProduct } from "@/lib/product-store"
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { useToast } from "@/components/Toast";
 import { formatPrice } from "@/lib/format";
+import SearchableSelect from "@/components/SearchableSelect";
 
 function slugify(text: string): string {
   return text
@@ -35,6 +36,7 @@ interface ProductForm {
   name: string;
   slug: string;
   category: string;
+  subcategory: string;
   type: string;
   brand: string;
   price: string;
@@ -57,6 +59,7 @@ function emptyForm(): ProductForm {
     name: "",
     slug: "",
     category: "",
+    subcategory: "",
     type: "",
     brand: "",
     price: "",
@@ -128,6 +131,39 @@ export default function AdminProductsPage() {
     [products, search]
   );
 
+  const excludedCategorySlugs = useMemo(() => new Set(["best-sellers", "new-arrivals", "gift-sets", "sale"]), []);
+
+  const categoryOptions = useMemo(() => {
+    const options: { value: string; label: string }[] = [];
+    for (const cat of categories) {
+      if (excludedCategorySlugs.has(cat.slug)) continue;
+      options.push({ value: cat.slug, label: cat.name });
+    }
+    return options;
+  }, [excludedCategorySlugs]);
+
+  const categoryLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const opt of categoryOptions) {
+      map[opt.value] = opt.label;
+    }
+    return map;
+  }, [categoryOptions]);
+
+  const subcategoryOptions = useMemo(() => {
+    const cat = categories.find((c) => c.slug === form.category);
+    if (!cat) return [];
+    return cat.subcategories.map((sub) => ({ value: sub.slug, label: sub.name }));
+  }, [form.category]);
+
+  const subcategoryLabelMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const opt of subcategoryOptions) {
+      map[opt.value] = opt.label;
+    }
+    return map;
+  }, [subcategoryOptions]);
+
   function startAdd() {
     setForm(emptyForm());
     setEditingId(null);
@@ -139,6 +175,7 @@ export default function AdminProductsPage() {
       name: product.name,
       slug: product.slug,
       category: product.category,
+      subcategory: product.subcategory || "",
       type: product.type,
       brand: product.brand,
       price: product.price.toString(),
@@ -282,6 +319,7 @@ export default function AdminProductsPage() {
         name,
         slug,
         category: form.category,
+        subcategory: form.subcategory || undefined,
         type: form.type,
         brand: form.brand,
         price: effectivePrice,
@@ -395,11 +433,22 @@ export default function AdminProductsPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-foreground mb-1">Category *</label>
-                    <select value={form.category} onChange={(e) => updateField("category", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" required>
-                      <option value="">Select category</option>
-                      {categories.map((c) => (<option key={c.slug} value={c.slug}>{c.name}</option>))}
-                    </select>
+                    <SearchableSelect
+                      value={form.category}
+                      onChange={(val) => { updateField("category", val); updateField("subcategory", ""); }}
+                      options={categoryOptions}
+                      placeholder="Type to search category..."
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Subcategory</label>
+                    <SearchableSelect
+                      value={form.subcategory}
+                      onChange={(val) => updateField("subcategory", val)}
+                      options={subcategoryOptions}
+                      placeholder={form.category ? "Type to search subcategory..." : "Select a category first"}
+                    />
                   </div>
                   <div>
                     <label className="block text-xs text-foreground mb-1">Type *</label>
@@ -656,6 +705,7 @@ export default function AdminProductsPage() {
             <tr>
               <th className="text-left px-4 py-3 font-medium text-dark">Name</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Category</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Subcategory</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Type</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Brand</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Price</th>
@@ -678,7 +728,10 @@ export default function AdminProductsPage() {
                 <tr key={p.id} className="hover:bg-primary/5">
                   <td className="px-4 py-3 font-medium text-dark">{p.name}</td>
                   <td className="px-4 py-3 text-foreground capitalize hidden sm:table-cell">
-                    {p.category}
+                    {categoryLabelMap[p.category] || p.category}
+                  </td>
+                  <td className="px-4 py-3 text-foreground capitalize hidden sm:table-cell">
+                    {p.subcategory ? (subcategoryLabelMap[p.subcategory] || p.subcategory) : "—"}
                   </td>
                   <td className="px-4 py-3 text-foreground capitalize hidden lg:table-cell">
                     {p.type.replace("-", " ")}

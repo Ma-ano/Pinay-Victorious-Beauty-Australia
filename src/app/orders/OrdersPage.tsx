@@ -23,7 +23,7 @@ import ImagePlaceholder from "@/components/ImagePlaceholder";
 import { getAllProducts } from "@/lib/product-store";
 import { formatPrice } from "@/lib/format";
 
-type OrderStatus = "pending" | "approved" | "shipped" | "delivered" | "cancelled" | "rejected" | "received" | "paid" | "completed";
+type OrderStatus = "pending" | "approved" | "paid" | "cancelled" | "rejected" | "completed";
 
 interface OrderItem {
   productId: string;
@@ -52,9 +52,8 @@ interface CustomerOrder {
   total: number;
   paymentStatus?: string;
   status: OrderStatus;
-  trackingNumber?: string;
-  courier?: string;
   fundingSource?: string;
+  cardBrand?: string;
   discount?: number;
   discountCode?: string | null;
   createdAt?: Timestamp;
@@ -68,21 +67,10 @@ interface CustomerReview {
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-700",
   paid: "bg-blue-100 text-blue-700",
-  approved: "bg-blue-100 text-blue-700",
-  shipped: "bg-violet-100 text-violet-700",
-  delivered: "bg-green-100 text-green-700",
-  received: "bg-emerald-100 text-emerald-700",
   completed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
 };
-
-const COURIERS = ["JNT", "LBC", "DHL"];
-
-function getTrackingLink(courier: string, tracking: string): string | null {
-  if (courier === "JNT") return `https://jtexpress.ph/track?code=${encodeURIComponent(tracking)}`;
-  return null;
-}
 
 async function getProductInfoMap(): Promise<{ slug: Map<string, string>; image: Map<string, string> }> {
   try {
@@ -109,8 +97,8 @@ function reviewDocId(orderId: string, productId: string) {
   return `${orderId}_${productId}`.replaceAll("/", "_");
 }
 
-const STEPS_PAYPAL: OrderStatus[] = ["pending", "paid", "shipped", "completed"];
-const STEPS_COD: OrderStatus[] = ["pending", "approved", "shipped", "delivered"];
+const STEPS_PAYPAL: OrderStatus[] = ["pending", "paid", "completed"];
+const STEPS_COD: OrderStatus[] = ["pending", "approved", "completed"];
 
 function OrderProgress({ status, paymentMethod }: { status: OrderStatus; paymentMethod: string }) {
   const steps = paymentMethod === "paypal" ? STEPS_PAYPAL : STEPS_COD;
@@ -164,7 +152,6 @@ export default function OrdersPage() {
   const [productSlugById, setProductSlugById] = useState<Map<string, string>>(new Map());
   const [productImageById, setProductImageById] = useState<Map<string, string>>(new Map());
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
-  const [receiveConfirmId, setReceiveConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     getProductInfoMap().then((info) => {
@@ -255,6 +242,7 @@ export default function OrdersPage() {
         author: user.name,
         rating,
         content: content.trim(),
+        variantName: activeReview.item.variant?.name || null,
         isVerified: true,
         createdAt: serverTimestamp(),
       });
@@ -280,21 +268,6 @@ export default function OrdersPage() {
       showToast("Order cancelled", "success");
     } catch {
       showToast("Failed to cancel order", "error");
-    }
-  }
-
-  async function handleReceive(orderId: string) {
-    try {
-      const order = orders.find((o) => o.firestoreId === orderId);
-      const finalStatus = order?.paymentMethod === "paypal" ? "completed" : "received";
-      await updateDoc(doc(db, "orders", orderId), {
-        status: finalStatus,
-        updatedAt: serverTimestamp(),
-      });
-      setReceiveConfirmId(null);
-      showToast("Order marked as received", "success");
-    } catch {
-      showToast("Failed to update order", "error");
     }
   }
 
@@ -341,9 +314,7 @@ export default function OrdersPage() {
         <div className="space-y-5">
           {orders.map((order) => {
             const isPaypal = order.paymentMethod === "paypal";
-            const canCancel = order.status === "pending" || order.status === "approved" || order.status === "paid";
-            const canReceive = order.status === "delivered";
-            const trackingLink = order.trackingNumber && order.courier ? getTrackingLink(order.courier, order.trackingNumber) : null;
+            const canCancel = order.status === "pending" || order.status === "paid" || order.status === "approved";
 
             return (
               <article key={order.firestoreId} className="bg-card border border-card-border rounded-2xl overflow-hidden">
@@ -351,7 +322,7 @@ export default function OrdersPage() {
                   <div>
                     <p className="text-sm font-semibold text-dark">Order #{order.firestoreId.slice(-8)}</p>
                     <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {order.paymentMethod || "cod"}
-                      {order.fundingSource === "card" && <span> via Debit / Credit Card</span>}
+                      {order.cardBrand && <span> ({order.cardBrand})</span>}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -380,31 +351,6 @@ export default function OrdersPage() {
                         </button>
                       )
                     )}
-                    {canReceive && (
-                      receiveConfirmId === order.firestoreId ? (
-                        <span className="flex items-center gap-1">
-                          <button
-                            onClick={() => handleReceive(order.firestoreId)}
-                            className="text-xs font-medium text-white bg-emerald-500 hover:bg-emerald-600 px-2.5 py-1 rounded-full transition-all"
-                          >
-                            Confirm Received?
-                          </button>
-                          <button
-                            onClick={() => setReceiveConfirmId(null)}
-                            className="text-xs text-foreground hover:text-dark transition-colors"
-                          >
-                            Keep
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setReceiveConfirmId(order.firestoreId)}
-                          className="text-xs font-medium text-emerald-600 hover:text-emerald-700 px-2.5 py-1 rounded-full border border-emerald-200 hover:border-emerald-300 transition-all"
-                        >
-                          {isPaypal ? "Mark as Completed" : "Mark as Received"}
-                        </button>
-                      )
-                    )}
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-700"}`}>
                       {order.status}
                     </span>
@@ -417,23 +363,6 @@ export default function OrdersPage() {
                 <div className="px-5 py-3 bg-background/50 border-b border-primary/5">
                   <OrderProgress status={order.status} paymentMethod={order.paymentMethod || "cod"} />
                 </div>
-
-                {order.trackingNumber && (
-                  <div className="px-5 py-2 bg-accent/5 border-b border-primary/5">
-                    <p className="text-xs text-foreground">
-                      Courier: <span className="font-medium text-dark">{order.courier || "-"}</span>{" "}
-                      | Tracking:{" "}
-                      {trackingLink ? (
-                        <a href={trackingLink} target="_blank" rel="noopener noreferrer"
-                          className="text-accent hover:underline font-medium">
-                          {order.trackingNumber}
-                        </a>
-                      ) : (
-                        <span className="font-medium text-dark">{order.trackingNumber}</span>
-                      )}
-                    </p>
-                  </div>
-                )}
 
                 {order.discount != null && order.discount > 0 && (
                   <div className="px-5 py-2 bg-green-50 border-b border-primary/5">
@@ -469,7 +398,7 @@ export default function OrdersPage() {
                             <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            {(order.status === "received" || order.status === "completed") && (
+                            {(order.status === "completed") && (
                               reviewed ? (
                                 <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">Reviewed</span>
                               ) : (

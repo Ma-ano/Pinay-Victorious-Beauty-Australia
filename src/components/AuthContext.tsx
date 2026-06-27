@@ -209,7 +209,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
-    const cred = await signInWithPopup(auth, googleProvider);
+    let cred;
+    try {
+      cred = await signInWithPopup(auth, googleProvider);
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === "auth/account-exists-with-different-credential") {
+        throw new Error("An account with this email already exists. Please sign in with your email and password instead.");
+      }
+      throw new Error("Google sign-in failed. Please try again.");
+    }
     const fu = cred.user;
     await checkAdminClaim(fu);
     try {
@@ -222,6 +231,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           phone: "",
           photoURL: fu.photoURL || "",
           address: { ...defaultAddress },
+          role: "customer",
+          status: "active",
           createdAt: new Date().toISOString(),
         });
       }

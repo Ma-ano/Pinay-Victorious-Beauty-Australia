@@ -12,13 +12,17 @@ export async function POST(request: Request) {
     const captureData = await capturePayPalOrder(orderID as string);
 
     if (captureData.status === "COMPLETED") {
-      const paymentSource = captureData.payment_source;
-      const fundingSource = paymentSource?.card ? "card" : "paypal";
+      const ps = captureData.payment_source as Record<string, unknown> | undefined;
+      const hasCard = !!ps?.card;
+      const hasPayPal = !!ps?.paypal;
+      const fundingSource = hasPayPal ? "paypal" : hasCard ? "card" : "unknown";
+      const cardBrand = hasCard ? ((ps!.card as Record<string, unknown>)?.brand as string | null ?? null) : null;
 
       return NextResponse.json({
         success: true,
-        captureId: captureData.purchase_units?.[0]?.payments?.captures?.[0]?.id,
+        captureId: (captureData.purchase_units?.[0]?.payments?.captures?.[0] as Record<string, unknown>)?.id as string | undefined,
         fundingSource,
+        cardBrand,
       });
     }
 

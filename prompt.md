@@ -1,2 +1,2 @@
-Push this to 
-https://github.com/Ma-ano/Pinay-Victorious-Beauty-Australia
+Invalid src prop (https://lh3.googleusercontent.com/a/ACg8ocLSCdY4xgGn9SNEIecFz90x0UAZhexDQPIz3ejPYj5HXbvzT6Q=s96-c) on `next/image`, hostname "lh3.googleusercontent.com" is not configured under images in your `next.config.js`
+See more info: https://nextjs.org/docs/messages/next-image-unconfigured-host

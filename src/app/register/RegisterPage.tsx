@@ -117,8 +117,8 @@ export default function RegisterPage() {
     try {
       await loginWithGoogle();
       router.push("/");
-    } catch {
-      setErrors({ form: "Google sign-in failed. Please try again." });
+    } catch (err: unknown) {
+      setErrors({ form: err instanceof Error ? err.message : "Google sign-in failed. Please try again." });
     }
   };
 

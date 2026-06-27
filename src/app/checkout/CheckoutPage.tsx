@@ -16,7 +16,7 @@ import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";
 
-type PaymentMethod = "cod" | "paypal";
+type PaymentMethod = "cod" | "paypal" | "card";
 
 const defaultAddress: Address = {
   street: "",
@@ -105,7 +105,7 @@ export default function CheckoutPage() {
     country: checkoutAddress.country.trim(),
   };
 
-  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string) {
+  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string, cardBrand?: string | null) {
     const orderData: Record<string, unknown> = {
       userId: currentUser.uid,
       customerName: currentUser.name,
@@ -139,6 +139,9 @@ export default function CheckoutPage() {
     }
     if (fundingSource) {
       orderData.fundingSource = fundingSource;
+    }
+    if (cardBrand) {
+      orderData.cardBrand = cardBrand;
     }
 
     const orderRef = doc(db, "orders", `${currentUser.uid}_${Date.now()}`);
@@ -187,7 +190,7 @@ export default function CheckoutPage() {
     }
   }
 
-  async function handlePayPalApprove(data: { orderID: string }) {
+  async function handlePayPalApprove(data: Record<string, unknown>, actions: unknown) {
     setSaving(true);
     try {
       const res = await fetch("/api/payments/paypal/capture", {
@@ -199,7 +202,8 @@ export default function CheckoutPage() {
       if (!res.ok || !result.success) {
         throw new Error(result.error || "Payment capture failed");
       }
-      await createFirestoreOrder(data.orderID, "paid", result.captureId, result.fundingSource);
+
+      await createFirestoreOrder(data.orderID as string, "paid", result.captureId, result.fundingSource, result.cardBrand as string | null | undefined);
       clearCart();
       setPlaced(true);
       showToast("Payment successful! Order placed.", "success");
@@ -356,6 +360,27 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </label>
+
+              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "card" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="card"
+                  checked={paymentMethod === "card"}
+                  onChange={() => setPaymentMethod("card")}
+                  className="accent-accent"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                  <div>
+                    <p className="text-sm font-medium text-dark">Debit or Credit Card</p>
+                    <p className="text-xs text-foreground">Pay securely with your card</p>
+                  </div>
+                </div>
+              </label>
             </div>
           </div>
         </div>
@@ -429,20 +454,34 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {paymentMethod === "paypal" && paypalClientId ? (
+            {paypalClientId && (paymentMethod === "paypal" || paymentMethod === "card") ? (
               <div className="mt-4">
-                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "AUD", enableFunding: "card" }}>
-                  <PayPalButtons
-                    createOrder={handlePayPalCreateOrder}
-                    onApprove={handlePayPalApprove}
-                    disabled={saving}
-                    style={{ layout: "vertical", shape: "rect" }}
-                  />
+                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "AUD" }}>
+                  {paymentMethod === "paypal" && (
+                    <>
+                      <PayPalButtons
+                        fundingSource="paypal"
+                        createOrder={handlePayPalCreateOrder}
+                        onApprove={handlePayPalApprove}
+                        disabled={saving}
+                        style={{ layout: "vertical", shape: "rect" }}
+                      />
+                      <p className="text-xs text-center text-foreground mt-3">Powered by PayPal</p>
+                    </>
+                  )}
+                  {paymentMethod === "card" && (
+                    <PayPalButtons
+                      fundingSource="card"
+                      createOrder={handlePayPalCreateOrder}
+                      onApprove={handlePayPalApprove}
+                      disabled={saving}
+                      style={{ layout: "vertical", shape: "rect" }}
+                    />
+                  )}
                 </PayPalScriptProvider>
                 {paypalError && (
                   <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
                 )}
-                <p className="text-xs text-center text-foreground mt-3">Pay securely via PayPal</p>
               </div>
             ) : (
               <>

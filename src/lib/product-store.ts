@@ -21,6 +21,7 @@ export interface ProductFormData {
   name: string;
   slug: string;
   category: string;
+  subcategory?: string;
   type: string;
   brand: string;
   price: number;
@@ -171,7 +172,7 @@ export async function getProductSoldCount(productId: string): Promise<number> {
   try {
     const q = query(
       collection(db, "orders"),
-      where("status", "==", "delivered")
+      where("status", "in", ["delivered", "completed"])
     );
     const snap = await getDocs(q);
     let count = 0;
