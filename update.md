@@ -1,80 +1,108 @@
-# Update — June 25, 2026
+# Update — June 29, 2026
 
 ## What's New / Fixed
 
-### 1. PayPal Debit / Credit Card Payments
-- "Debit / Credit Card" option at checkout is handled via PayPal (no separate gateway needed)
-- `fundingSource` (`"card"` or `"paypal"`) is extracted from PayPal's capture response via `payment_source`
-- Stored on Firestore orders so the admin panel shows "via Debit / Credit Card" or "via PayPal"
-- Customer orders page also shows the funding source next to the payment method
+### 1. Browser Tab Icon
+- The icon on your browser tab now shows **TitleBarLogo.png** instead of the old default favicon
 
-### 2. Order Summary Stays Light Mode (Always)
-- The Order Summary on checkout is permanently forced to light mode — white background, gray/dark text
-- Unaffected by the site's dark mode toggle
-- All text uses `text-gray-900` / `text-gray-500` / `text-gray-600` instead of theme variables
+### 2. Bundle / Gift Set System
+- Products can now be marked as **"Bundle Set"** with a simple checkbox in the admin form
+- When checked, you can select which products are included in the bundle
+- The bundle price can be set manually, or it auto-calculates from the included products
+- Bundle stock is **automatically calculated** — it shows the lowest stock count among all included items (so if Product A has 32 and Product B has 44, the bundle stock is 32)
+- The "Type" column in the admin products table shows "Bundle" or "Single" so you can see at a glance
 
-### 3. Promo Code Input Text Fixed in Dark Mode
-- Global CSS rule `.dark input { -webkit-text-fill-color: #ffffff }` was overriding promo code input text to white
-- Added inline `style` with explicit `color` and `WebkitTextFillColor: #111827` so it stays black in light + dark mode
+### 3. Smarter Admin Product Form
+- When "Bundle Set" is checked:
+  - **Category** automatically shows "Gift Sets & Bundles" (no need to pick)
+  - **Subcategory** and **Type** are greyed out (not applicable for bundles)
+  - **Pricing & Stock section** is disabled (managed through the bundle builder)
+- When unchecking "Bundle Set", all pricing fields go back to normal
+- **Selling Price** no longer blocks saving a bundle product
+- The **Slug** now updates instantly as you type the product name, and is greyed out since it's auto-generated
 
-### 4. Firestore Rules Updated & Deployed
-- Products: `allow delete` added (was missing before)
-- Orders: status transitions now allow `["received", "completed"]` from `"delivered"`
-- Deployed via `firebase deploy --only firestore`
+### 4. Out-of-Stock Products Hidden from Bundle Picker
+- Products that are out of stock don't appear in the bundle selection list
+- Only in-stock products can be added to a bundle
 
-### 5. Admin Products Page — Better Form & UX
-- **"Pricing" and "Stock & Variants" sections merged** into "Pricing & Stock" with a clear radio toggle ("Simple product" / "Product with options")
-- **Required attributes** added to all 7 fields marked with `*` (name, category, type, selling price, description, detail, ingredients)
-- All 4 price labels/column headers now show **"(AUD)"**
-- Variant price columns widened from 100px → 120px
-- Modal width increased from `max-w-xl` → `max-w-3xl`
-- Price table now displays `originalPrice` for strikethrough (not `salePrice`)
-- `handleSave` uses `effectivePrice` (first variant price) when variants exist
-- Price validation skips main price when variants exist, validates per-variant instead
+### 5. Bundle Display on Product Page
+- Bundle products show an **"Includes"** list with mini images and prices of each included item
+- A green **"All in stock"** or red **"Some out of stock"** badge tells you the bundle's status
+- The **"Add to Cart"** button is disabled with **"Out of Stock"** if any included product is out of stock
 
-### 6. Admin Orders Page — Refined
-- Courier `<select>` dropdown replaced with a plain `<input type="text">` (so any courier name can be entered)
-- Deprecated `COURIERS` constant removed
-- Added `fundingSource` to `FirestoreOrder` interface — displays "via Debit / Credit Card" on the order modal
-- All modal labels/headings changed from `text-dark` → `text-foreground` so they invert properly in dark mode
+### 6. Bundle Badge on Product Cards
+- Bundle products show a **"Bundle Set"** badge on product cards throughout the shop
 
-### 7. Customer Orders Page — Better Tracking
-- Tracking info shown for **any courier name** (not just JNT)
-- When a tracking URL is present, it's rendered as a clickable link
-- Added `fundingSource` to `CustomerOrder` interface
+### 7. Related Products
+- Product pages now show up to **4 related products** from the same category at the bottom
 
-### 8. HomePage Cleanup
-- Removed `PromotionCards` section
-- Removed "On Sale" section
-- Removed `Newsletter` ("Join Our Glow Community")
-- Cleaned up unused `saleProducts` state and `setSaleProducts` calls (fixed a ReferenceError)
+### 8. Navbar Categories Restored & Reorganized
+- The categories dropdown now shows **all 13 categories** including Best Sellers, New Arrivals, Gift Sets & Bundles, and Sale & Promotions
+- Clicking **Sale & Promotions** goes directly to the `/sale` page (not the shop)
+- Clicking **a regular category** filters the shop by that category
+- Navbar shows categories + subcategories only (no product types)
 
-### 9. Bug Fixes
-- **Promotions save bug:** `createdAt: undefined` was being passed to Firestore on updates — fixed with conditional object spread
-- **`deleteImage`:** Now calls `getMetadata` before `deleteObject` to avoid 404 network noise in console
-- **`product-store.ts`:** `deleteProduct` catches `permission-denied` and re-throws as a simple error so the UI can show a helpful toast
+### 9. Shop Page — Category Buttons
+- The 4 meta-categories (Best Sellers, New Arrivals, Gift Sets & Bundles, Sale & Promotions) removed from the shop page filter buttons to avoid duplicate paths
+- Each category click now sets URL params correctly and filters properly
 
-### 10. Checkout Page — Visual Polish
-- Page width expanded from `max-w-4xl` → `max-w-7xl` (matches home/shop pages)
-- Staggered fade-in animations on all sections (heading, shipping, payment, order summary)
-- `shadow-sm` added to all section cards for subtle depth
-- Payment option radio cards now have `hover:border-accent/30` for a subtle highlight on hover
+### 10. Shop Page — Special Category Behaviors
+- **Best Sellers**: Shows ALL products sorted by most sold (descending). User can override sort via the dropdown.
+- **New Arrivals**: Shows only products marked as `isNew`
+- **Gift Sets & Bundles**: Shows ALL products with bundles sorted to the top
+- **Sale**: Only accessible via the navbar `/sale` link (dedicated page)
 
-### 11. New Backend APIs & Infrastructure
-- **PayPal integration:** Server-side `create` and `capture` routes (`src/app/api/payments/paypal/`)
-- **PayPal client library:** `src/lib/paypal.ts` — generates access tokens, creates/captures orders
-- **Rate limiting:** `src/lib/rate-limit.ts` — used by contact form (3 messages/hour/IP)
-- **Admin login API:** `src/app/api/auth/admin-login/` — separate auth endpoint for admins
-- **Create admin API:** `src/app/api/admin/users/create-admin/` — promotes a user to admin
-- **Order approve/reject APIs:** `src/app/api/admin/orders/` — approve and reject with PayPal refund
-- **Debug endpoint:** `src/app/api/debug/check-env/` — checks environment variables
-- **Firebase deployment scripts:** `scripts/deploy-rules.mjs` — deploys Firestore rules via Firebase CLI
-- **Format utility:** `src/lib/format.ts` — centralized `formatPrice()` using `en-AU` locale
+### 11. New Subcategory Filter on Shop Page
+- Added a **subcategory filter row** between the category and type buttons
+- When a specific category is selected, only its subcategories are shown
+- When "All" is selected, all subcategories across all categories are shown (deduplicated)
+- Switching categories automatically resets the subcategory to "All"
+- Three-level filtering: **Category → Subcategory → Type**
 
-### 12. Other Minor Changes
-- `.env.example` cleaned up with clearer PayPal/Firebase/SMTP sections
-- Admin sidebar tweaks, footer adjustments, cart context fixes
-- Various `text-dark` → `text-foreground` replacements across the site for consistent dark mode
+### 12. New Categories Added
+- **Underarm Care** (+ subcategory: Underarm Cream)
+- **Dietary Supplement** (+ subcategories: Capsules ingestible, Coffee Mix, Beauty Drink, Fiber Drink)
+- **Facial Serum** (+ subcategory: Facial Serum)
+- **Face & Body Soap** (+ subcategory: Soap Face & Body)
+- **Body Care** (existing) — added 2 subcategories: Body Capsules (topical), Body Booster / Lotion / Gel-Cream
+
+### 13. New Product Types Added
+- `coffee-mix`, `body-booster`, `sachet-drink-beauty`, `sachet-drink-detox`, `capsule-dietary`
+
+### 14. Cleaner URL Scheme
+- Navbar and category page subcategory links now use `&subcategory=` instead of `&type=`
+- This avoids collision with the product-type filter, making URLs semantically correct
+
+### 15. SEO Improvements
+- Products now auto-generate:
+  - **Meta title** ("Buy [Product Name] Philippines")
+  - **Meta description** (from the first 160 characters of the short description)
+  - **Meta keywords** (product name + relevant tags)
+- Structured data (JSON-LD) is now injected on every product page — this helps Google show rich results with star ratings, prices, and availability
+- **Breadcrumbs** structured data added so Google can display breadcrumb paths in search results
+- Product review **star ratings** are included in the structured data
+- **Sitemap** now includes all category pages for better search engine crawling
+
+### 16. New / Updated Files
+- `src/app/layout.tsx` — Favicon updated to TitleBarLogo.png
+- `src/data/products.ts` — Added bundle & SEO fields to Product type
+- `src/data/categories.ts` — 4 new categories, 2 new Body Care subcategories
+- `src/data/productTypes.ts` — 5 new product types
+- `src/lib/product-store.ts` — Bundle item fetching, SEO auto-generation on save
+- `src/lib/slugify.ts` — New shared slug utility
+- `src/app/admin/(dashboard)/products/AdminProductsPage.tsx` — Bundle builder, smart field behavior, Type column
+- `src/app/shop/ShopPage.tsx` — Brands section removed, subcategory filter row, meta-category filter/sort logic
+- `src/app/shop/[id]/ProductDetailPage.tsx` — Bundle display, stock check, related products
+- `src/components/ProductCard.tsx` — Bundle badge
+- `src/components/StructuredData.tsx` — New JSON-LD structured data component
+- `src/app/category/[slug]/` — New category pages with SEO, updated subcategory links
+- `src/components/CustomerNavbar.tsx` — Categories dropdown shows all 13, sale href → /sale, subcategory links use &subcategory=
+- `src/app/sitemap.ts` — Category pages added to sitemap
+
+### 17. Bug Fixes
+- **Categories button not working**: Navbar categories now properly navigate to `/shop?category=slug` and the shop page reads URL params on mount, so clicking a category actually filters the products
+- **Required field fix:** Selling Price was blocking bundle product creation — fixed so it only requires a price for non-bundle products
+- **Build error fixed:** Missing `selectedBrand` reference after removing brands section
 
 ---
 
@@ -88,11 +116,12 @@ If you see this in the browser console, it's **not a code issue** — browser ad
 ## Technical Notes
 - Build passes with zero errors
 - All existing features (shop, cart, checkout, orders, reviews, wishlist, profile, admin panel) remain functional
-- PayPal sandbox testing requires a separate buyer account (see `paypal-fix.md`)
-- `formatPrice()` uses `en-AU` locale and `"AUD"` currency, outputs `AU$`
-- Firebase deploy: `firebase deploy --only firestore`
-- Firestore rules require admin auth: `request.auth.token.isAdmin == true`
+- Bundle stock is a snapshot at save time — if a product's stock changes later, edit the bundle to refresh
+- Category pages: `/category/skincare`, `/category/body-care`, etc.
+- Bundle products are automatically assigned to the "Gift Sets & Bundles" category
+- Subcategory filter is dynamically computed — shows only relevant subcategories for the selected category
+- Meta-categories (Best Sellers, New Arrivals, Gift Sets) are only accessible from the shop page filter buttons and navbar; Sale is only accessible via the navbar `/sale` link
 
 ---
 
-*Generated from the work session on June 25, 2026*
+*Generated from the work session on June 29, 2026*

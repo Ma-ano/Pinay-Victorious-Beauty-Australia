@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { productTypes } from "@/data/productTypes";
 import { categories } from "@/data/categories";
 import type { Product, ProductImage } from "@/data/products";
-import { getAllProducts, saveProduct, deleteProduct } from "@/lib/product-store";
+import { getAllProducts, getProductsByIds, saveProduct, deleteProduct } from "@/lib/product-store";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { useToast } from "@/components/Toast";
 import { formatPrice } from "@/lib/format";
@@ -52,6 +52,9 @@ interface ProductForm {
   isNew: boolean;
   discount: string;
   stock: string;
+  isBundle: boolean;
+  bundleItems: string[];
+  bundlePrice: string;
 }
 
 function emptyForm(): ProductForm {
@@ -75,6 +78,9 @@ function emptyForm(): ProductForm {
     isNew: false,
     discount: "",
     stock: "",
+    isBundle: false,
+    bundleItems: [],
+    bundlePrice: "",
   };
 }
 
@@ -92,6 +98,27 @@ export default function AdminProductsPage() {
   const [uploadingImage, setUploadingImage] = useState<number | null>(null);
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [bundleSearch, setBundleSearch] = useState("");
+
+  const bundleAutoSum = useMemo(() => {
+    if (form.bundleItems.length === 0) return 0;
+    return products
+      .filter((p) => form.bundleItems.includes(p.id))
+      .reduce((sum, p) => sum + p.price, 0);
+  }, [form.bundleItems, products]);
+
+  const bundleMinStock = useMemo(() => {
+    if (form.bundleItems.length === 0) return 0;
+    const selected = products.filter((p) => form.bundleItems.includes(p.id));
+    if (selected.length === 0) return 0;
+    const stocks = selected.map((p) => {
+      if (p.variants && p.variants.length > 0) {
+        return p.variants.reduce((sum, v) => sum + ((v as { stock?: number }).stock ?? 0), 0);
+      }
+      return p.stock ?? 0;
+    });
+    return Math.min(...stocks);
+  }, [form.bundleItems, products]);
 
   useEffect(() => {
     getAllProducts().then((all) => {
@@ -198,6 +225,9 @@ export default function AdminProductsPage() {
       isNew: product.isNew || false,
       discount: product.discount ? product.discount.toString() : "",
       stock: product.stock?.toString() || "",
+      isBundle: product.isBundle || false,
+      bundleItems: product.bundleItems || [],
+      bundlePrice: product.bundlePrice ? product.bundlePrice.toString() : "",
     });
     setEditingId(product.id);
     setShowForm(true);
@@ -211,7 +241,7 @@ export default function AdminProductsPage() {
   function updateField<K extends keyof ProductForm>(key: K, value: ProductForm[K]) {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      if (key === "name" && !prev.slug) {
+      if (key === "name") {
         next.slug = slugify(value as string);
       }
       return next;
@@ -279,19 +309,21 @@ export default function AdminProductsPage() {
 
     const name = stripHtml(form.name.trim());
     if (!name) { showToast("Product name is required", "error"); return; }
-    if (!form.category) { showToast("Category is required", "error"); return; }
-    if (!form.type) { showToast("Type is required", "error"); return; }
+    if (!form.isBundle && !form.category) { showToast("Category is required", "error"); return; }
+    if (!form.isBundle && !form.type) { showToast("Type is required", "error"); return; }
 
-    const price = parseFloat(form.price);
-    if (form.variants.length > 0) {
-      const invalidVariant = form.variants.find(v => !v.price || parseFloat(v.price) <= 0);
-      if (invalidVariant) {
-        showToast(`Variant "${invalidVariant.name || '(unnamed)'}" must have a price greater than 0`, "error");
+    if (!form.isBundle) {
+      const price = parseFloat(form.price);
+      if (form.variants.length > 0) {
+        const invalidVariant = form.variants.find(v => !v.price || parseFloat(v.price) <= 0);
+        if (invalidVariant) {
+          showToast(`Variant "${invalidVariant.name || '(unnamed)'}" must have a price greater than 0`, "error");
+          return;
+        }
+      } else if (isNaN(price) || price <= 0) {
+        showToast("Price must be greater than 0", "error");
         return;
       }
-    } else if (isNaN(price) || price <= 0) {
-      showToast("Price must be greater than 0", "error");
-      return;
     }
 
     const description = stripHtml(form.description.trim());
@@ -310,19 +342,28 @@ export default function AdminProductsPage() {
     try {
       const slug = form.slug || slugify(name);
 
+      const parsedPrice = form.isBundle ? 0 : parseFloat(form.price);
       const effectivePrice = form.variants.length > 0
         ? (parseFloat(form.variants[0].price) || 0)
-        : price;
+        : (form.isBundle ? 0 : parsedPrice);
       const salePrice = form.isSale && effectivePrice > 0 ? effectivePrice : undefined;
+
+      const isBundle = form.isBundle;
+      const bundleAutoSum = isBundle && form.bundleItems.length > 0
+        ? products.filter((p) => form.bundleItems.includes(p.id)).reduce((sum, p) => sum + p.price, 0)
+        : 0;
+      const finalBundlePrice = isBundle
+        ? (form.bundlePrice ? parseFloat(form.bundlePrice) : bundleAutoSum)
+        : undefined;
 
       const id = await saveProduct(editingId, {
         name,
         slug,
-        category: form.category,
-        subcategory: form.subcategory || undefined,
+        category: isBundle ? "gift-sets" : form.category,
+        subcategory: isBundle ? undefined : (form.subcategory || undefined),
         type: form.type,
         brand: form.brand,
-        price: effectivePrice,
+        price: isBundle ? (finalBundlePrice || 0) : effectivePrice,
         originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : undefined,
         salePrice,
         description,
@@ -341,7 +382,10 @@ export default function AdminProductsPage() {
         isSale: form.isSale,
         isNew: form.isNew,
         discount: form.discount ? parseInt(form.discount) : undefined,
-        stock: form.stock !== "" ? parseInt(form.stock) : undefined,
+        stock: isBundle ? bundleMinStock : (form.stock !== "" ? parseInt(form.stock) : undefined),
+        isBundle,
+        bundleItems: isBundle ? form.bundleItems : [],
+        bundlePrice: finalBundlePrice,
       });
       const all = await getAllProducts();
       setProducts(all);
@@ -426,37 +470,64 @@ export default function AdminProductsPage() {
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs text-foreground mb-1">Slug</label>
-                    <input type="text" value={form.slug} onChange={(e) => updateField("slug", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 font-mono text-xs"
+                    <input type="text" value={form.slug} readOnly
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card/50 text-foreground/60 text-sm font-mono text-xs"
                       placeholder="Auto-generated from name" />
-                    <p className="text-[11px] text-foreground/70 mt-1">URL identifier. Auto-filled from name.</p>
+                    <p className="text-[11px] text-foreground/70 mt-1">Auto-generated from product name</p>
                   </div>
-                  <div>
+                  <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-xs text-foreground mb-1">Category *</label>
-                    <SearchableSelect
-                      value={form.category}
-                      onChange={(val) => { updateField("category", val); updateField("subcategory", ""); }}
-                      options={categoryOptions}
-                      placeholder="Type to search category..."
-                      required
-                    />
+                    {form.isBundle ? (
+                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm text-foreground/60">
+                        Gift Sets &amp; Bundles
+                      </div>
+                    ) : (
+                      <SearchableSelect
+                        value={form.category}
+                        onChange={(val) => { updateField("category", val); updateField("subcategory", ""); }}
+                        options={categoryOptions}
+                        placeholder="Type to search category..."
+                        required
+                      />
+                    )}
+                    {form.isBundle && (
+                      <p className="text-[11px] text-foreground/70 mt-1">Auto-assigned to Gift Sets &amp; Bundles</p>
+                    )}
                   </div>
-                  <div>
+                  <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-xs text-foreground mb-1">Subcategory</label>
-                    <SearchableSelect
-                      value={form.subcategory}
-                      onChange={(val) => updateField("subcategory", val)}
-                      options={subcategoryOptions}
-                      placeholder={form.category ? "Type to search subcategory..." : "Select a category first"}
-                    />
+                    {form.isBundle ? (
+                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm text-foreground/60">
+                        —
+                      </div>
+                    ) : (
+                      <SearchableSelect
+                        value={form.subcategory}
+                        onChange={(val) => updateField("subcategory", val)}
+                        options={subcategoryOptions}
+                        placeholder={form.category ? "Type to search subcategory..." : "Select a category first"}
+                      />
+                    )}
+                    {form.isBundle && (
+                      <p className="text-[11px] text-foreground/70 mt-1">Not applicable for bundle sets</p>
+                    )}
                   </div>
-                  <div>
+                  <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-xs text-foreground mb-1">Type *</label>
-                    <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" required>
-                      <option value="">Select type</option>
-                      {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
-                    </select>
+                    {form.isBundle ? (
+                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm text-foreground/60">
+                        —
+                      </div>
+                    ) : (
+                      <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" required>
+                        <option value="">Select type</option>
+                        {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
+                      </select>
+                    )}
+                    {form.isBundle && (
+                      <p className="text-[11px] text-foreground/70 mt-1">Not applicable for bundle sets</p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-xs text-foreground mb-1">Brand (Optional)</label>
@@ -495,6 +566,106 @@ export default function AdminProductsPage() {
               </div>
 
               <div>
+                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Bundle / Gift Set</h4>
+                <p className="text-[11px] text-foreground/70 mb-3">Mark this product as a bundle or gift set.</p>
+                <label className="flex items-center gap-2 text-sm text-foreground cursor-pointer mb-3">
+                  <input type="checkbox" checked={form.isBundle} onChange={(e) => {
+                    const checked = e.target.checked;
+                    setForm((prev) => ({
+                      ...prev,
+                      isBundle: checked,
+                      bundleItems: checked ? prev.bundleItems : [],
+                      bundlePrice: checked ? prev.bundlePrice : "",
+                      price: checked ? "" : prev.price,
+                      originalPrice: checked ? "" : prev.originalPrice,
+                      stock: checked ? "" : prev.stock,
+                      salePrice: checked ? "" : prev.salePrice,
+                      discount: checked ? "" : prev.discount,
+                      variants: checked ? [] : prev.variants,
+                    }));
+                    if (!checked) setBundleSearch("");
+                  }} className="accent-accent" />
+                  Is Bundle Set
+                </label>
+                {form.isBundle && (
+                  <div className="p-4 rounded-xl border border-card-border bg-[var(--background)] space-y-3">
+                    <div>
+                      <label className="block text-xs text-foreground mb-1">Bundle Price (Optional)</label>
+                      <input type="number" min="0" step="0.01" value={form.bundlePrice}
+                        onChange={(e) => updateField("bundlePrice", e.target.value)}
+                        className="w-full max-w-xs px-4 py-2.5 rounded-xl border border-card-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        placeholder="Leave empty to auto-sum product prices" />
+                      {bundleAutoSum > 0 && (
+                        <p className="text-xs text-foreground/70 mt-1">
+                          {form.bundlePrice
+                            ? `Auto-sum: ${formatPrice(bundleAutoSum)} | Override: ${formatPrice(parseFloat(form.bundlePrice) || 0)}`
+                            : `Auto-sum: ${formatPrice(bundleAutoSum)}`}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-xs text-foreground mb-1">Bundle Stock</label>
+                      <div className="text-sm text-foreground/70 px-1">
+                        {form.bundleItems.length > 0 ? (
+                          <span>{bundleMinStock} <span className="text-[11px]">(minimum of selected products)</span></span>
+                        ) : (
+                          <span className="text-[11px]">Select products to calculate</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-foreground mb-1">Include Products</label>
+                      <input type="text" value={bundleSearch}
+                        onChange={(e) => setBundleSearch(e.target.value)}
+                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        placeholder="Type to search products..." />
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1 border border-card-border rounded-xl p-1">
+                      {products
+                        .filter((p) => {
+                          if (editingId && p.id === editingId) return false;
+                          const hasStock = p.variants && p.variants.length > 0
+                            ? p.variants.some((v) => v.inStock)
+                            : (p.stock ?? 0) > 0;
+                          if (!hasStock) return false;
+                          if (!bundleSearch) return true;
+                          const q = bundleSearch.toLowerCase();
+                          return p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q);
+                        })
+                        .map((p) => {
+                          const selected = form.bundleItems.includes(p.id);
+                          return (
+                            <label key={p.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${
+                              selected ? "bg-accent/10" : "hover:bg-primary/5"
+                            }`}>
+                              <input type="checkbox" checked={selected}
+                                onChange={() => {
+                                  setForm((prev) => ({
+                                    ...prev,
+                                    bundleItems: selected
+                                      ? prev.bundleItems.filter((id) => id !== p.id)
+                                      : [...prev.bundleItems, p.id],
+                                  }));
+                                }}
+                                className="accent-accent shrink-0" />
+                              <span className="text-sm text-dark flex-1 min-w-0 truncate">{p.name}</span>
+                              <span className="text-xs text-foreground shrink-0">{formatPrice(p.price)}</span>
+                            </label>
+                          );
+                        })}
+                      {products.filter((p) => editingId && p.id !== editingId).length === 0 && (
+                        <p className="text-xs text-foreground/60 px-3 py-4 text-center">No products available</p>
+                      )}
+                    </div>
+                    {form.bundleItems.length > 0 && (
+                      <p className="text-xs text-foreground/70">{form.bundleItems.length} product{form.bundleItems.length > 1 ? "s" : ""} selected</p>
+                    )}
+                    <p className="text-[11px] text-foreground/60">Showing only in-stock products</p>
+                  </div>
+                )}
+              </div>
+
+              <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                 <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Pricing &amp; Stock</h4>
                 <p className="text-[11px] text-foreground/70 mb-3">Choose how this product is sold and set its price and stock.</p>
 
@@ -538,7 +709,7 @@ export default function AdminProductsPage() {
                       <label className="block text-xs text-foreground mb-1">Selling Price (AUD) *</label>
                       <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => updateField("price", e.target.value)}
                         className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                        placeholder="0.00" required />
+                        placeholder="0.00" required={!form.isBundle && form.variants.length === 0} />
                     </div>
                     <div>
                       <label className="block text-xs text-foreground mb-1">Original / Compare-at Price (AUD)</label>
@@ -591,6 +762,11 @@ export default function AdminProductsPage() {
                   </div>
                 )}
               </div>
+              {form.isBundle && (
+                <p className="text-xs text-foreground/70 italic">
+                  Pricing is managed through the bundle settings above.
+                </p>
+              )}
 
               <div>
                 <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Description</h4>
@@ -708,6 +884,7 @@ export default function AdminProductsPage() {
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Subcategory</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Type</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Brand</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Type</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Price</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Stock</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Images</th>
@@ -737,6 +914,18 @@ export default function AdminProductsPage() {
                     {p.type.replace("-", " ")}
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{p.brand}</td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      p.isBundle
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-blue-100 text-blue-700"
+                    }`}>
+                      {p.isBundle ? "Bundle" : "Single"}
+                    </span>
+                    {p.isBundle && p.bundleItems && (
+                      <span className="block text-[10px] text-foreground/70 mt-0.5">{p.bundleItems.length} items</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-dark">
                     {p.originalPrice && p.originalPrice > p.price ? (
                       <span>

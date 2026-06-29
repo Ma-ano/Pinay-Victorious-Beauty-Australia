@@ -21,21 +21,21 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const firstImageUrl = data.images?.[0]?.url;
     const images = firstImageUrl ? [{ url: firstImageUrl, width: 800, height: 800 }] : [];
     return {
-      title: data.name,
-      description: data.description,
-      keywords: [data.name, data.category].filter(Boolean).join(", "),
+      title: data.metaTitle || data.name,
+      description: data.metaDescription || data.description,
+      keywords: data.metaKeywords || [data.name, data.category].filter(Boolean).join(", "),
       alternates: { canonical: url },
       openGraph: {
-        title: data.name,
-        description: data.description,
+        title: data.metaTitle || data.name,
+        description: data.metaDescription || data.description,
         url,
         images,
         type: "article",
       },
       twitter: {
         card: "summary_large_image",
-        title: data.name,
-        description: data.description,
+        title: data.metaTitle || data.name,
+        description: data.metaDescription || data.description,
         images: images.map((i) => i.url),
       },
     };

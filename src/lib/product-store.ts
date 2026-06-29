@@ -37,6 +37,12 @@ export interface ProductFormData {
   discount?: number;
   stock?: number;
   variants?: ProductVariant[];
+  isBundle?: boolean;
+  bundleItems?: string[];
+  bundlePrice?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
 }
 
 function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
@@ -105,15 +111,28 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
   return all.find((p) => p.slug === slug) || null;
 }
 
+export async function getProductsByIds(ids: string[]): Promise<Product[]> {
+  if (ids.length === 0) return [];
+  const all = await getAllProducts();
+  const map = new Map(all.map((p) => [p.id, p]));
+  return ids.map((id) => map.get(id)).filter(Boolean) as Product[];
+}
+
 export async function saveProduct(
   id: string | null,
   data: ProductFormData
 ): Promise<string> {
   const productId = id || doc(collection(db, "products")).id;
   const slug = data.slug || slugify(data.name);
+  const metaTitle = data.metaTitle || `Buy ${data.name} Philippines`;
+  const metaDescription = data.metaDescription || data.description.slice(0, 160);
+  const metaKeywords = data.metaKeywords || `${data.name}, buy online philippines, cheap ${data.name}`;
   await setDoc(doc(db, "products", productId), stripUndefined({
     ...data,
     slug,
+    metaTitle,
+    metaDescription,
+    metaKeywords,
     createdAt: id ? undefined : serverTimestamp(),
     updatedAt: serverTimestamp(),
   }));

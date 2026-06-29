@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getAdminDb } from "@/lib/firebase-admin";
 import { site } from "@/data/site";
+import { categories } from "@/data/categories";
 import type { Product } from "@/data/products";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -22,6 +23,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // firebase-admin not available at build time; skip product entries
   }
 
+  const categoryEntries: MetadataRoute.Sitemap = categories.map((cat) => ({
+    url: `${site.url}/category/${cat.slug}`,
+    lastModified: new Date(),
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
   const staticPages: MetadataRoute.Sitemap = [
     { url: site.url, lastModified: new Date(), changeFrequency: "daily", priority: 1 },
     { url: `${site.url}/shop`, lastModified: new Date(), changeFrequency: "daily", priority: 0.9 },
@@ -32,5 +40,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${site.url}/terms`, lastModified: new Date(), changeFrequency: "yearly", priority: 0.3 },
   ];
 
-  return [...staticPages, ...productEntries];
+  return [...staticPages, ...categoryEntries, ...productEntries];
 }

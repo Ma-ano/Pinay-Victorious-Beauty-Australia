@@ -1,13 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
 import { categories } from "@/data/categories";
 import { productTypes } from "@/data/productTypes";
 import { formatPrice } from "@/lib/format";
-import { brands } from "@/data/brands";
+
 
 type Sort = "default" | "price-asc" | "price-desc" | "name";
 type View = "grid" | "list";
@@ -30,10 +31,18 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
     return [];
   });
   const [loading, setLoading] = useState(!hasInitial);
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedType, setSelectedType] = useState("all");
-  const [selectedBrand, setSelectedBrand] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState(
+    searchParams.get("category") || "all"
+  );
+  const [selectedSubcategory, setSelectedSubcategory] = useState(
+    searchParams.get("subcategory") || "all"
+  );
+  const [selectedType, setSelectedType] = useState(
+    searchParams.get("type") || "all"
+  );
+
   const [sort, setSort] = useState<Sort>("default");
   const [view, setView] = useState<View>("grid");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
@@ -68,21 +77,57 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
 
   const maxPrice = Math.max(...products.map((p) => p.originalPrice || p.price), 200);
 
+  const subcategoryOptions = useMemo(() => {
+    if (selectedCategory === "all" || ["best-sellers", "new-arrivals", "gift-sets"].includes(selectedCategory)) {
+      const seen = new Set<string>();
+      return categories.flatMap((c) =>
+        c.subcategories.filter((s) => {
+          if (seen.has(s.slug)) return false;
+          seen.add(s.slug);
+          return true;
+        })
+      );
+    }
+    const cat = categories.find((c) => c.slug === selectedCategory);
+    return cat?.subcategories ?? [];
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    setSelectedSubcategory("all");
+  }, [selectedCategory]);
+
   const filtered = useMemo(() => {
+    const metaCategories = new Set(["best-sellers", "new-arrivals", "gift-sets"]);
+    const isMeta = metaCategories.has(selectedCategory);
+
     const result = products.filter((p) => {
       const matchesSearch =
         p.name.toLowerCase().includes(search.toLowerCase()) ||
         p.category.toLowerCase().includes(search.toLowerCase()) ||
         (p.subcategory || "").toLowerCase().includes(search.toLowerCase());
       const matchesCategory =
-        selectedCategory === "all" || p.category === selectedCategory || p.subcategory === selectedCategory;
+        isMeta ||
+        selectedCategory === "all" ||
+        p.category === selectedCategory;
+      const matchesSubcategory =
+        selectedSubcategory === "all" || p.subcategory === selectedSubcategory;
       const matchesType =
         selectedType === "all" || p.type === selectedType;
-      const matchesBrand =
-        selectedBrand === "all" || p.brand === selectedBrand;
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
-      return matchesSearch && matchesCategory && matchesType && matchesBrand && matchesPrice;
+      if (!(matchesSearch && matchesCategory && matchesSubcategory && matchesType && matchesPrice)) return false;
+      if (selectedCategory === "new-arrivals" && !p.isNew) return false;
+      return true;
     });
+
+    if (selectedCategory === "best-sellers" && sort === "default") {
+      result.sort((a, b) => b.sold - a.sold);
+    } else if (selectedCategory === "gift-sets") {
+      result.sort((a, b) => {
+        if (a.isBundle && !b.isBundle) return -1;
+        if (!a.isBundle && b.isBundle) return 1;
+        return 0;
+      });
+    }
 
     switch (sort) {
       case "price-asc": result.sort((a, b) => a.price - b.price); break;
@@ -90,7 +135,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
       case "name": result.sort((a, b) => a.name.localeCompare(b.name)); break;
     }
     return result;
-  }, [search, selectedCategory, selectedType, selectedBrand, sort, priceRange]);
+  }, [search, selectedCategory, selectedSubcategory, selectedType, sort, priceRange]);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -159,7 +204,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         >
           All
         </button>
-        {categories.map((cat) => (
+        {categories.filter((c) => !["best-sellers", "new-arrivals", "gift-sets", "sale"].includes(c.slug)).map((cat) => (
           <button
             key={cat.slug}
             onClick={() => setSelectedCategory(cat.slug)}
@@ -173,6 +218,34 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
           </button>
         ))}
       </div>
+
+      {subcategoryOptions.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-3">
+          <button
+            onClick={() => setSelectedSubcategory("all")}
+            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
+              selectedSubcategory === "all"
+                ? "bg-accent text-white"
+                : "bg-card text-foreground border border-card-border hover:border-accent/50"
+            }`}
+          >
+            All
+          </button>
+          {subcategoryOptions.map((sub) => (
+            <button
+              key={sub.slug}
+              onClick={() => setSelectedSubcategory(sub.slug)}
+              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${
+                selectedSubcategory === sub.slug
+                  ? "bg-accent text-white"
+                  : "bg-card text-foreground border border-card-border hover:border-accent/50"
+              }`}
+            >
+              {sub.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2 mb-3">
         <button
@@ -200,31 +273,6 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         ))}
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => setSelectedBrand("all")}
-          className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-            selectedBrand === "all"
-              ? "bg-accent text-white"
-              : "bg-card text-foreground border border-card-border hover:border-accent/50"
-          }`}
-        >
-          All Brands
-        </button>
-        {brands.map((brand) => (
-          <button
-            key={brand}
-            onClick={() => setSelectedBrand(brand)}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              selectedBrand === brand
-                ? "bg-accent text-white"
-                : "bg-card text-foreground border border-card-border hover:border-accent/50"
-            }`}
-          >
-            {brand}
-          </button>
-        ))}
-      </div>
 
       <div className="flex items-center gap-4 mb-6">
         <span className="text-xs text-foreground whitespace-nowrap">Price: {formatPrice(priceRange[0])} — {formatPrice(priceRange[1])}</span>

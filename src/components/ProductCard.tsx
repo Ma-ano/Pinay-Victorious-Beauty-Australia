@@ -56,6 +56,11 @@ export default function ProductCard({ product }: { product: Product }) {
               New
             </span>
           )}
+          {product.isBundle && (
+            <span className="absolute top-12 left-3 bg-purple-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
+              Bundle Set
+            </span>
+          )}
 
           <div className="absolute top-3 right-3 z-10">
             <WishlistButton productId={product.id} />

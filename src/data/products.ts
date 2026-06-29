@@ -37,6 +37,12 @@ export interface Product {
   discount?: number;
   stock?: number;
   variants?: ProductVariant[];
+  isBundle?: boolean;
+  bundleItems?: string[];
+  bundlePrice?: number;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
 }
 
 export const products: Product[] = [];

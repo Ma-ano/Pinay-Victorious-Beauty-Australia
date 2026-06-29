@@ -6,6 +6,7 @@ export const productTypes = [
   "soap",
   "capsule-topical",
   "capsule-oral",
+  "capsule-dietary",
   "powder-drink",
   "moisturizer",
   "lipstick",
@@ -16,6 +17,10 @@ export const productTypes = [
   "perfume",
   "perfume-oil",
   "tool",
+  "coffee-mix",
+  "body-booster",
+  "sachet-drink-beauty",
+  "sachet-drink-detox",
 ] as const;
 
 export type ProductType = (typeof productTypes)[number];

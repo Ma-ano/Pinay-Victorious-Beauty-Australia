@@ -40,9 +40,9 @@ export const metadata: Metadata = {
     googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 },
   },
   icons: {
-    icon: "/favicon.ico",
-    shortcut: "/favicon.ico",
-    apple: "/apple-touch-icon.png",
+    icon: "/images/TitleBarLogo.png",
+    shortcut: "/images/TitleBarLogo.png",
+    apple: "/images/TitleBarLogo.png",
   },
 };
 

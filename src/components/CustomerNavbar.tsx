@@ -18,7 +18,7 @@ import ImagePlaceholder from "./ImagePlaceholder";
 
 const categoryLinks = categories.map((c) => ({
   label: c.name,
-  href: `/shop?category=${c.slug}`,
+  href: c.slug === "sale" ? "/sale" : `/shop?category=${c.slug}`,
   slug: c.slug,
   subcategories: c.subcategories,
 }));
@@ -267,7 +267,7 @@ export default function CustomerNavbar() {
                                           {cat.subcategories.map((sub) => (
                                             <Link
                                               key={sub.slug}
-                                              href={`/shop?category=${cat.slug}&type=${sub.slug}`}
+                                              href={`/shop?category=${cat.slug}&subcategory=${sub.slug}`}
                                               onClick={() => setCatOpen(false)}
                                               className="block pl-7 text-sm text-foreground hover:text-accent transition-colors"
                                             >

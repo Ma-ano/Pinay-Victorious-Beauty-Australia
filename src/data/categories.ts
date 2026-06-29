@@ -59,6 +59,8 @@ export const categories: Category[] = [
       { name: "Body Wash", slug: "body-wash" },
       { name: "Whitening Lotion", slug: "whitening-lotion" },
       { name: "Hand & Foot Care", slug: "hand-foot-care" },
+      { name: "Body Capsules (topical)", slug: "body-capsules-topical" },
+      { name: "Body Booster / Lotion / Gel-Cream", slug: "body-booster" },
     ],
   },
   {
@@ -144,6 +146,49 @@ export const categories: Category[] = [
   },
   {
     id: "10",
+    name: "Underarm Care",
+    slug: "underarm-care",
+    imageUrl: "",
+    description: "Underarm creams and care products",
+    subcategories: [
+      { name: "Underarm Cream", slug: "underarm-cream" },
+    ],
+  },
+  {
+    id: "11",
+    name: "Dietary Supplement",
+    slug: "dietary-supplement",
+    imageUrl: "",
+    description: "Capsules, coffee mixes, beauty drinks, fiber drinks & more",
+    subcategories: [
+      { name: "Capsules (ingestible supplement)", slug: "capsules-ingestible" },
+      { name: "Coffee Mix Supplement", slug: "coffee-mix-supplement" },
+      { name: "Beauty Drink Supplement", slug: "beauty-drink-supplement" },
+      { name: "Fiber Drink Supplement", slug: "fiber-drink-supplement" },
+    ],
+  },
+  {
+    id: "12",
+    name: "Facial Serum",
+    slug: "facial-serum",
+    imageUrl: "",
+    description: "Serums for radiant and healthy skin",
+    subcategories: [
+      { name: "Facial Serum", slug: "facial-serum" },
+    ],
+  },
+  {
+    id: "13",
+    name: "Face & Body Soap",
+    slug: "face-body-soap",
+    imageUrl: "",
+    description: "Soap bars and cleansers for face and body",
+    subcategories: [
+      { name: "Soap (Face & Body)", slug: "soap-face-body" },
+    ],
+  },
+  {
+    id: "14",
     name: "Best Sellers",
     slug: "best-sellers",
 
@@ -152,7 +197,7 @@ export const categories: Category[] = [
     subcategories: [],
   },
   {
-    id: "11",
+    id: "15",
     name: "New Arrivals",
     slug: "new-arrivals",
 
@@ -161,7 +206,7 @@ export const categories: Category[] = [
     subcategories: [],
   },
   {
-    id: "12",
+    id: "16",
     name: "Gift Sets & Bundles",
     slug: "gift-sets",
 
@@ -170,7 +215,7 @@ export const categories: Category[] = [
     subcategories: [],
   },
   {
-    id: "13",
+    id: "17",
     name: "Sale & Promotions",
     slug: "sale",
 
