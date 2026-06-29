@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { categories } from "@/data/categories";
 import { getSettings, saveSettings, type SiteSettings, type FeaturedBrandConfig } from "@/lib/settings-store";
 import { uploadImage } from "@/lib/storage";
@@ -19,6 +19,7 @@ export default function AdminSettingsPage() {
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const initialRef = useRef("");
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -27,9 +28,15 @@ export default function AdminSettingsPage() {
       setSaleBannerTitle(s.saleBannerTitle || "");
       setSaleBannerSubtitle(s.saleBannerSubtitle || "");
       setSaleBannerDiscount(s.saleBannerDiscount || "");
+      initialRef.current = JSON.stringify({ brands: s.featuredBrands, categoryImages: s.categoryImages || {}, saleBannerTitle: s.saleBannerTitle || "", saleBannerSubtitle: s.saleBannerSubtitle || "", saleBannerDiscount: s.saleBannerDiscount || "" });
       setLoading(false);
     });
   }, []);
+
+  const hasChanges = useMemo(() => {
+    const current = JSON.stringify({ brands, categoryImages, saleBannerTitle, saleBannerSubtitle, saleBannerDiscount });
+    return current !== initialRef.current;
+  }, [brands, categoryImages, saleBannerTitle, saleBannerSubtitle, saleBannerDiscount]);
 
   function updateBrand(index: number, field: keyof FeaturedBrandConfig, value: string) {
     setBrands((prev) => {
@@ -83,6 +90,7 @@ export default function AdminSettingsPage() {
         saleBannerDiscount,
       };
       await saveSettings(data);
+      initialRef.current = JSON.stringify({ brands, categoryImages: cleaned, saleBannerTitle, saleBannerSubtitle, saleBannerDiscount });
       showToast("Settings saved", "success");
     } catch {
       showToast("Failed to save settings", "error");
@@ -100,115 +108,182 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <h1 className="text-2xl font-bold text-dark mb-1">Site Settings</h1>
       <p className="text-sm text-foreground mb-8">Customize your storefront appearance.</p>
 
-      <div className="space-y-6 mb-6">
-        <h2 className="font-semibold text-dark text-lg">Featured Brand Slides</h2>
-        <p className="text-xs text-foreground -mt-4">
-          Configure up to 3 brand slides displayed on the homepage hero banner.
-          Recommended image resolution: <strong>1600×900px (16:9)</strong> for best quality.
-        </p>
+      <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-6 mb-6">
+        <div className="lg:col-span-2 space-y-6">
 
-        {brands.map((brand, i) => (
-          <div key={i} className="bg-card rounded-2xl border border-card-border p-6 space-y-4">
-            <h3 className="font-semibold text-dark text-sm flex items-center gap-2">
-              <span className="w-6 h-6 rounded-full bg-accent/15 text-accent text-xs flex items-center justify-center font-bold">
-                {i + 1}
-              </span>
-              Slide {i + 1}
-            </h3>
+          <h2 className="font-semibold text-dark text-lg">Featured Brand Slides</h2>
+          <p className="text-xs text-foreground -mt-4">
+            Configure up to 3 brand slides displayed on the homepage hero banner.
+            Recommended image resolution: <strong>1600×900px (16:9)</strong> for best quality.
+          </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs text-foreground mb-1">Brand Name</label>
-                  <input
-                    type="text"
-                    value={brand.brand}
-                    onChange={(e) => updateBrand(i, "brand", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="e.g. COSRX"
-                  />
-                  <p className="text-[11px] text-foreground/60 mt-0.5">The brand name shown above the slide title.</p>
+          {brands.map((brand, i) => (
+            <div key={i} className="bg-card rounded-2xl border border-card-border p-6 space-y-4">
+              <h3 className="font-semibold text-dark text-sm flex items-center gap-2">
+                <span className="w-6 h-6 rounded-full bg-accent/15 text-accent text-xs flex items-center justify-center font-bold">
+                  {i + 1}
+                </span>
+                Slide {i + 1}
+              </h3>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Brand Name</label>
+                    <input
+                      type="text"
+                      value={brand.brand}
+                      onChange={(e) => updateBrand(i, "brand", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      placeholder="e.g. COSRX"
+                    />
+                    <p className="text-[11px] text-foreground/60 mt-0.5">The brand name shown above the slide title.</p>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-foreground mb-1">Title</label>
+                    <input
+                      type="text"
+                      value={brand.title}
+                      onChange={(e) => updateBrand(i, "title", e.target.value)}
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      placeholder="Headline for the slide"
+                    />
+                    <p className="text-[11px] text-foreground/60 mt-0.5">The big headline customers see on the homepage banner.</p>
+                  </div>
                 </div>
+
                 <div>
-                  <label className="block text-xs text-foreground mb-1">Title</label>
-                  <input
-                    type="text"
-                    value={brand.title}
-                    onChange={(e) => updateBrand(i, "title", e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-                    placeholder="Headline for the slide"
+                  <label className="block text-xs text-foreground mb-1">Description</label>
+                  <textarea
+                    rows={2}
+                    value={brand.description}
+                    onChange={(e) => updateBrand(i, "description", e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
+                    placeholder="Brief description for the slide"
                   />
-                  <p className="text-[11px] text-foreground/60 mt-0.5">The big headline customers see on the homepage banner.</p>
+                  <p className="text-[11px] text-foreground/60 mt-0.5">A short sentence explaining what this slide is about.</p>
                 </div>
-              </div>
 
               <div>
-                <label className="block text-xs text-foreground mb-1">Description</label>
-                <textarea
-                  rows={2}
-                  value={brand.description}
-                  onChange={(e) => updateBrand(i, "description", e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
-                  placeholder="Brief description for the slide"
-                />
-                <p className="text-[11px] text-foreground/60 mt-0.5">A short sentence explaining what this slide is about.</p>
-              </div>
-
-            <div>
-              <label className="block text-xs text-foreground mb-1">Background Image</label>
-              <p className="text-[11px] text-foreground mb-2">
-                Recommended resolution: <strong>1600×900px</strong> (16:9 landscape). Max file size: 2MB.
-              </p>
-              <div className="flex gap-2 items-start">
-                <div className="flex-1 space-y-2">
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={uploading === `brand-${i}`}
-                      onClick={() => fileInputRefs.current[`brand-${i}`]?.click()}
-                      className="px-4 py-2 rounded-xl bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors disabled:opacity-50"
-                    >
-                      {uploading === `brand-${i}` ? "Uploading..." : "Upload Image"}
-                    </button>
-                    {brand.image && (
+                <label className="block text-xs text-foreground mb-1">Background Image</label>
+                <p className="text-[11px] text-foreground mb-2">
+                  Recommended resolution: <strong>1600×900px</strong> (16:9 landscape). Max file size: 2MB.
+                </p>
+                <div className="flex gap-2 items-start">
+                  <div className="flex-1 space-y-2">
+                    <div className="flex gap-2">
                       <button
                         type="button"
-                        onClick={() => updateBrand(i, "image", "")}
-                        className="px-4 py-2 rounded-xl bg-red-50 text-red-500 text-sm font-medium hover:bg-red-100 transition-colors"
+                        disabled={uploading === `brand-${i}`}
+                        onClick={() => fileInputRefs.current[`brand-${i}`]?.click()}
+                        className="px-4 py-2 rounded-xl bg-accent/10 text-accent text-sm font-medium hover:bg-accent/20 transition-colors disabled:opacity-50"
                       >
-                        Clear
+                        {uploading === `brand-${i}` ? "Uploading..." : "Upload Image"}
                       </button>
-                    )}
-                  </div>
-                  <input
-                    ref={(el) => { fileInputRefs.current[`brand-${i}`] = el; }}
-                    type="file"
-                    accept=".jpg,.jpeg,.png"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleBrandUpload(i, file);
-                      e.target.value = "";
-                    }}
-                  />
-                </div>
-                {brand.image && (
-                  <div className="w-28 h-20 rounded-xl overflow-hidden shrink-0 bg-primary/10 border border-card-border">
-                    <img
-                      src={brand.image}
-                      alt=""
-                      className="w-full h-full object-cover"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      {brand.image && (
+                        <button
+                          type="button"
+                          onClick={() => updateBrand(i, "image", "")}
+                          className="px-4 py-2 rounded-xl bg-red-50 text-red-500 text-sm font-medium hover:bg-red-100 transition-colors"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      ref={(el) => { fileInputRefs.current[`brand-${i}`] = el; }}
+                      type="file"
+                      accept=".jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleBrandUpload(i, file);
+                        e.target.value = "";
+                      }}
                     />
                   </div>
-                )}
+                  {brand.image && (
+                    <div className="w-28 h-20 rounded-xl overflow-hidden shrink-0 bg-primary/10 border border-card-border">
+                      <img
+                        src={brand.image}
+                        alt=""
+                        className="w-full h-full object-cover"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
+          ))}
+        </div>
+
+        <div className="bg-card rounded-2xl border border-card-border p-5 space-y-4 h-full">
+          <div>
+            <h2 className="font-semibold text-dark text-sm">Category Images</h2>
+            <p className="text-[11px] text-foreground/80 mt-0.5">
+              Upload images for the homepage category section. 400×400px recommended.
+            </p>
           </div>
-        ))}
+          <div className="overflow-y-auto space-y-3 pr-1" style={{ maxHeight: "calc(100% - 60px)" }}>
+            {categories.map((cat) => {
+              const imgUrl = categoryImages[cat.slug] || "";
+              const isUploading = uploading === cat.slug;
+              return (
+                <div key={cat.slug} className="space-y-1.5">
+                  <label className="block text-[11px] font-medium text-dark">{cat.name}</label>
+                  <div className="flex gap-2 items-start">
+                    <div className="flex-1 space-y-1">
+                      <div className="flex gap-1.5">
+                        <button
+                          type="button"
+                          disabled={isUploading}
+                          onClick={() => fileInputRefs.current[cat.slug]?.click()}
+                          className="px-2.5 py-1.5 rounded-lg bg-accent/10 text-accent text-[11px] font-medium hover:bg-accent/20 transition-colors disabled:opacity-50"
+                        >
+                          {isUploading ? "..." : "Upload"}
+                        </button>
+                        {imgUrl && (
+                          <button
+                            type="button"
+                            onClick={() => setCategoryImages((prev) => ({ ...prev, [cat.slug]: "" }))}
+                            className="px-2 py-1.5 rounded-lg bg-red-50 text-red-500 text-[11px] font-medium hover:bg-red-100 transition-colors"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        ref={(el) => { fileInputRefs.current[cat.slug] = el; }}
+                        type="file"
+                        accept=".jpg,.jpeg,.png"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleCategoryUpload(cat.slug, file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
+                    {imgUrl && (
+                      <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-primary/10 border border-card-border">
+                        <img
+                          src={imgUrl}
+                          alt={cat.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       <div className="bg-card rounded-2xl border border-card-border p-6 space-y-4 mb-6">
@@ -241,75 +316,14 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="bg-card rounded-2xl border border-card-border p-6 space-y-6 mb-6">
-        <h2 className="font-semibold text-dark text-sm">Category Images</h2>
-        <p className="text-xs text-foreground -mt-4">
-          Upload an image for each category displayed on the homepage.
-          Recommended resolution: <strong>400×400px</strong> (1:1 square).
-        </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {categories.map((cat) => {
-            const imgUrl = categoryImages[cat.slug] || "";
-            const isUploading = uploading === cat.slug;
-            return (
-              <div key={cat.slug} className="space-y-2">
-                <label className="block text-xs font-medium text-dark">{cat.name}</label>
-                <p className="text-[11px] text-foreground/60 -mt-1">This image appears on the homepage in the "Shop by Category" section.</p>
-                <div className="flex gap-2 items-start">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        disabled={isUploading}
-                        onClick={() => fileInputRefs.current[cat.slug]?.click()}
-                        className="px-3 py-2 rounded-xl bg-accent/10 text-accent text-xs font-medium hover:bg-accent/20 transition-colors disabled:opacity-50"
-                      >
-                        {isUploading ? "Uploading..." : "Upload Image"}
-                      </button>
-                      {imgUrl && (
-                        <button
-                          type="button"
-                          onClick={() => setCategoryImages((prev) => ({ ...prev, [cat.slug]: "" }))}
-                          className="px-3 py-2 rounded-xl bg-red-50 text-red-500 text-xs font-medium hover:bg-red-100 transition-colors"
-                        >
-                          Clear
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      ref={(el) => { fileInputRefs.current[cat.slug] = el; }}
-                      type="file"
-                      accept=".jpg,.jpeg,.png"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleCategoryUpload(cat.slug, file);
-                        e.target.value = "";
-                      }}
-                    />
-                  </div>
-                  {imgUrl && (
-                    <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 bg-primary/10 border border-card-border">
-                      <img
-                        src={imgUrl}
-                        alt={cat.name}
-                        className="w-full h-full object-cover"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
       <button
         onClick={handleSave}
-        disabled={saving}
-        className="px-6 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/80 transition-colors disabled:opacity-50"
+        disabled={!hasChanges || saving}
+        className={`px-6 py-2.5 rounded-xl text-sm font-medium transition-colors ${
+          hasChanges
+            ? "bg-accent text-white hover:bg-accent/80"
+            : "bg-primary/10 text-foreground cursor-not-allowed"
+        }`}
       >
         {saving ? "Saving..." : "Save Settings"}
       </button>

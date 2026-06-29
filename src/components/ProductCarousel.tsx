@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductCard from "./ProductCard";
 import type { Product } from "@/data/products";
@@ -28,11 +28,24 @@ export default function ProductCarousel({ products, title, description }: Props)
 
   if (total === 0) return null;
 
-  const prev = () => setCurrent((c) => Math.max(0, c - 1));
-  const next = () => setCurrent((c) => Math.min(total - 1, c + 1));
+  const hoverRef = useRef(false);
+
+  useEffect(() => {
+    if (total <= 1) return;
+    const interval = setInterval(() => {
+      if (!hoverRef.current) setCurrent((c) => (c + 1) % total);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [total]);
+
+  const prev = () => setCurrent((c) => (c - 1 + total) % total);
+  const next = () => setCurrent((c) => (c + 1) % total);
 
   return (
-    <section>
+    <section
+      onMouseEnter={() => { hoverRef.current = true; }}
+      onMouseLeave={() => { hoverRef.current = false; }}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-end justify-between mb-8">
           <div>
@@ -43,8 +56,7 @@ export default function ProductCarousel({ products, title, description }: Props)
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={prev}
-              disabled={current === 0}
-              className="p-2 rounded-xl border border-card-border bg-card text-foreground hover:text-accent hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              className="p-2 rounded-xl border border-card-border bg-card text-foreground hover:text-accent hover:border-accent/50 transition-all"
               aria-label="Previous slide"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -53,8 +65,7 @@ export default function ProductCarousel({ products, title, description }: Props)
             </button>
             <button
               onClick={next}
-              disabled={current === total - 1}
-              className="p-2 rounded-xl border border-card-border bg-card text-foreground hover:text-accent hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+              className="p-2 rounded-xl border border-card-border bg-card text-foreground hover:text-accent hover:border-accent/50 transition-all"
               aria-label="Next slide"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

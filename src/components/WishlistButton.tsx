@@ -18,10 +18,11 @@ function toggleWishlist(id: string): boolean {
     ? current.filter((x) => x !== id)
     : [...current, id];
   localStorage.setItem("wishlist", JSON.stringify(next));
+  window.dispatchEvent(new Event("storage"));
   return next.includes(id);
 }
 
-export default function WishlistButton({ productId }: { productId: string }) {
+export default function WishlistButton({ productId, className = "" }: { productId: string; className?: string }) {
   const { showToast } = useToast();
   const [wishlisted, setWishlisted] = useState(false);
 
@@ -43,8 +44,8 @@ export default function WishlistButton({ productId }: { productId: string }) {
       className={`p-1.5 rounded-full transition-all ${
         wishlisted
           ? "text-red-500 scale-110"
-          : "text-gray-900 dark:text-white hover:text-red-500"
-      }`}
+          : "text-black dark:text-white hover:text-red-500"
+      } ${className}`}
       aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}
     >
       <svg

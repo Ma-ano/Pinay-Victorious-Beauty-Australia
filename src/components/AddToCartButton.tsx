@@ -6,7 +6,7 @@ import { useToast } from "./Toast";
 import { formatPrice } from "@/lib/format";
 import type { Product, ProductVariant } from "@/data/products";
 
-export default function AddToCartButton({ product, selectedVariant }: { product: Product; selectedVariant?: ProductVariant }) {
+export default function AddToCartButton({ product, selectedVariant, className = "" }: { product: Product; selectedVariant?: ProductVariant; className?: string }) {
   const { addItem } = useCart();
   const { showToast } = useToast();
   const label = selectedVariant ? selectedVariant.name : product.name;
@@ -28,7 +28,7 @@ export default function AddToCartButton({ product, selectedVariant }: { product:
         addItem(product, selectedVariant);
         showToast(`${label} added to cart`);
       }}
-      className={`w-full py-3.5 rounded-xl font-medium transition-all ${
+      className={`${className || "w-full"} py-3.5 rounded-xl font-medium transition-all ${
         outOfStock
           ? "bg-primary/10 text-foreground cursor-not-allowed"
           : "bg-secondary text-dark dark:text-gray-900 hover:bg-secondary/80 hover:shadow-lg hover:shadow-secondary/25"

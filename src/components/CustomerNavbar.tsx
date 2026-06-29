@@ -123,7 +123,7 @@ export default function CustomerNavbar() {
                 sizes="160px"
               />
             </Link>
-                <div className="hidden md:flex items-center gap-1">
+                <div className="hidden lg:flex items-center gap-0">
                   <div className="relative" ref={searchWrapperRef}>
                     <button
                       onClick={() => setSearchOpen(true)}
@@ -226,106 +226,106 @@ export default function CustomerNavbar() {
                       )}
                     </AnimatePresence>
                   </div>
-                  {navLinks.map((link) => {
-                    if (link.label === "Categories") {
-                        return (
-                        <div key={link.label} ref={catRef} className="relative">
-                          <button
-                            onClick={() => setCatOpen(!catOpen)}
-                            className={`flex items-center gap-1 px-4 py-2 text-sm transition-colors rounded-lg ${
-                              catOpen || pathname.startsWith("/shop")
-                                ? "text-accent"
-                                : "text-foreground hover:text-accent hover:bg-primary/10"
-                            }`}
-                          >
-                            Categories
-                            <svg className={`w-3.5 h-3.5 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                            </svg>
-                          </button>
-                          <AnimatePresence>
-                            {catOpen && (
-                              <motion.div key="categories-dropdown"
-                                initial={{ opacity: 0, y: 6 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                exit={{ opacity: 0, y: 6 }}
-                                transition={{ duration: 0.15 }}
-                                className="absolute top-full right-0 mt-1 w-195 bg-card rounded-xl p-6 shadow-xl"
-                              >
-                                <div className="grid grid-cols-3 gap-x-6 gap-y-4">
-                                  {categoryLinks.filter(c => c.subcategories.length > 0).map((cat) => (
-                                    <div key={cat.href}>
-                                      <Link
-                                        href={cat.href}
-                                        onClick={() => setCatOpen(false)}
-                                        className="inline-flex items-center gap-1.5 text-[15px] font-semibold text-dark hover:text-accent transition-colors mb-1.5"
-                                      >
-                                        {cat.label}
-                                      </Link>
-                                      {cat.subcategories.length > 0 && (
-                                        <div className="space-y-0.5">
-                                          {cat.subcategories.map((sub) => (
-                                            <Link
-                                              key={sub.slug}
-                                              href={`/shop?category=${cat.slug}&subcategory=${sub.slug}`}
-                                              onClick={() => setCatOpen(false)}
-                                              className="block pl-7 text-sm text-foreground hover:text-accent transition-colors"
-                                            >
-                                              {sub.name}
-                                            </Link>
-                                          ))}
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-primary/10 flex flex-wrap gap-2.5">
-                                  {categoryLinks.filter(c => c.subcategories.length === 0).map((cat) => (
-                                    <Link
-                                      key={cat.href}
-                                      href={cat.href}
-                                      onClick={() => setCatOpen(false)}
-                                      className="inline-flex items-center gap-1 px-4 py-2 text-sm text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
-                                    >
-                                      {cat.label}
-                                    </Link>
-                                  ))}
-                                </div>
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
-                      );
-                    }
-                    const isActive = pathname === link.href;
-                    return (
-                      <Link
-                        key={link.label}
-                        href={link.href}
-                        className={`relative px-4 py-2 text-sm transition-colors rounded-lg ${
-                          isActive
+                  {navLinks.filter(l => l.label === "Categories").map((link) => (
+                    <div key={link.label} ref={catRef} className="relative">
+                      <button
+                        onClick={() => setCatOpen(!catOpen)}
+                        className={`flex items-center gap-1 px-1.5 sm:px-2 lg:px-3 xl:px-4 py-2 text-sm transition-colors rounded-lg ${
+                          catOpen || pathname.startsWith("/shop")
                             ? "text-accent"
                             : "text-foreground hover:text-accent hover:bg-primary/10"
                         }`}
                       >
-                        {link.label}
-                        {isActive && (
-                          <motion.span
-                            layoutId="nav-active"
-                            className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full"
-                          />
+                        Categories
+                        <svg className={`w-3.5 h-3.5 transition-transform ${catOpen ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      <AnimatePresence>
+                        {catOpen && (
+                          <motion.div key="categories-dropdown"
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 6 }}
+                            transition={{ duration: 0.15 }}
+                            className="absolute top-full left-0 mt-1 min-w-[220px] max-w-[90vw] sm:min-w-[400px] lg:min-w-[500px] xl:min-w-[600px] max-h-[70vh] overflow-y-auto bg-card rounded-xl p-4 shadow-xl"
+                          >
+                            <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3">
+                              {categoryLinks.filter(c => c.subcategories.length > 0).map((cat) => (
+                                <div key={cat.href}>
+                                  <Link
+                                    href={cat.href}
+                                    onClick={() => setCatOpen(false)}
+                                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-dark hover:text-accent transition-colors mb-1"
+                                  >
+                                    {cat.label}
+                                  </Link>
+                                  {cat.subcategories.length > 0 && (
+                                    <div className="space-y-0.5">
+                                      {cat.subcategories.map((sub) => (
+                                        <Link
+                                          key={sub.slug}
+                                          href={`/shop?category=${cat.slug}&subcategory=${sub.slug}`}
+                                          onClick={() => setCatOpen(false)}
+                                          className="block pl-4 text-sm text-foreground hover:text-accent transition-colors"
+                                        >
+                                          {sub.name}
+                                        </Link>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-primary/10 flex flex-wrap gap-1.5">
+                              {categoryLinks.filter(c => c.subcategories.length === 0).map((cat) => (
+                                <Link
+                                  key={cat.href}
+                                  href={cat.href}
+                                  onClick={() => setCatOpen(false)}
+                                  className="inline-flex items-center gap-1 px-3 py-1.5 text-sm text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
+                                >
+                                  {cat.label}
+                                </Link>
+                              ))}
+                            </div>
+                          </motion.div>
                         )}
+                      </AnimatePresence>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-0 overflow-x-auto flex-nowrap [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+                    {navLinks.filter(l => l.label !== "Categories").map((link) => {
+                      const isActive = pathname === link.href;
+                      return (
+                        <Link
+                          key={link.label}
+                          href={link.href}
+                          className={`relative px-1.5 sm:px-2 lg:px-3 xl:px-4 py-2 text-sm transition-colors rounded-lg ${
+                            isActive
+                              ? "text-accent"
+                              : "text-foreground hover:text-accent hover:bg-primary/10"
+                          }`}
+                        >
+                          {link.label}
+                          {isActive && (
+                            <motion.span
+                              layoutId="nav-active"
+                              className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full"
+                            />
+                          )}
+                        </Link>
+                      );
+                    })}
+                    {isAdmin && (
+                      <Link
+                        href="/admin"
+                        className={`relative px-1.5 sm:px-2 lg:px-3 xl:px-4 py-2 text-sm transition-colors rounded-lg text-foreground hover:text-accent hover:bg-primary/10`}
+                      >
+                        Admin
                       </Link>
-                    );
-                  })}
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className={`relative px-4 py-2 text-sm transition-colors rounded-lg text-foreground hover:text-accent hover:bg-primary/10`}
-                    >
-                      Admin
-                    </Link>
-                  )}
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-0.5">
                   <ThemeToggle />
@@ -385,7 +385,7 @@ export default function CustomerNavbar() {
                       </button>
                     </div>
                   ) : (
-                    <div className="hidden md:flex items-center gap-0.5">
+                    <div className="hidden lg:flex items-center gap-0.5">
                       <Link
                         href="/login"
                         className="px-2 py-1.5 text-xs text-foreground hover:text-accent transition-colors rounded-lg hover:bg-primary/10"
@@ -402,7 +402,7 @@ export default function CustomerNavbar() {
                   )}
                   <button
                     onClick={() => setMobileOpen(!mobileOpen)}
-                    className="md:hidden p-2 text-foreground"
+                    className="lg:hidden p-2 text-foreground"
                     aria-label="Toggle menu"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -424,7 +424,7 @@ export default function CustomerNavbar() {
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="md:hidden glass border-t border-primary/10 overflow-hidden"
+                className="lg:hidden glass border-t border-primary/10 overflow-hidden"
               >
                 <div className="overflow-y-auto max-h-[calc(100dvh-4rem)]">
                   <div className="px-4 py-3 space-y-1">
@@ -627,7 +627,7 @@ function MobileNavLink({ href, label, pathname, onClose }: { href: string; label
   );
 }
 
-function MobileCategorySection({ categories, onClose }: { categories: { label: string; href: string; subcategories: { name: string; slug: string }[] }[]; onClose: () => void }) {
+function MobileCategorySection({ categories, onClose }: { categories: { label: string; href: string; slug: string; subcategories: { name: string; slug: string }[] }[]; onClose: () => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div>
@@ -663,7 +663,7 @@ function MobileCategorySection({ categories, onClose }: { categories: { label: s
                       {cat.subcategories.map((sub) => (
                         <Link
                           key={sub.slug}
-                          href={`/shop?category=${cat.href.split("=")[1]}&type=${sub.slug}`}
+                          href={`/shop?category=${cat.slug}&subcategory=${sub.slug}`}
                           onClick={onClose}
                           className="block px-3 py-1.5 text-xs text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
                         >

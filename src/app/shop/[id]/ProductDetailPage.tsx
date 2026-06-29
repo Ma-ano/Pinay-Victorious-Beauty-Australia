@@ -158,9 +158,6 @@ export default function ProductDetailPage({ product }: Props) {
                 New
               </span>
             )}
-            <div className="absolute top-4 right-4 z-10">
-              <WishlistButton productId={product.id} />
-            </div>
           </div>
 
           {images.length > 1 && (
@@ -215,11 +212,11 @@ export default function ProductDetailPage({ product }: Props) {
           <p className="text-xs text-foreground uppercase tracking-widest mb-2 capitalize">
             {product.category}
           </p>
-          <h1 className="text-2xl md:text-4xl font-bold text-dark leading-tight">{product.name}</h1>
+          <h1 className="text-xl md:text-2xl font-bold text-dark leading-tight">{product.name}</h1>
 
           <div className="mt-4 flex items-center gap-3">
             <StarDisplay rating={liveRating} size="md" />
-            <span className="text-sm text-foreground">({liveReviewCount} reviews)</span>
+            <span className="text-sm text-foreground">({liveReviewCount ?? 0} reviews) · {product.sold ?? 0} sold</span>
           </div>
 
           <div className="mt-6 flex items-baseline gap-3">
@@ -240,27 +237,33 @@ export default function ProductDetailPage({ product }: Props) {
             </span>
           </div>
 
-          <p className="mt-4 text-foreground leading-relaxed text-sm break-words">
+          <p className="mt-4 text-foreground leading-relaxed text-sm break-words max-h-32 overflow-y-auto">
             {product.description}
           </p>
 
           <div className="mt-8 space-y-3">
             {product.isBundle ? (
-              <button
-                disabled={!bundleInStock}
-                onClick={() => {
-                  if (!bundleInStock) return;
-                  addItem(product);
-                  showToast(`${product.name} added to cart`);
-                }}
-                className={`w-full py-3.5 rounded-xl font-medium transition-all ${
-                  bundleInStock
-                    ? "bg-secondary text-dark dark:text-gray-900 hover:bg-secondary/80 hover:shadow-lg hover:shadow-secondary/25"
-                    : "bg-primary/10 text-foreground cursor-not-allowed"
-                }`}
-              >
-                {bundleInStock ? `Add to Cart — ${formatPrice(product.bundlePrice || product.price)}` : "Out of Stock"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={!bundleInStock}
+                  onClick={() => {
+                    if (!bundleInStock) return;
+                    addItem(product);
+                    showToast(`${product.name} added to cart`);
+                  }}
+                  className={`flex-1 py-3.5 rounded-xl font-medium transition-all ${
+                    bundleInStock
+                      ? "bg-secondary text-dark dark:text-gray-900 hover:bg-secondary/80 hover:shadow-lg hover:shadow-secondary/25"
+                      : "bg-primary/10 text-foreground cursor-not-allowed"
+                  }`}
+                >
+                  {bundleInStock ? `Add to Cart — ${formatPrice(product.bundlePrice || product.price)}` : "Out of Stock"}
+                </button>
+                <WishlistButton
+                  productId={product.id}
+                  className="w-12 h-12 shrink-0 flex items-center justify-center bg-secondary rounded-xl text-dark dark:text-gray-900"
+                />
+              </div>
             ) : (
               <ProductVariantSelector
                 product={product}
@@ -328,7 +331,7 @@ export default function ProductDetailPage({ product }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <p className="px-4 pb-3.5 text-sm text-dark leading-relaxed break-words whitespace-pre-wrap">{section.content}</p>
+                <p className="px-4 pb-3.5 text-sm text-dark leading-relaxed break-words whitespace-pre-wrap max-h-60 overflow-y-auto">{section.content}</p>
               </details>
             ))}
           </div>

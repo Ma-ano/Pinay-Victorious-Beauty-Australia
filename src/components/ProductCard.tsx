@@ -51,39 +51,36 @@ export default function ProductCard({ product }: { product: Product }) {
               -{discount}%
             </span>
           )}
-          {product.isNew && (
-            <span className="absolute top-3 left-3 bg-primary text-dark text-xs font-semibold px-2.5 py-1 rounded-full">
+          {product.isNew && !(product.isSale && discount > 0) && (
+            <span className="absolute top-3 left-3 bg-accent text-white text-xs font-semibold px-2.5 py-1 rounded-full">
               New
             </span>
           )}
-          {product.isBundle && (
-            <span className="absolute top-12 left-3 bg-purple-500 text-white text-xs font-semibold px-2.5 py-1 rounded-full">
-              Bundle Set
-            </span>
-          )}
-
-          <div className="absolute top-3 right-3 z-10">
-            <WishlistButton productId={product.id} />
-          </div>
-
             <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
-              <button
-                onClick={handleQuickAdd}
-                disabled={quickAddOutOfStock}
-                className={`w-full py-2.5 text-sm font-medium rounded-xl transition-all ${
-                  quickAddOutOfStock
-                    ? "bg-gray-400/80 text-white cursor-not-allowed"
-                    : "bg-white/90 backdrop-blur-sm text-black hover:bg-white"
-                }`}
-              >
-                {quickAddOutOfStock ? "Out of Stock" : "Quick Add"}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleQuickAdd}
+                  disabled={quickAddOutOfStock}
+                  className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
+                    quickAddOutOfStock
+                      ? "bg-gray-400/80 text-white cursor-not-allowed"
+                      : "bg-white/90 backdrop-blur-sm text-black hover:bg-white"
+                  }`}
+                >
+                  {quickAddOutOfStock ? "Out of Stock" : "Quick Add"}
+                </button>
+                <WishlistButton
+                  productId={product.id}
+                  className="w-9 h-9 shrink-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl"
+                />
+              </div>
             </div>
         </div>
 
         <div className="p-4">
           <p className="text-[11px] text-foreground uppercase tracking-widest mb-1">
             {product.category}
+            {product.isBundle && <span className="ml-1.5 text-purple-500 font-semibold">• Bundle Set</span>}
           </p>
           <h3 className="font-semibold text-dark group-hover:text-accent transition-colors line-clamp-1 text-sm">
             {product.name}
@@ -98,7 +95,8 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
           <div className="mt-2 flex items-center gap-1">
             <StarDisplay rating={product.rating} />
-            <span className="text-[11px] text-foreground ml-1">({product.reviews})</span>
+            <span className="text-[11px] text-foreground ml-1">({product.reviews ?? 0})</span>
+            <span className="text-[11px] text-foreground ml-1">· {product.sold ?? 0} sold</span>
           </div>
         </div>
       </Link>

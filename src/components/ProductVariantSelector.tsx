@@ -1,6 +1,7 @@
 "use client";
 
 import AddToCartButton from "./AddToCartButton";
+import WishlistButton from "./WishlistButton";
 import type { Product, ProductVariant } from "@/data/products";
 
 interface Props {
@@ -10,8 +11,20 @@ interface Props {
 }
 
 export default function ProductVariantSelector({ product, selectedVariant, onVariantChange }: Props) {
+  const cartButton = (className = "w-full") => (
+    <AddToCartButton product={product} selectedVariant={selectedVariant} className={className} />
+  );
+
   if (!product.variants || product.variants.length === 0) {
-    return <AddToCartButton product={product} />;
+    return (
+      <div className="flex items-center gap-2">
+        {cartButton("flex-1")}
+        <WishlistButton
+          productId={product.id}
+          className="w-12 h-12 shrink-0 flex items-center justify-center bg-secondary rounded-xl text-dark dark:text-gray-900"
+        />
+      </div>
+    );
   }
 
   return (
@@ -38,7 +51,13 @@ export default function ProductVariantSelector({ product, selectedVariant, onVar
           ))}
         </div>
       </div>
-      <AddToCartButton product={product} selectedVariant={selectedVariant} />
+      <div className="flex items-center gap-2">
+        {cartButton("flex-1")}
+        <WishlistButton
+          productId={product.id}
+          className="w-12 h-12 shrink-0 flex items-center justify-center bg-secondary rounded-xl text-dark dark:text-gray-900"
+        />
+      </div>
     </div>
   );
 }

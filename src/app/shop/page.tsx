@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { site } from "@/data/site";
 import { fetchAllProducts, fetchAllReviewStats } from "@/lib/admin-product-store";
@@ -11,14 +12,30 @@ export const metadata: Metadata = {
   openGraph: { title: "Shop", description: `Browse our full collection of ${site.name}.` },
 };
 
+function ShopFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-[40vh]">
+      <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
+}
+
 export default async function Page() {
   try {
     const [products, reviewStats] = await Promise.all([
       fetchAllProducts(),
       fetchAllReviewStats(),
     ]);
-    return <ShopPage initialProducts={products} initialReviewStats={reviewStats} />;
+    return (
+      <Suspense fallback={<ShopFallback />}>
+        <ShopPage initialProducts={products} initialReviewStats={reviewStats} />
+      </Suspense>
+    );
   } catch {
-    return <ShopPage />;
+    return (
+      <Suspense fallback={<ShopFallback />}>
+        <ShopPage />
+      </Suspense>
+    );
   }
 }

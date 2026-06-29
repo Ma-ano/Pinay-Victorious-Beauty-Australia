@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
@@ -32,20 +32,39 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
   });
   const [loading, setLoading] = useState(!hasInitial);
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [search, setSearch] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState(
-    searchParams.get("category") || "all"
-  );
-  const [selectedSubcategory, setSelectedSubcategory] = useState(
-    searchParams.get("subcategory") || "all"
-  );
-  const [selectedType, setSelectedType] = useState(
-    searchParams.get("type") || "all"
-  );
+
+  const selectedCategory = searchParams.get("category") || "all";
+  const selectedSubcategory = searchParams.get("subcategory") || "all";
+  const selectedType = searchParams.get("type") || "all";
 
   const [sort, setSort] = useState<Sort>("default");
   const [view, setView] = useState<View>("grid");
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+
+  function handleCategoryChange(slug: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (slug === "all") params.delete("category");
+    else params.set("category", slug);
+    params.delete("subcategory");
+    params.delete("type");
+    router.replace(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
+  }
+
+  function handleSubcategoryChange(slug: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (slug === "all") params.delete("subcategory");
+    else params.set("subcategory", slug);
+    router.replace(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
+  }
+
+  function handleTypeChange(slug: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (slug === "all") params.delete("type");
+    else params.set("type", slug);
+    router.replace(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
+  }
 
   const fetchProducts = useCallback(async () => {
     const [all, reviewStats] = await Promise.all([getAllProducts(), getAllReviewStats()]);
@@ -92,10 +111,6 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
     return cat?.subcategories ?? [];
   }, [selectedCategory]);
 
-  useEffect(() => {
-    setSelectedSubcategory("all");
-  }, [selectedCategory]);
-
   const filtered = useMemo(() => {
     const metaCategories = new Set(["best-sellers", "new-arrivals", "gift-sets"]);
     const isMeta = metaCategories.has(selectedCategory);
@@ -120,7 +135,12 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
     });
 
     if (selectedCategory === "best-sellers" && sort === "default") {
-      result.sort((a, b) => b.sold - a.sold);
+      result.sort((a, b) => {
+        const soldA = a.sold ?? 0;
+        const soldB = b.sold ?? 0;
+        if (soldB !== soldA) return soldB - soldA;
+        return (b.rating ?? 0) - (a.rating ?? 0);
+      });
     } else if (selectedCategory === "gift-sets") {
       result.sort((a, b) => {
         if (a.isBundle && !b.isBundle) return -1;
@@ -139,7 +159,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
         <div>
           <h1 className="text-3xl md:text-4xl font-bold text-dark">Shop All</h1>
           <p className="mt-1 text-foreground">{filtered.length} products</p>
@@ -193,97 +213,62 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-6">
-        <button
-          onClick={() => setSelectedCategory("all")}
-          className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-            selectedCategory === "all"
-              ? "bg-accent text-white"
-              : "bg-card text-foreground border border-card-border hover:border-accent/50"
-          }`}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <select
+          value={selectedCategory}
+          onChange={(e) => handleCategoryChange(e.target.value)}
+          className="w-44 shrink-0 px-3 py-2 rounded-xl border border-card-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
-          All
-        </button>
-        {categories.filter((c) => !["best-sellers", "new-arrivals", "gift-sets", "sale"].includes(c.slug)).map((cat) => (
-          <button
-            key={cat.slug}
-            onClick={() => setSelectedCategory(cat.slug)}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${
-              selectedCategory === cat.slug
-                ? "bg-accent text-white"
-                : "bg-card text-foreground border border-card-border hover:border-accent/50"
-            }`}
-          >
-            {cat.name}
-          </button>
-        ))}
-      </div>
-
-      {subcategoryOptions.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          <button
-            onClick={() => setSelectedSubcategory("all")}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-              selectedSubcategory === "all"
-                ? "bg-accent text-white"
-                : "bg-card text-foreground border border-card-border hover:border-accent/50"
-            }`}
-          >
-            All
-          </button>
-          {subcategoryOptions.map((sub) => (
-            <button
-              key={sub.slug}
-              onClick={() => setSelectedSubcategory(sub.slug)}
-              className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${
-                selectedSubcategory === sub.slug
-                  ? "bg-accent text-white"
-                  : "bg-card text-foreground border border-card-border hover:border-accent/50"
-              }`}
-            >
-              {sub.name}
-            </button>
+          <option value="all">All Categories</option>
+          {categories.filter((c) => !["sale"].includes(c.slug)).map((cat) => (
+            <option key={cat.slug} value={cat.slug}>{cat.name}</option>
           ))}
-        </div>
-      )}
+        </select>
 
-      <div className="flex flex-wrap gap-2 mb-3">
-        <button
-          onClick={() => setSelectedType("all")}
-          className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all ${
-            selectedType === "all"
-              ? "bg-accent text-white"
-              : "bg-card text-foreground border border-card-border hover:border-accent/50"
-          }`}
-        >
-          All Types
-        </button>
-        {productTypes.map((type) => (
-          <button
-            key={type}
-            onClick={() => setSelectedType(type)}
-            className={`px-4 py-1.5 rounded-full text-xs font-medium transition-all capitalize ${
-              selectedType === type
-                ? "bg-accent text-white"
-                : "bg-card text-foreground border border-card-border hover:border-accent/50"
-            }`}
+        {subcategoryOptions.length > 0 && (
+          <select
+            value={selectedSubcategory}
+            onChange={(e) => handleSubcategoryChange(e.target.value)}
+            className="w-44 shrink-0 px-3 py-2 rounded-xl border border-card-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
           >
-            {type.replace("-", " ")}
-          </button>
-        ))}
-      </div>
+            <option value="all">All Subcategories</option>
+            {subcategoryOptions.map((sub) => (
+              <option key={sub.slug} value={sub.slug}>{sub.name}</option>
+            ))}
+          </select>
+        )}
 
+        <select
+          value={selectedType}
+          onChange={(e) => handleTypeChange(e.target.value)}
+          className="w-36 shrink-0 px-3 py-2 rounded-xl border border-card-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+        >
+          <option value="all">All Types</option>
+          {productTypes.map((type) => (
+            <option key={type} value={type}>{type.replace("-", " ")}</option>
+          ))}
+        </select>
 
-      <div className="flex items-center gap-4 mb-6">
-        <span className="text-xs text-foreground whitespace-nowrap">Price: {formatPrice(priceRange[0])} — {formatPrice(priceRange[1])}</span>
-        <input
-          type="range"
-          min={0}
-          max={maxPrice}
-          value={priceRange[1]}
-          onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
-          className="flex-1 max-w-xs accent-accent h-1.5"
-        />
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <span className="text-xs text-foreground font-medium whitespace-nowrap">Price Range</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={priceRange[0]}
+            onChange={(e) => setPriceRange([Number(e.target.value) || 0, priceRange[1]])}
+            placeholder="From"
+            className="w-28 px-3 py-2 rounded-xl border border-card-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+          />
+          <span className="text-foreground/50 text-sm">—</span>
+          <input
+            type="text"
+            inputMode="numeric"
+            value={priceRange[1]}
+            onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value) || 0])}
+            placeholder="To"
+            className="w-28 px-3 py-2 rounded-xl border border-card-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
+          />
+        </div>
       </div>
 
       {loading ? (
