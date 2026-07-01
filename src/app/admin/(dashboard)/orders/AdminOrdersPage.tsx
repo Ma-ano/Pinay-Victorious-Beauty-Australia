@@ -18,9 +18,9 @@ import { useToast } from "@/components/Toast";
 import { useAuth } from "@/components/AuthContext";
 import { formatPrice } from "@/lib/format";
 
-type OrderStatus = "pending" | "approved" | "paid" | "cancelled" | "rejected" | "completed";
+type OrderStatus = "processing" | "approved" | "completed" | "cancelled" | "rejected";
 
-type PaymentFilter = "all" | "cod" | "paypal" | "card";
+type PaymentFilter = "all" | "cod" | "paypal";
 
 interface OrderItem {
   productId: string;
@@ -57,31 +57,17 @@ interface FirestoreOrder {
   status: OrderStatus;
   fundingSource?: string;
   cardBrand?: string;
+  payerEmail?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
 
-const statuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "paid", "completed", "cancelled", "rejected"];
+const statuses: Array<OrderStatus | "all"> = ["all", "processing", "approved", "completed", "cancelled", "rejected"];
 
-const codStatuses: Array<OrderStatus | "all"> = ["all", "pending", "approved", "completed", "cancelled", "rejected"];
-const paypalStatuses: Array<OrderStatus | "all"> = ["all", "pending", "paid", "completed", "cancelled", "rejected"];
-
-function getValidTransitions(status: OrderStatus, paymentMethod: string): OrderStatus[] {
-  if (paymentMethod === "paypal") {
-    const map: Record<OrderStatus, OrderStatus[]> = {
-      pending: ["paid", "cancelled", "rejected"],
-      paid: ["completed", "cancelled", "rejected"],
-      approved: [],
-      completed: [],
-      cancelled: [],
-      rejected: [],
-    };
-    return map[status] || [];
-  }
+function getValidTransitions(status: OrderStatus): OrderStatus[] {
   const map: Record<OrderStatus, OrderStatus[]> = {
-    pending: ["approved", "cancelled", "rejected"],
-    approved: ["completed", "cancelled", "rejected"],
-    paid: [],
+    processing: ["approved", "rejected"],
+    approved: ["completed"],
     completed: [],
     cancelled: [],
     rejected: [],
@@ -89,13 +75,33 @@ function getValidTransitions(status: OrderStatus, paymentMethod: string): OrderS
   return map[status] || [];
 }
 
+function displayStatus(status: string): string {
+  const map: Record<string, string> = {
+    pending: "processing",
+    paid: "processing",
+    delivered: "completed",
+    shipped: "processing",
+  };
+  return map[status] || status;
+}
+
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700",
+  processing: "bg-blue-100 text-blue-700",
   approved: "bg-purple-100 text-purple-700",
-  paid: "bg-blue-100 text-blue-700",
   completed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
+};
+
+const paymentColors: Record<string, string> = {
+  paypal: "bg-blue-100 text-blue-700",
+  cod: "bg-orange-100 text-orange-700",
+};
+
+const paymentStatusColors: Record<string, string> = {
+  paid: "bg-green-100 text-green-700",
+  pending: "bg-yellow-100 text-yellow-700",
+  failed: "bg-red-100 text-red-700",
 };
 
 function formatDate(ts?: Timestamp): string {
@@ -111,19 +117,32 @@ function statusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function displayPaymentMethod(method: string): string {
+  if (method === "card") return "paypal";
+  return method || "unknown";
+}
+
+function paymentLabel(order: FirestoreOrder): string {
+  if (order.paymentMethod === "paypal" || order.paymentMethod === "card") {
+    return "PayPal";
+  }
+  return "COD";
+}
+
 function OrderDetailModal({
   order,
   onClose,
   onStatusChange,
+  onMarkPaid,
   updatingId,
 }: {
   order: FirestoreOrder;
   onClose: () => void;
   onStatusChange: (orderId: string, status: OrderStatus) => void;
+  onMarkPaid: (orderId: string) => void;
   updatingId: string | null;
 }) {
-  const isPaypal = order.paymentMethod === "paypal";
-  const allowedNext = getValidTransitions(order.status, order.paymentMethod || "cod");
+  const allowedNext = getValidTransitions(displayStatus(order.status) as OrderStatus);
 
   return (
     <div
@@ -156,15 +175,22 @@ function OrderDetailModal({
               <p><span className="font-medium text-foreground">Name:</span> {order.customerName}</p>
               <p><span className="font-medium text-foreground">Email:</span> {order.customerEmail}</p>
               <p><span className="font-medium text-foreground">Phone:</span> {order.customerPhone || "-"}</p>
-              <p><span className="font-medium text-foreground">Payment:</span> {order.paymentMethod || "cod"}
-                {order.paymentStatus && <span className="ml-1">({order.paymentStatus})</span>}
-                {order.cardBrand && <span className="ml-1">({order.cardBrand})</span>}
+              <p><span className="font-medium text-foreground">Payment:</span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ml-1.5 ${paymentColors[displayPaymentMethod(order.paymentMethod)] || "bg-gray-100 text-gray-700"}`}>
+                  {paymentLabel(order)}
+                </span>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ml-1.5 ${paymentStatusColors[order.paymentStatus || "pending"] || "bg-gray-100 text-gray-700"}`}>
+                  {order.paymentStatus || "pending"}
+                </span>
               </p>
+              {order.payerEmail && (
+                <p><span className="font-medium text-foreground">Payer Email:</span> {order.payerEmail}</p>
+              )}
+              {order.paypalOrderId && (
+                <p><span className="font-medium text-foreground">PayPal Order ID:</span> {order.paypalOrderId}</p>
+              )}
               {order.paypalCaptureId && (
                 <p><span className="font-medium text-foreground">Transaction ID:</span> {order.paypalCaptureId}</p>
-              )}
-              {order.paypalOrderId && !order.paypalCaptureId && (
-                <p><span className="font-medium text-foreground">Order ID:</span> {order.paypalOrderId}</p>
               )}
             </div>
           </section>
@@ -207,15 +233,16 @@ function OrderDetailModal({
               Click a status to update this order.
             </p>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {allowedNext.map((status) => (
+            {allowedNext.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
+                {allowedNext.map((status) => (
                 <button
                   key={status}
                   type="button"
                   disabled={updatingId === order.firestoreId}
                   onClick={() => onStatusChange(order.firestoreId, status)}
                   className={`px-3 py-2 rounded-xl text-xs font-semibold capitalize border transition-all disabled:opacity-50 ${
-                    order.status === status
+                    displayStatus(order.status) === status
                       ? "bg-accent text-white border-accent"
                       : "bg-background text-foreground border-card-border hover:border-accent/60 hover:text-accent"
                   }`}
@@ -224,6 +251,20 @@ function OrderDetailModal({
                 </button>
               ))}
             </div>
+            )}
+            {allowedNext.length === 0 && order.paymentMethod !== "cod" && (
+              <p className="text-xs text-foreground/60">No further status changes available.</p>
+            )}
+            {order.paymentMethod === "cod" && order.paymentStatus !== "paid" && (
+              <button
+                type="button"
+                disabled={updatingId === order.firestoreId}
+                onClick={() => onMarkPaid(order.firestoreId)}
+                className="w-full px-3 py-2 rounded-xl text-xs font-semibold border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 transition-all disabled:opacity-50"
+              >
+                {updatingId === order.firestoreId ? "Updating..." : "Mark as Paid"}
+              </button>
+            )}
           </section>
         </div>
       </div>
@@ -271,67 +312,71 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     let result = orders;
     if (paymentFilter !== "all") {
-      result = result.filter((o) =>
-        o.paymentMethod === paymentFilter
-      );
+      result = result.filter((o) => o.paymentMethod === paymentFilter);
     }
     if (filter !== "all") {
-      result = result.filter((o) => o.status === filter);
+      result = result.filter((o) => displayStatus(o.status) === filter);
     }
     return result;
   }, [paymentFilter, filter, orders]);
 
-  const visibleStatuses = useMemo(() => {
-    if (paymentFilter === "paypal" || paymentFilter === "card") return paypalStatuses;
-    if (paymentFilter === "cod") return codStatuses;
-    return statuses;
-  }, [paymentFilter]);
-
-  useEffect(() => {
-    if (paymentFilter !== "all") {
-      const validSet = new Set(visibleStatuses);
-      if (filter !== "all" && !validSet.has(filter)) {
-        setFilter("all");
-      }
-    }
-  }, [paymentFilter, visibleStatuses, filter]);
-
   const paymentCounts = useMemo(() => {
     const cod = orders.filter((o) => o.paymentMethod === "cod" || !o.paymentMethod).length;
-    const paypal = orders.filter((o) => o.paymentMethod === "paypal").length;
-    const card = orders.filter((o) => o.paymentMethod === "card").length;
-    return { cod, paypal, card };
+    const paypal = orders.filter((o) => o.paymentMethod === "paypal" || o.paymentMethod === "card").length;
+    return { cod, paypal };
   }, [orders]);
 
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
     setUpdatingId(orderId);
     try {
-      if (newStatus === "paid" || newStatus === "rejected") {
+      const order = orders.find((o) => o.firestoreId === orderId);
+      const isCOD = order?.paymentMethod === "cod" || !order?.paymentMethod;
+
+      if (newStatus === "rejected") {
         const token = await getIdToken();
         if (!token) {
           showToast("Authentication required", "error");
           return;
         }
-        const route = newStatus === "rejected" ? "reject" : "approve";
-        const res = await fetch(`/api/admin/orders/${route}`, {
+        const res = await fetch("/api/admin/orders/reject", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
           body: JSON.stringify({ orderId }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `Failed to ${newStatus} order`);
-        showToast(`Order ${orderId.slice(-8)} ${newStatus}`, "success");
+        if (!res.ok) throw new Error(data.error || "Failed to reject order");
+        showToast(`Order ${orderId.slice(-8)} rejected`, "success");
         return;
       }
 
-      await updateDoc(doc(db, "orders", orderId), {
+      const updates: Record<string, unknown> = {
         status: newStatus,
         updatedAt: serverTimestamp(),
-      });
+      };
+      if (isCOD && newStatus === "completed") {
+        updates.paymentStatus = "paid";
+      }
 
+      await updateDoc(doc(db, "orders", orderId), updates);
       showToast(`Order ${orderId.slice(-8)} marked ${newStatus}`, "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update order status";
+      showToast(msg, "error");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+
+  async function handleMarkPaid(orderId: string) {
+    setUpdatingId(orderId);
+    try {
+      await updateDoc(doc(db, "orders", orderId), {
+        paymentStatus: "paid",
+        updatedAt: serverTimestamp(),
+      });
+      showToast(`Order ${orderId.slice(-8)} marked as paid`, "success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to mark as paid";
       showToast(msg, "error");
     } finally {
       setUpdatingId(null);
@@ -352,7 +397,7 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {(["all", "cod", "paypal", "card"] as PaymentFilter[]).map((pm) => (
+        {(["all", "cod", "paypal"] as PaymentFilter[]).map((pm) => (
           <button
             key={pm}
             type="button"
@@ -363,13 +408,13 @@ export default function AdminOrdersPage() {
                 : "bg-card text-foreground border border-card-border hover:border-accent/50"
             }`}
           >
-            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : pm === "paypal" ? `PayPal (${paymentCounts.paypal})` : `Card (${paymentCounts.card})`}
+            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : `PayPal (${paymentCounts.paypal})`}
           </button>
         ))}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-4">
-        {visibleStatuses.map((status) => (
+        {statuses.map((status) => (
           <button
             key={status}
             type="button"
@@ -380,7 +425,7 @@ export default function AdminOrdersPage() {
                 : "bg-card text-foreground border border-card-border hover:border-accent/50"
             }`}
           >
-            {status}
+            {status === "all" ? "All" : statusLabel(status)}
           </button>
         ))}
       </div>
@@ -400,6 +445,7 @@ export default function AdminOrdersPage() {
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Items</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Total</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Payment</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden xl:table-cell">Payment Status</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Date</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Status</th>
             </tr>
@@ -407,7 +453,7 @@ export default function AdminOrdersPage() {
           <tbody className="divide-y divide-primary/10">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12 text-center text-foreground">
+                <td colSpan={8} className="px-4 py-12 text-center text-foreground">
                   No orders found.
                 </td>
               </tr>
@@ -426,18 +472,19 @@ export default function AdminOrdersPage() {
                   <td className="px-4 py-3 text-foreground hidden sm:table-cell">{order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}</td>
                   <td className="px-4 py-3 text-dark font-medium">{formatPrice(Number(order.subtotal || 0))}</td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">
-                    <span className="capitalize">{order.paymentMethod || "cod"}</span>
-                    {order.paymentStatus && (
-                      <span className="text-xs ml-1">({order.paymentStatus})</span>
-                    )}
-                    {order.cardBrand && (
-                      <span className="text-xs ml-1 text-foreground/70">({order.cardBrand})</span>
-                    )}
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${paymentColors[displayPaymentMethod(order.paymentMethod)] || "bg-gray-100 text-gray-700"}`}>
+                      {paymentLabel(order)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-foreground hidden xl:table-cell">
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${paymentStatusColors[order.paymentStatus || "pending"] || "bg-gray-100 text-gray-700"}`}>
+                      {order.paymentStatus || "pending"}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-foreground hidden md:table-cell">{formatDate(order.createdAt)}</td>
                   <td className="px-4 py-3">
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-700"}`}>
-                      {order.status}
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[displayStatus(order.status)] || "bg-gray-100 text-gray-700"}`}>
+                      {displayStatus(order.status)}
                     </span>
                   </td>
                 </tr>
@@ -452,6 +499,7 @@ export default function AdminOrdersPage() {
           order={modalOrder}
           onClose={() => setModalOrder(null)}
           onStatusChange={handleStatusChange}
+          onMarkPaid={handleMarkPaid}
           updatingId={updatingId}
         />
       )}

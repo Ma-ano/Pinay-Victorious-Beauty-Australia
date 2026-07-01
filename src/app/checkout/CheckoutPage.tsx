@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import PayPalButtonGroup from "@/components/PayPalButtonGroup";
+import { usePayPalReady } from "@/components/PayPalProvider";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
@@ -17,7 +18,7 @@ import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";
 
-type PaymentMethod = "cod" | "paypal" | "card";
+type PaymentMethod = "cod" | "paypal_cards";
 
 const defaultAddress: Address = {
   street: "",
@@ -42,6 +43,12 @@ export default function CheckoutPage() {
   const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [paypalError, setPaypalError] = useState("");
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     getAllPromotions().then(setAllPromotions).catch(() => {});
@@ -52,6 +59,9 @@ export default function CheckoutPage() {
       router.push("/login?redirect=checkout");
     }
   }, [loading, isAuthenticated, router]);
+
+  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
+  const { ready: paypalReady } = usePayPalReady();
 
   const checkoutAddress = addressDraft || user?.address || defaultAddress;
 
@@ -106,7 +116,7 @@ export default function CheckoutPage() {
     country: checkoutAddress.country.trim(),
   };
 
-  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string, cardBrand?: string | null) {
+  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string, cardBrand?: string | null, payerEmail?: string, overridePaymentMethod?: string) {
     const orderData: Record<string, unknown> = {
       userId: currentUser.uid,
       customerName: currentUser.name,
@@ -120,12 +130,12 @@ export default function CheckoutPage() {
         variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
       })),
       shipping: shippingAddress,
-      paymentMethod,
+      paymentMethod: overridePaymentMethod || paymentMethod,
       subtotal: totalPrice,
       discount,
       discountCode: appliedPromo?.code || null,
       total: finalTotal,
-      status: "pending",
+      status: "processing",
       createdAt: serverTimestamp(),
     };
 
@@ -143,6 +153,9 @@ export default function CheckoutPage() {
     }
     if (cardBrand) {
       orderData.cardBrand = cardBrand;
+    }
+    if (payerEmail) {
+      orderData.payerEmail = payerEmail;
     }
 
     const orderRef = doc(db, "orders", `${currentUser.uid}_${Date.now()}`);
@@ -165,7 +178,7 @@ export default function CheckoutPage() {
   }
 
   async function handlePayPalCreateOrder() {
-    if (!validateAddress()) return "";
+    if (!validateAddress()) throw new Error("Please fill in all shipping address fields");
     setPaypalError("");
     try {
       const res = await fetch("/api/payments/paypal/create", {
@@ -180,18 +193,19 @@ export default function CheckoutPage() {
           total: finalTotal,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create PayPal order");
-      return data.orderID as string;
+      const responseData = await res.json();
+      if (!res.ok) throw new Error(responseData.error || "Failed to create PayPal order");
+      if (!responseData.id) throw new Error("PayPal order ID missing from response");
+      return responseData.id as string;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "PayPal error";
       setPaypalError(msg);
       showToast(msg, "error");
-      return "";
+      throw err;
     }
   }
 
-  async function handlePayPalApprove(data: Record<string, unknown>, actions: unknown) {
+  async function handlePayPalApprove(data: Record<string, unknown>) {
     setSaving(true);
     try {
       const res = await fetch("/api/payments/paypal/capture", {
@@ -204,7 +218,20 @@ export default function CheckoutPage() {
         throw new Error(result.error || "Payment capture failed");
       }
 
-      await createFirestoreOrder(data.orderID as string, "paid", result.captureId, result.fundingSource, result.cardBrand as string | null | undefined);
+      const usedFundingSource = (result.fundingSource as string) || "";
+
+      if (!mountedRef.current) return;
+
+      await createFirestoreOrder(
+        data.orderID as string,
+        "paid",
+        result.captureId,
+        result.fundingSource,
+        result.cardBrand as string | null | undefined,
+        result.payerEmail as string | undefined,
+        "paypal",
+      );
+      if (!mountedRef.current) return;
       clearCart();
       setPlaced(true);
       showToast("Payment successful! Order placed.", "success");
@@ -212,8 +239,18 @@ export default function CheckoutPage() {
       const msg = err instanceof Error ? err.message : "Payment failed";
       showToast(msg, "error");
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setSaving(false);
     }
+  }
+
+  function handlePayPalCancel() {
+    if (!mountedRef.current) return;
+    showToast("Payment cancelled", "info");
+  }
+
+  function handlePayPalError(err: Record<string, unknown>) {
+    if (!mountedRef.current) return;
+    console.error("PayPal SDK error:", err);
   }
   if (loading) {
     return <CheckoutFormSkeleton />;
@@ -265,8 +302,6 @@ export default function CheckoutPage() {
       </div>
     );
   }
-
-  const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -337,13 +372,13 @@ export default function CheckoutPage() {
                 </div>
               </label>
 
-              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "paypal" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
+              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "paypal_cards" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
                 <input
                   type="radio"
                   name="paymentMethod"
-                  value="paypal"
-                  checked={paymentMethod === "paypal"}
-                  onChange={() => setPaymentMethod("paypal")}
+                  value="paypal_cards"
+                  checked={paymentMethod === "paypal_cards"}
+                  onChange={() => setPaymentMethod("paypal_cards")}
                   className="accent-accent"
                 />
                 <div className="flex items-center gap-3 flex-1">
@@ -352,29 +387,8 @@ export default function CheckoutPage() {
                     <path d="M19.19 6.534c-.023.144-.047.289-.077.438-1.068 5.49-4.25 7.463-8.646 7.463h-2.19c-.524 0-.968.382-1.05.9L6.12 22.41l-.012.073a.641.641 0 00.634.742h4.08c.524 0 .968-.382 1.05-.9l1.12-7.106h.003c.082-.521.522-.9 1.05-.9h2.19c4.349 0 7.58-1.963 8.648-6.797.413-1.86.203-3.419-.69-4.486-.494-.59-1.14-1.002-1.904-1.302z" opacity=".25"/>
                   </svg>
                   <div>
-                    <p className="text-sm font-medium text-dark">PayPal</p>
-                    <p className="text-xs text-foreground">Pay securely with PayPal</p>
-                  </div>
-                </div>
-              </label>
-
-              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "card" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="card"
-                  checked={paymentMethod === "card"}
-                  onChange={() => setPaymentMethod("card")}
-                  className="accent-accent"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                    <rect x="2" y="4" width="20" height="16" rx="2" />
-                    <line x1="2" y1="10" x2="22" y2="10" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-dark">Debit or Credit Card</p>
-                    <p className="text-xs text-foreground">Pay securely with your card</p>
+                    <p className="text-sm font-medium text-dark">PayPal (Pay Now or Pay Later)</p>
+                    <p className="text-xs text-foreground">Pay securely with your PayPal account or card</p>
                   </div>
                 </div>
               </label>
@@ -451,36 +465,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {paypalClientId && (paymentMethod === "paypal" || paymentMethod === "card") ? (
-              <div className="mt-4">
-                <PayPalScriptProvider options={{ clientId: paypalClientId, currency: "AUD" }}>
-                  {paymentMethod === "paypal" && (
-                    <>
-                      <PayPalButtons
-                        fundingSource="paypal"
-                        createOrder={handlePayPalCreateOrder}
-                        onApprove={handlePayPalApprove}
-                        disabled={saving}
-                        style={{ layout: "vertical", shape: "rect" }}
-                      />
-                      <p className="text-xs text-center text-foreground mt-3">Powered by PayPal</p>
-                    </>
-                  )}
-                  {paymentMethod === "card" && (
-                    <PayPalButtons
-                      fundingSource="card"
-                      createOrder={handlePayPalCreateOrder}
-                      onApprove={handlePayPalApprove}
-                      disabled={saving}
-                      style={{ layout: "vertical", shape: "rect" }}
-                    />
-                  )}
-                </PayPalScriptProvider>
-                {paypalError && (
-                  <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
-                )}
-              </div>
-            ) : (
+            {paymentMethod === "cod" && (
               <>
                 <button
                   onClick={handlePlaceOrderCod}
@@ -492,6 +477,24 @@ export default function CheckoutPage() {
                 <p className="text-xs text-center text-foreground mt-3">You pay when your order arrives</p>
               </>
             )}
+
+            {paypalClientId && paymentMethod === "paypal_cards" && (
+              <div className="mt-4">
+                <PayPalButtonGroup
+                  createOrder={handlePayPalCreateOrder}
+                  onApprove={handlePayPalApprove}
+                  onCancel={handlePayPalCancel}
+                  onError={handlePayPalError}
+                  disabled={saving}
+                  isReady={paypalReady}
+                  amount={finalTotal}
+                />
+                {paypalError && (
+                  <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
       </div>

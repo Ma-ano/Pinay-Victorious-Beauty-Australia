@@ -17,12 +17,14 @@ export async function POST(request: Request) {
       const hasPayPal = !!ps?.paypal;
       const fundingSource = hasPayPal ? "paypal" : hasCard ? "card" : "unknown";
       const cardBrand = hasCard ? ((ps!.card as Record<string, unknown>)?.brand as string | null ?? null) : null;
+      const payerEmail = (captureData.payer as Record<string, unknown> | undefined)?.email_address as string | undefined;
 
       return NextResponse.json({
         success: true,
         captureId: (captureData.purchase_units?.[0]?.payments?.captures?.[0] as Record<string, unknown>)?.id as string | undefined,
         fundingSource,
         cardBrand,
+        payerEmail,
       });
     }
 

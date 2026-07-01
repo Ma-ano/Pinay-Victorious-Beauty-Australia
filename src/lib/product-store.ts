@@ -212,7 +212,7 @@ export async function getProductSoldCount(productId: string): Promise<number> {
   try {
     const q = query(
       collection(db, "orders"),
-      where("status", "in", ["delivered", "completed"])
+      where("status", "in", ["completed"])
     );
     const snap = await getDocs(q);
     let count = 0;

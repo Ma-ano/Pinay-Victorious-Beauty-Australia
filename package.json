@@ -9,7 +9,6 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@paypal/react-paypal-js": "^10.0.0",
     "firebase": "^12.15.0",
     "firebase-admin": "^12.7.0",
     "framer-motion": "^12.40.0",

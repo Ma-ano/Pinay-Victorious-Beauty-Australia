@@ -14,7 +14,7 @@ async function getCompletedOrders() {
   const ordersSnap = await getDocs(collection(db, "orders"));
   return ordersSnap.docs
     .map((d) => d.data())
-    .filter((o) => o.status === "completed" || o.status === "delivered");
+    .filter((o) => o.status === "completed");
 }
 
 export async function getSiteStats(): Promise<SiteStats> {
@@ -28,7 +28,7 @@ export async function getSiteStats(): Promise<SiteStats> {
       ordersSnap.status === "fulfilled"
         ? ordersSnap.value.docs
             .map((d) => d.data())
-            .filter((o) => o.status === "completed" || o.status === "delivered")
+            .filter((o) => o.status === "completed")
         : [];
 
     const uniqueCustomers = new Set<string>();

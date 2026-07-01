@@ -24,7 +24,7 @@ import { OrderCardSkeleton } from "@/components/Skeletons";
 import { getAllProducts } from "@/lib/product-store";
 import { formatPrice } from "@/lib/format";
 
-type OrderStatus = "pending" | "approved" | "paid" | "cancelled" | "rejected" | "completed";
+type OrderStatus = "processing" | "approved" | "completed" | "cancelled" | "rejected";
 
 interface OrderItem {
   productId: string;
@@ -52,6 +52,7 @@ interface CustomerOrder {
   subtotal: number;
   total: number;
   paymentStatus?: string;
+  payerEmail?: string;
   status: OrderStatus;
   fundingSource?: string;
   cardBrand?: string;
@@ -65,9 +66,19 @@ interface CustomerReview {
   productId: string;
 }
 
+function displayStatus(status: string): string {
+  const map: Record<string, string> = {
+    pending: "processing",
+    paid: "processing",
+    delivered: "completed",
+    shipped: "processing",
+  };
+  return map[status] || status;
+}
+
 const statusColors: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-700",
-  paid: "bg-blue-100 text-blue-700",
+  processing: "bg-blue-100 text-blue-700",
+  approved: "bg-purple-100 text-purple-700",
   completed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-700",
   rejected: "bg-red-100 text-red-700",
@@ -94,18 +105,24 @@ function formatDate(ts?: Timestamp): string {
   });
 }
 
+function paymentLabel(order: CustomerOrder): string {
+  if (order.paymentMethod === "paypal" || order.paymentMethod === "card") {
+    return "PayPal";
+  }
+  return "COD";
+}
+
 function reviewDocId(orderId: string, productId: string) {
   return `${orderId}_${productId}`.replaceAll("/", "_");
 }
 
-const STEPS_PAYPAL: OrderStatus[] = ["pending", "paid", "completed"];
-const STEPS_COD: OrderStatus[] = ["pending", "approved", "completed"];
+const ORDER_STEPS: OrderStatus[] = ["processing", "approved", "completed"];
 
-function OrderProgress({ status, paymentMethod }: { status: OrderStatus; paymentMethod: string }) {
-  const steps = paymentMethod === "paypal" ? STEPS_PAYPAL : STEPS_COD;
-  const currentIndex = steps.indexOf(status);
+function OrderProgress({ status }: { status: OrderStatus; paymentMethod: string }) {
+  const steps = ORDER_STEPS;
+  const currentIndex = steps.indexOf(displayStatus(status) as OrderStatus);
 
-  if (currentIndex < 0 || ["cancelled", "rejected"].includes(status)) return null;
+  if (currentIndex < 0 || ["cancelled", "rejected"].includes(displayStatus(status))) return null;
 
   return (
     <div className="flex items-center gap-1 mb-3">
@@ -324,15 +341,14 @@ export default function OrdersPage() {
         <div className="space-y-5">
           {orders.map((order) => {
             const isPaypal = order.paymentMethod === "paypal";
-            const canCancel = order.status === "pending" || order.status === "paid" || order.status === "approved";
+            const canCancel = displayStatus(order.status) === "processing";
 
             return (
               <article key={order.firestoreId} className="bg-card border border-card-border rounded-2xl overflow-hidden">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 bg-primary/10">
                   <div>
                     <p className="text-sm font-semibold text-dark">Order #{order.firestoreId.slice(-8)}</p>
-                    <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {order.paymentMethod || "cod"}
-                      {order.cardBrand && <span> ({order.cardBrand})</span>}
+                    <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {paymentLabel(order)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -361,8 +377,8 @@ export default function OrdersPage() {
                         </button>
                       )
                     )}
-                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[order.status] || "bg-gray-100 text-gray-700"}`}>
-                      {order.status}
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[displayStatus(order.status)] || "bg-gray-100 text-gray-700"}`}>
+                      {displayStatus(order.status)}
                     </span>
                     {Number(order.total || order.subtotal || 0) > 0 && (
                       <span className="text-sm font-bold text-accent">{formatPrice(Number(order.total || order.subtotal || 0))}</span>
@@ -408,7 +424,7 @@ export default function OrdersPage() {
                             <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                           </div>
                           <div className="flex items-center gap-3 shrink-0">
-                            {(order.status === "completed") && (
+                            {(displayStatus(order.status) === "completed") && (
                               reviewed ? (
                                 <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">Reviewed</span>
                               ) : (

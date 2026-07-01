@@ -11,7 +11,11 @@ export async function POST(request: Request) {
 
     const paypalOrder = await createPayPalOrder(items, total);
 
-    return NextResponse.json({ orderID: paypalOrder.id });
+    if (!paypalOrder?.id) {
+      return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
+    }
+
+    return NextResponse.json({ id: paypalOrder.id });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Failed to create PayPal order";
     console.error("PayPal create order error:", msg);
