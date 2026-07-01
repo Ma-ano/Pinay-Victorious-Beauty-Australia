@@ -11,12 +11,23 @@ export interface FeaturedBrandConfig {
   image: string;
 }
 
+export interface ReviewConfig {
+  name: string;
+  rating: number;
+  text: string;
+  title?: string;
+  productName?: string;
+  photoURL?: string;
+  _id?: string;
+}
+
 export interface SiteSettings {
   featuredBrands: FeaturedBrandConfig[];
   categoryImages?: Record<string, string>;
   saleBannerTitle?: string;
   saleBannerSubtitle?: string;
   saleBannerDiscount?: string;
+  reviews?: ReviewConfig[];
 }
 
 const emptyBrand: FeaturedBrandConfig = { brand: "", title: "", description: "", image: "" };
@@ -24,6 +35,7 @@ const emptyBrand: FeaturedBrandConfig = { brand: "", title: "", description: "",
 const defaultSettings: SiteSettings = {
   featuredBrands: [emptyBrand, emptyBrand, emptyBrand],
   categoryImages: {},
+  reviews: [],
 };
 
 export async function getSettings(): Promise<SiteSettings> {
@@ -53,7 +65,7 @@ export async function getSettings(): Promise<SiteSettings> {
       )
     : [];
   while (brands.length < 3) brands.push({ ...emptyBrand });
-  return { featuredBrands: brands.slice(0, 3), categoryImages: data.categoryImages || {} };
+  return { featuredBrands: brands.slice(0, 3), categoryImages: data.categoryImages || {}, reviews: data.reviews || [] };
 }
 
 export async function saveSettings(data: SiteSettings): Promise<void> {

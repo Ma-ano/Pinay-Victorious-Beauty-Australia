@@ -445,21 +445,21 @@ export default function AdminProductsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
         >
           <div
-            className="bg-card rounded-2xl border border-card-border shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6"
+            className="bg-card border border-card-border shadow-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto px-6 pb-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-sm text-dark">
-                {editingId ? "Edit Product" : "Add Product"}
-              </h2>
-              <button onClick={cancelForm} className="text-foreground hover:text-dark" aria-label="Close">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
+<div className="sticky top-0 bg-card z-10 flex items-center justify-between pt-6 pb-4 border-b border-card-border">
+  <h2 className="font-semibold text-sm text-dark">
+    {editingId ? "Edit Product" : "Add Product"}
+  </h2>
+  <button onClick={cancelForm} className="text-foreground hover:text-dark" aria-label="Close">
+    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+    </svg>
+  </button>
+</div>
             <form onSubmit={handleSave} className="space-y-5">
-              <div>
+              <div className="pt-3">
                 <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider mb-1">Basic Info</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
@@ -773,7 +773,7 @@ export default function AdminProductsPage() {
                 <div className="space-y-3">
                   <div>
                     <label className="block text-xs text-foreground mb-1">Description *</label>
-                    <textarea rows={2} value={form.description} onChange={(e) => updateField("description", e.target.value)}
+                    <textarea rows={5} value={form.description} onChange={(e) => updateField("description", e.target.value)}
                       maxLength={2000}
                       className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Long-lasting matte lipstick with a creamy formula." required />
@@ -781,7 +781,7 @@ export default function AdminProductsPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-foreground mb-1">Product Detail *</label>
-                    <textarea rows={2} value={form.detail} onChange={(e) => updateField("detail", e.target.value)}
+                    <textarea rows={5} value={form.detail} onChange={(e) => updateField("detail", e.target.value)}
                       maxLength={2000}
                       className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Premium formula crafted with the finest ingredients." required />
@@ -789,7 +789,7 @@ export default function AdminProductsPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-foreground mb-1">Ingredients *</label>
-                    <textarea rows={2} value={form.ingredients} onChange={(e) => updateField("ingredients", e.target.value)}
+                    <textarea rows={5} value={form.ingredients} onChange={(e) => updateField("ingredients", e.target.value)}
                       maxLength={2000}
                       className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Water, Glycerin, Hyaluronic Acid." required />
@@ -797,7 +797,7 @@ export default function AdminProductsPage() {
                   </div>
                   <div>
                     <label className="block text-xs text-foreground mb-1">Shipping & Returns (Optional)</label>
-                    <textarea rows={2} value={form.shippingReturns} onChange={(e) => updateField("shippingReturns", e.target.value)}
+                    <textarea rows={5} value={form.shippingReturns} onChange={(e) => updateField("shippingReturns", e.target.value)}
                       maxLength={2000}
                       className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Free shipping on orders over $50." />
@@ -903,7 +903,7 @@ export default function AdminProductsPage() {
             ) : (
               filtered.map((p) => (
                 <tr key={p.id} className="hover:bg-primary/5">
-                  <td className="px-4 py-3 font-medium text-dark">{p.name}</td>
+                  <td className="px-4 py-3 font-medium text-dark"><span className="line-clamp-2">{p.name}</span></td>
                   <td className="px-4 py-3 text-foreground capitalize hidden sm:table-cell">
                     {categoryLabelMap[p.category] || p.category}
                   </td>

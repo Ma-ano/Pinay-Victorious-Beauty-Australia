@@ -150,6 +150,27 @@ export async function deleteProduct(id: string): Promise<void> {
   }
 }
 
+export async function getAllReviews(): Promise<{ id: string; author: string; rating: number; content: string; isVerified: boolean; productName?: string; userId?: string; createdAt?: Date }[]> {
+  try {
+    const snap = await getDocs(collection(db, "reviews"));
+    return snap.docs.map((d) => {
+      const data = d.data();
+      return {
+        id: d.id,
+        author: data.author || "",
+        rating: data.rating || 0,
+        content: data.content || "",
+        isVerified: data.isVerified ?? true,
+        productName: data.productName || "",
+        userId: data.userId || "",
+        createdAt: data.createdAt?.toDate(),
+      };
+    });
+  } catch {
+    return [];
+  }
+}
+
 export async function getAllReviewStats(): Promise<Record<string, { avgRating: number; reviewCount: number }>> {
   try {
     const snap = await getDocs(collection(db, "reviews"));

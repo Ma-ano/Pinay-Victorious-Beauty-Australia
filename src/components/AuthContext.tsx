@@ -70,7 +70,7 @@ function mapFirebaseUser(fu: FirebaseUser): User {
     uid: fu.uid,
     name: fu.displayName || fu.email?.split("@")[0] || "User",
     email: fu.email || "",
-    photoURL: fu.photoURL || "",
+          photoURL: "",
   };
 }
 
@@ -229,7 +229,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           name: displayName,
           email: fu.email,
           phone: "",
-          photoURL: fu.photoURL || "",
+    photoURL: "",
           address: { ...defaultAddress },
           role: "customer",
           status: "active",
@@ -238,7 +238,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       let name = fu.displayName || fu.email?.split("@")[0] || "User";
       let phone = "";
-      let photoURL = fu.photoURL || "";
+      let photoURL = "";
       let address = { ...defaultAddress };
       if (userDoc.exists()) {
         const data = userDoc.data();

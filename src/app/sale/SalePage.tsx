@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ProductCard from "@/components/ProductCard";
+import { SalePageSkeleton } from "@/components/Skeletons";
 import type { Product } from "@/data/products";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import { getAllPromotions } from "@/lib/promotions-store";
@@ -137,9 +138,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        </div>
+        <SalePageSkeleton />
       ) : (
         <>
           {appliedPromo && discount > 0 && (

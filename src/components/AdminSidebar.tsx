@@ -27,9 +27,9 @@ export default function AdminSidebar() {
   }
 
   return (
-    <aside className="w-64 bg-card border-r border-card-border min-h-screen p-6 hidden md:flex md:flex-col">
+    <aside className="w-64 bg-card border-r border-card-border h-screen p-6 hidden md:flex md:flex-col sticky top-0 self-start">
       <Link href="/admin" className="text-lg font-bold text-dark block mb-8">Admin Panel</Link>
-      <nav className="space-y-1 flex-1">
+      <nav className="space-y-1 flex-1 overflow-y-auto">
         {visibleLinks.map((link) => {
           const isActive = pathname === link.href;
           return (

@@ -5,7 +5,7 @@ import { site } from "@/data/site";
 export default function Footer() {
   return (
     <footer className="border-t border-primary/10 bg-white dark:bg-card/50 backdrop-blur-sm mt-auto">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 md:py-12">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             <div>
               <Link href="/" className="inline-block">
@@ -53,7 +53,7 @@ export default function Footer() {
             </div>
           </div>
         </div>
-        <div className="mt-10 pt-8 border-t border-primary/10 text-center">
+        <div className="mt-8 pt-6 border-t border-primary/10 text-center">
           <p className="text-xs text-foreground">&copy; {new Date().getFullYear()} {site.name}. All rights reserved.</p>
         </div>
       </div>

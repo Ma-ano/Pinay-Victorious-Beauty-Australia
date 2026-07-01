@@ -1,34 +1,68 @@
-MAIN CATEGORIES
+You are a senior full-stack developer.
 
-Underarm Care
-Body Care
-Dietary Supplement
-Facial Serum
-Face & Body Soap
+I am building an ecommerce website using Next.js (App Router), TypeScript, React, and Firebase (Firestore + Firebase Storage).
 
-SUB-CATEGORIES (derived from products)
+My problem: Images are loading slowly, and I currently use a loading screen. I want to improve both actual performance and perceived performance (UX).
 
-Underarm Cream
-Body Capsules (topical)
-Body Booster / Lotion / Gel-Cream
-Facial Serum
-Soap (Face & Body)
-Capsules (ingestible supplement)
-Coffee Mix Supplement
-Beauty Drink Supplement
-Fiber Drink Supplement
+Please implement a complete, production-ready solution with the following:
 
-PRODUCT TYPES (granular)
+IMAGE OPTIMIZATION (REAL PERFORMANCE):
 
-Cream (underarm cream)
-Capsule (topical)
-Capsule (dietary)
-Coffee mix (instant functional drink)
-Serum (facial serum)
-Body booster (gel-cream)
-Soap bar (face & body)
-Sachet drink (beauty drink)
-Sachet drink (detox / fiber)
+1. Use Next.js `<Image />` component properly for all product images.
+2. Configure `next.config.js` to allow Firebase Storage domains.
+3. Ensure:
 
-Please make sure i have this Categories and Sub Categories and Types
-add it on my navbar categories and /shop and admin side categories if some are not existing there
+   * Correct width and height
+   * Responsive images using `sizes`
+   * Automatic lazy loading
+   * Proper quality settings
+4. Use `placeholder="blur"` with a blurDataURL.
+5. Convert images to WebP format and compress them.
+
+FIREBASE IMAGE PIPELINE:
+6. Create an upload system that:
+
+* Resizes images into multiple sizes (300px, 600px, 1200px)
+* Compresses images
+* Converts to WebP
+
+7. Store optimized image URLs in Firestore.
+8. Provide example code for uploading and retrieving images.
+
+PERCEIVED PERFORMANCE (UX IMPROVEMENTS):
+9. Improve loading experience:
+
+* Replace or enhance loading screen with skeleton loaders
+* Create a reusable skeleton component for product cards
+* Ensure layout stability (no CLS)
+
+10. Use blur-up technique:
+
+* Show blurred image instantly
+* Load full image progressively
+
+LOADING SCREEN:
+11. Keep a loading screen but optimize usage:
+
+* Only show on initial app load or route transitions
+* Avoid blocking image rendering
+
+PERFORMANCE BEST PRACTICES:
+12. Optimize for:
+
+* LCP (Largest Contentful Paint)
+* CLS (Cumulative Layout Shift)
+* Fast mobile loading
+
+13. Add caching strategies for images.
+14. Suggest optional CDN improvements (e.g., Cloudflare).
+
+OUTPUT:
+
+* Clean, well-structured TypeScript code
+* Next.js App Router structure
+* Reusable components (Image wrapper, Skeleton loader)
+* Comments explaining each part
+
+GOAL:
+Make images load extremely fast while also making the UI feel instant and smooth, even on slow internet.

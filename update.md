@@ -1,56 +1,58 @@
-# What's New — June 29, 2026
+# What's New — July 1, 2026
 
 Here are the latest changes to your website, explained simply.
 
 ---
 
-## 1. Product Sorting Fixed
-Products without any sales or ratings used to get randomly scattered in "Best Sellers" view because the website couldn't handle the empty values. Now they're treated as zero sales/ratings, so everything sorts properly.
+## 1. Heart Button Now Turns Red When Clicked
+On the product detail page, clicking the heart button to save an item to your wishlist now correctly turns it red. Previously the heart stayed dark because of a styling conflict — that's fixed.
 
-## 2. Wishlist Heart Moved (Product Cards)
-The heart button to save items to your wishlist used to sit on top of the product photo (top-right corner). Now it's moved to the bottom of the photo, right next to the "Quick Add" button as a matching square button. When you add/remove items from the wishlist on a product card, the wishlist page automatically updates too.
+## 2. Buttons Feel Like Real Buttons
+Every button on the site now gives a tiny "press down" effect when you click it (it shrinks slightly for a split second). This makes clicking feel more responsive and satisfying.
 
-## 3. Wishlist Heart Moved (Product Detail Page)
-On the individual product page, the heart button was on the product photo as well. Now it sits right beside the "Add to Cart" button, so you can see it while you're about to buy.
+## 3. Reviews Show 10 at a Time
+If a product has a lot of reviews, only the first 10 are shown. A "Show more reviews" button appears below so you can load more in batches of 10. Changing the sort order resets back to 10.
 
-## 4. Heart Color
-The outline of the heart icon is now pure black (instead of dark gray), making it more visible.
+## 4. About Page Numbers Are Now Real
+The stats on your About page (Happy Customers, Asian Beauty Brands, Countries Reached) used to be made-up placeholder numbers. They now pull from your actual database — customer counts, product brand counts, and countries from real orders.
 
-## 5. Price Range — No More Slider
-The price range slider was replaced with simple "From" and "To" text boxes where you type the numbers directly. No more up/down spinner buttons, no more layout shifting when the slider moves. Just type a minimum and maximum price.
+## 5. Google Sign-In No Longer Shows Your Photo
+When signing in with Google, your profile picture is no longer saved or displayed. Instead, your initials appear in a colored circle, keeping the design consistent for all users.
 
-## 6. "Price Range" Label Added
-A "Price Range" label now sits next to the from/to boxes, and the whole thing is pushed to the right side of the filter bar on desktop.
+## 6. Admin Sidebar Stays in Place While Scrolling
+The sidebar in the admin panel now stays fixed on the left side of the screen even when you scroll down a long list of products or orders. The navigation buttons and theme toggle are always visible.
 
-## 7. Navbar Works on All Screen Sizes
-A major overhaul to make sure the top navigation bar works perfectly at every browser size from phone to giant monitor.
+## 7. Product Forms Got Better
+- **Text areas** (for Description, Ingredients, etc.) are now bigger — 5 lines tall instead of 2, so you can see more of what you're typing.
+- **Modal headers** (title and X button) now stay pinned at the top when scrolling through a long product form — no more losing the close button.
 
-**What changed:**
-- **Desktop nav** now starts showing at 1024px width (instead of 768px). Tablets in portrait mode will see the hamburger menu instead of cramped nav links.
-- The **Categories dropdown** used to fly off the left side of the screen on smaller laptops — now it always stays visible and grows/shrinks to fit the screen width. On short screens the dropdown scrolls instead of going off the bottom.
-- **Nav links** (Home, Shop, Sale, About, Contact) are now in a scrollable area — if they don't all fit, you can scroll horizontally to see the rest. The scrollbar is hidden so it still looks clean.
-- The **Categories button** is placed outside the scroll area so the dropdown can't be accidentally clipped.
+## 8. Product Names Truncated in Admin Table
+In the admin products list, long product names now wrap to a maximum of 2 lines and show an ellipsis (...) instead of expanding awkwardly.
 
-**How it behaves at every screen size:**
+## 9. About Page Redesigned
+The About page got a full makeover with 6 sections: a hero banner, the brand story, "Why Choose Us" with icons, core values, real statistics, and a call-to-action. No emojis — all icons are clean inline SVGs.
 
-| Device | Width | What you see |
-|--------|-------|-------------|
-| Small phone | 320-400px | Hamburger menu, categories inside mobile menu |
-| Phone | 400-640px | Same |
-| Large phone | 640-768px | Same |
-| Tablet | 768-1024px | Same (hamburger menu) |
-| Small laptop | 1024-1280px | Full desktop nav, compact spacing, scrollable if needed |
-| Standard laptop | 1280-1536px | Full desktop nav, comfortable spacing |
-| Large monitor | 1536px+ | Full desktop nav, plenty of room |
+## 10. Category Images in Admin Settings
+In the admin settings page, category images now always show a preview box (even before one is uploaded). The preview is a perfect square so you can see exactly how it will look.
 
-## 8. Categories Dropdown — Cleaner Design
-The dropdown when you click "Categories" in the navbar has been tidied up — less padding, smaller text, more compact spacing, and two columns instead of three on smaller laptop screens. It looks cleaner and fits better.
+## 11. Pages Load With Glowing Gray Boxes
+Major pages (Home, Shop, Sale, Wishlist, Orders, Checkout, Profile) now show gray placeholder shapes while content loads, instead of a spinning circle. This makes the page feel faster and avoids layout jumps.
+
+## 12. Footer Spacing Tightened
+The footer's spacing has been reduced so the copyright text sits closer to the content above it — less wasted space at the bottom of the page.
 
 ---
 
 ## Technical Notes (for reference)
 - All changes compile successfully (zero build errors)
-- Everything in update.md from previous sessions still applies
-- The responsive navbar changes affect CustomerNavbar.tsx (nav links restructured, Categories moved outside scrollable wrapper, dropdown compacted)
-- The price range changes affect ShopPage.tsx (slider replaced with text inputs)
-- Wishlist changes affect ProductCard.tsx, WishlistButton.tsx, ProductDetailPage.tsx, and ProductVariantSelector.tsx
+- WishlistButton.tsx: className reordering fixes heart color on product detail page
+- globals.css: added button:active for click feedback
+- ProductReviews.tsx: added visibleCount state and "Show more" button
+- AboutPage.tsx: now fetches stats from Firestore via lib/stats-store.ts
+- AuthContext.tsx: Google photo URL no longer saved to user profile
+- AdminSidebar.tsx: added sticky positioning
+- AdminProductsPage.tsx: larger textareas, sticky modal header, truncated names
+- AdminSettingsPage.tsx: always-rendered square preview for category images
+- ProductCardSkeleton, ProductGridSkeleton, etc. — new components under Skeletons.tsx
+- Footer.tsx: reduced vertical padding
+- AboutPage.tsx: full redesign with SVG icons and glass-card values section

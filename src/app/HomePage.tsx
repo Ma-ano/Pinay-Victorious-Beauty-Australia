@@ -5,6 +5,8 @@ import HeroBanner from "@/components/HeroBanner";
 import ProductCarousel from "@/components/ProductCarousel";
 import CategoryPreview from "@/components/CategoryPreview";
 import SaleBanner from "@/components/SaleBanner";
+import ReviewSection from "@/components/ReviewSection";
+import { HomePageSkeleton } from "@/components/Skeletons";
 import type { Product } from "@/data/products";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import { getSettings, type SiteSettings } from "@/lib/settings-store";
@@ -71,11 +73,7 @@ export default function HomePage({ initialProducts, initialReviewStats, initialS
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <HomePageSkeleton />;
   }
 
   return (
@@ -84,13 +82,13 @@ export default function HomePage({ initialProducts, initialReviewStats, initialS
 
       {trending.length > 0 && (
         <div className="animate-fade-in-up">
-          <ProductCarousel products={trending} title="Trending Now" description="Top-rated by our customers" />
+          <ProductCarousel products={trending} title="Trending Now" description="Top-rated by our customers" maxSlides={5} />
         </div>
       )}
 
       {bestSelling.length > 0 && (
         <div className="animate-fade-in-up">
-          <ProductCarousel products={bestSelling} title="Best Selling" description="Most purchased products" />
+          <ProductCarousel products={bestSelling} title="Best Selling" description="Most purchased products" maxSlides={5} />
         </div>
       )}
 
@@ -105,6 +103,12 @@ export default function HomePage({ initialProducts, initialReviewStats, initialS
           discount={settings?.saleBannerDiscount}
         />
       </section>
+
+      {settings?.reviews && settings.reviews.length > 0 && (
+        <div className="animate-fade-in-up">
+          <ReviewSection reviews={settings.reviews} />
+        </div>
+      )}
     </div>
   );
 }

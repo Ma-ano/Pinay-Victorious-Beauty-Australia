@@ -9,9 +9,10 @@ interface Props {
   products: Product[];
   title: string;
   description: string;
+  maxSlides?: number;
 }
 
-const PER_SLIDE = 4;
+const PER_SLIDE = 8;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -21,8 +22,8 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return result;
 }
 
-export default function ProductCarousel({ products, title, description }: Props) {
-  const slides = useMemo(() => chunk(products, PER_SLIDE), [products]);
+export default function ProductCarousel({ products, title, description, maxSlides }: Props) {
+  const slides = useMemo(() => chunk(products, PER_SLIDE).slice(0, maxSlides), [products, maxSlides]);
   const [current, setCurrent] = useState(0);
   const total = slides.length;
 

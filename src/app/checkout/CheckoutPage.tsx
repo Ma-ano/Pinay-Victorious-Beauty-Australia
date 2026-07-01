@@ -7,6 +7,7 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
+import { CheckoutFormSkeleton } from "@/components/Skeletons";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { db as firebaseDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
@@ -214,16 +215,12 @@ export default function CheckoutPage() {
       setSaving(false);
     }
   }
-
   if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <CheckoutFormSkeleton />;
   }
 
   if (!isAuthenticated || !user) return null;
+
   const currentUser = user;
 
   if (placed) {

@@ -20,6 +20,7 @@ const db = firebaseDb!;
 import { useAuth } from "@/components/AuthContext";
 import { useToast } from "@/components/Toast";
 import ImagePlaceholder from "@/components/ImagePlaceholder";
+import { OrderCardSkeleton } from "@/components/Skeletons";
 import { getAllProducts } from "@/lib/product-store";
 import { formatPrice } from "@/lib/format";
 
@@ -273,8 +274,17 @@ export default function OrdersPage() {
 
   if (loading || ordersLoading) {
     return (
-      <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-dark">My Orders</h1>
+            <p className="text-sm text-foreground mt-1">Loading...</p>
+          </div>
+        </div>
+        <div className="space-y-5">
+          <OrderCardSkeleton />
+          <OrderCardSkeleton />
+        </div>
       </div>
     );
   }

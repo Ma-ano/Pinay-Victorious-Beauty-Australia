@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ProductCard from "@/components/ProductCard";
+import { ShopPageSkeleton } from "@/components/Skeletons";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
 import { categories } from "@/data/categories";
@@ -272,9 +273,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center min-h-[40vh]">
-          <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-        </div>
+        <ShopPageSkeleton />
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
           {filtered.map((product) => (

@@ -63,6 +63,7 @@ function mapFirestoreReview(id: string, review: FirestoreReview): Review {
 export default function ProductReviews({ productId, productName }: ProductReviewsProps) {
   const [persistedReviews, setPersistedReviews] = useState<Review[]>([]);
   const [sortBy, setSortBy] = useState("newest");
+  const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
     const reviewsQuery = query(collection(db, "reviews"), where("productId", "==", productId));
@@ -77,6 +78,11 @@ export default function ProductReviews({ productId, productName }: ProductReview
     ...persistedReviews,
     ...getReviewsByProductId(productId),
   ], [persistedReviews, productId]);
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value);
+    setVisibleCount(10);
+  };
 
   const sorted = useMemo(() => {
     const copy = [...reviews];
@@ -93,6 +99,8 @@ export default function ProductReviews({ productId, productName }: ProductReview
         return copy;
     }
   }, [reviews, sortBy]);
+
+  const displayed = sorted.slice(0, visibleCount);
 
   const avgRating = reviews.length > 0
     ? roundRating(reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length).toFixed(1)
@@ -118,7 +126,7 @@ export default function ProductReviews({ productId, productName }: ProductReview
         <p className="text-sm text-foreground">{sorted.length} {sorted.length === 1 ? "review" : "reviews"}</p>
         <select
           value={sortBy}
-          onChange={(event) => setSortBy(event.target.value)}
+          onChange={(event) => handleSortChange(event.target.value)}
           className="text-sm border border-card-border rounded-lg px-3 py-1.5 bg-card text-dark focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
           <option value="newest">Newest</option>
@@ -136,39 +144,51 @@ export default function ProductReviews({ productId, productName }: ProductReview
           <p className="mt-4 text-foreground text-sm">No reviews yet.</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {sorted.map((review) => (
-            <div key={review.id} className="p-5 rounded-2xl bg-card border border-card-border">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-sm font-semibold text-accent">
-                    {review.author.charAt(0)}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-dark">{review.author}</p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="flex items-center gap-0.5">
-                        <StarDisplay rating={review.rating} />
+        <>
+          <div className="space-y-4">
+            {displayed.map((review) => (
+              <div key={review.id} className="p-5 rounded-2xl bg-card border border-card-border">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-accent/20 flex items-center justify-center text-sm font-semibold text-accent">
+                      {review.author.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-dark">{review.author}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <div className="flex items-center gap-0.5">
+                          <StarDisplay rating={review.rating} />
+                        </div>
+                        <span className="text-xs text-foreground">{review.date}</span>
+                        {review.variantName && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-foreground">
+                            {review.variantName}
+                          </span>
+                        )}
                       </div>
-                      <span className="text-xs text-foreground">{review.date}</span>
-                      {review.variantName && (
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-foreground">
-                          {review.variantName}
-                        </span>
-                      )}
                     </div>
                   </div>
+                  {review.isVerified && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium border border-green-200">
+                      Verified Purchase
+                    </span>
+                  )}
                 </div>
-                {review.isVerified && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-50 text-green-600 font-medium border border-green-200">
-                    Verified Purchase
-                  </span>
-                )}
+                <ExpandableReview content={review.content} />
               </div>
-              <ExpandableReview content={review.content} />
+            ))}
+          </div>
+          {visibleCount < sorted.length && (
+            <div className="text-center mt-6">
+              <button
+                onClick={() => setVisibleCount((c) => c + 10)}
+                className="px-6 py-2.5 rounded-xl border border-card-border bg-card text-sm font-medium text-dark hover:border-accent/50 hover:bg-accent/5 transition-all"
+              >
+                Show more reviews ({sorted.length - visibleCount} remaining)
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   );

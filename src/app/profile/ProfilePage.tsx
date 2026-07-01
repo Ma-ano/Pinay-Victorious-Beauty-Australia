@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { uploadImage, deleteImage } from "@/lib/storage";
+import { ProfileSkeleton } from "@/components/Skeletons";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -50,11 +51,7 @@ export default function ProfilePage() {
   }, [loading, user, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center">
-        <div className="w-6 h-6 border-2 border-accent border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return <ProfileSkeleton />;
   }
 
   if (!user) return null;
