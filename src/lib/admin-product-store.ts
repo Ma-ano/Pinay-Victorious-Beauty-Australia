@@ -7,10 +7,30 @@ function serializeProduct(id: string, data: Record<string, unknown>): Product {
   return { ...rest, id } as unknown as Product;
 }
 
+const LIST_FIELDS = [
+  "name", "slug", "category", "subcategory", "type", "brand",
+  "price", "originalPrice", "salePrice",
+  "images", "rating", "reviews", "sold",
+  "isNew", "isSale", "discount", "stock",
+  "variants", "isBundle", "bundleItems", "bundlePrice",
+];
+
 export async function fetchAllProducts(): Promise<Product[]> {
   try {
     const db = getAdminDb();
     const snapshot = await db.collection("products").get();
+    return snapshot.docs.map((doc) => serializeProduct(doc.id, doc.data() as Record<string, unknown>));
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchProducts(opts?: { limit?: number }): Promise<Product[]> {
+  try {
+    const db = getAdminDb();
+    let query: FirebaseFirestore.Query = db.collection("products").select(...LIST_FIELDS);
+    if (opts?.limit) query = query.limit(opts.limit);
+    const snapshot = await query.get();
     return snapshot.docs.map((doc) => serializeProduct(doc.id, doc.data() as Record<string, unknown>));
   } catch {
     return [];

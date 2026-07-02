@@ -154,27 +154,6 @@ export function BestSellingSkeleton() {
   );
 }
 
-export function HomePageSkeleton() {
-  return (
-    <div className="space-y-24 pb-24">
-      <div className="min-h-[50vh] skeleton rounded-none" />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="h-6 w-40 skeleton" />
-        <div className="h-4 w-60 skeleton" />
-        <ProductGridSkeleton count={5} />
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
-        <div className="h-6 w-40 skeleton" />
-        <div className="h-4 w-60 skeleton" />
-        <ProductGridSkeleton count={5} />
-      </div>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="aspect-[3/1] skeleton rounded-3xl" />
-      </div>
-    </div>
-  );
-}
-
 export function ReviewsSectionSkeleton() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
