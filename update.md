@@ -63,6 +63,9 @@
 - Dynamic banners → reserve space with `min-h` wrappers
 - Skeleton dimensions → match real content exactly (same grid, same gap, same border-radius)
 - Images → always explicit `width`/`height` or `aspect-ratio` container
+- Sticky footer: `<body className="min-h-screen flex flex-col">` + `<main className="flex-1">` — footer pushed to bottom without `mt-auto`
+- Full-bleed images: parent must have explicit height (e.g. `h-[50vh] min-h-[400px]`) so `absolute inset-0` children have a definite reference frame
+- Section headings with `mb-10`: text must be static (no async injection) so the gap below is painted atomically with the content
 
 ### ISR Configuration
 - Homepage (`page.tsx`): `revalidate = 60`
