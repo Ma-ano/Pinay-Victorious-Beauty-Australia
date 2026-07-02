@@ -252,7 +252,7 @@ export async function getTrendingProducts(): Promise<Product[]> {
   const enriched = await Promise.all(all.map(enrichProductWithStats));
   return enriched.sort((a, b) => {
     if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
-    return Math.random() - 0.5;
+    return a.id.localeCompare(b.id);
   });
 }
 
@@ -261,7 +261,7 @@ export async function getBestSellingProducts(): Promise<Product[]> {
   const enriched = await Promise.all(all.map(enrichProductWithStats));
   return enriched.sort((a, b) => {
     if (b.soldCount !== a.soldCount) return b.soldCount - a.soldCount;
-    return Math.random() - 0.5;
+    return a.id.localeCompare(b.id);
   });
 }
 

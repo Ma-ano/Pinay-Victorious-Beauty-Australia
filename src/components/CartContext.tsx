@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import type { Product, ProductVariant } from "@/data/products";
 import { subscribeProducts } from "@/lib/product-store";
 import { getCookie, setCookie } from "@/lib/cookies";
@@ -71,19 +71,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, hydrated]);
 
   useEffect(() => {
+    if (items.length === 0) return;
     const unsub = subscribeProducts((products) => {
-      setItems((prev) => prev.map((item) => {
-        const fresh = products.find((p) => p.id === item.product.id);
-        if (!fresh) return item;
-        const variantId = item.variant?.id;
-        const updatedVariant = variantId
-          ? fresh.variants?.find((v) => v.id === variantId) ?? item.variant
-          : undefined;
-        return { ...item, product: fresh, variant: updatedVariant };
-      }));
+      setItems((prev) => {
+        if (prev.length === 0) return prev;
+        return prev.map((item) => {
+          const fresh = products.find((p) => p.id === item.product.id);
+          if (!fresh) return item;
+          const variantId = item.variant?.id;
+          const updatedVariant = variantId
+            ? fresh.variants?.find((v) => v.id === variantId) ?? item.variant
+            : undefined;
+          return { ...item, product: fresh, variant: updatedVariant };
+        });
+      });
     });
     return unsub;
-  }, []);
+  }, [items.length]);
 
   const addItem = useCallback((product: Product, variant?: ProductVariant) => {
     const key = makeKey(product.id, variant?.id);

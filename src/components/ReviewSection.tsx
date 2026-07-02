@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import ReviewCard from "./ReviewCard";
 import type { ReviewConfig } from "@/lib/settings-store";
 
@@ -25,9 +25,6 @@ export default function ReviewSection({ reviews }: Props) {
   const slides = useMemo(() => chunk(reviews, PER_SLIDE), [reviews]);
   const [current, setCurrent] = useState(0);
   const total = slides.length;
-
-  if (total === 0) return null;
-
   const hoverRef = useRef(false);
 
   useEffect(() => {
@@ -37,6 +34,8 @@ export default function ReviewSection({ reviews }: Props) {
     }, 10000);
     return () => clearInterval(interval);
   }, [total]);
+
+  if (total === 0) return null;
 
   const prev = () => setCurrent((c) => (c - 1 + total) % total);
   const next = () => setCurrent((c) => (c + 1) % total);
@@ -81,7 +80,7 @@ export default function ReviewSection({ reviews }: Props) {
         <div className="overflow-hidden">
           <div className="relative">
             <AnimatePresence mode="wait">
-              <motion.div
+              <m.div
                 key={current}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -96,7 +95,7 @@ export default function ReviewSection({ reviews }: Props) {
                     className={rotations[i % rotations.length]}
                   />
                 ))}
-              </motion.div>
+              </m.div>
             </AnimatePresence>
           </div>
         </div>

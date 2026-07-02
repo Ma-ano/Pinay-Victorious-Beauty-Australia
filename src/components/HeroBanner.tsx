@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import type { FeaturedBrandConfig } from "@/lib/settings-store";
 
 const fallbackSlides: FeaturedBrandConfig[] = [
@@ -47,7 +47,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
       onMouseLeave={() => setIsPaused(false)}
     >
       <AnimatePresence mode="wait">
-        <motion.div
+        <m.div
           key={current}
           variants={slideVariants}
           initial="enter"
@@ -66,10 +66,10 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
-                unoptimized
                 preload={current === 0}
-                fetchPriority="high"
+                fetchPriority={current === 0 ? "high" : "auto"}
                 sizes="100vw"
+                quality={75}
               />
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />
             </div>
@@ -77,12 +77,12 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
             <div className="w-full h-full bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10" />
           )}
           <div className="absolute inset-0 bg-linear-to-r from-background/80 via-background/50 to-transparent" />
-        </motion.div>
+        </m.div>
       </AnimatePresence>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16 relative z-10 w-full">
         <AnimatePresence mode="wait">
-          <motion.div
+          <m.div
             key={current}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -115,7 +115,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
                 </div>
               </div>
             </div>
-          </motion.div>
+          </m.div>
         </AnimatePresence>
       </div>
 

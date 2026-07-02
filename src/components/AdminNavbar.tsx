@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { site } from "@/data/site";
 import ThemeToggle from "./ThemeToggle";
 
@@ -54,10 +54,11 @@ export default function AdminNavbar() {
               <Image
                 src="/images/PinayVictoriousLogo.jpg"
                 alt={site.name}
-                width={0}
-                height={0}
+                width={160}
+                height={56}
                 className="h-full w-auto rounded-lg object-contain"
                 sizes="160px"
+                quality={75}
               />
             </Link>
 
@@ -76,7 +77,7 @@ export default function AdminNavbar() {
                   >
                     {link.label}
                     {isActive && (
-                      <motion.span
+                      <m.span
                         layoutId="nav-active"
                         className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full"
                       />
@@ -113,7 +114,7 @@ export default function AdminNavbar() {
 
         <AnimatePresence>
           {mobileOpen && (
-            <motion.div
+            <m.div
               key="mobile-menu"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
@@ -146,7 +147,7 @@ export default function AdminNavbar() {
                   ← Store
                 </Link>
               </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </nav>

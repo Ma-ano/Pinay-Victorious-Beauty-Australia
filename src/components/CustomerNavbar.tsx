@@ -5,7 +5,7 @@ import Link from "next/link";
 import { formatPrice } from "@/lib/format";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import { site, navLinks } from "@/data/site";
 import { categories } from "@/data/categories";
 import { getAllProducts } from "@/lib/product-store";
@@ -32,7 +32,7 @@ export default function CustomerNavbar() {
   const [allProducts, setAllProducts] = useState<Product[]>([]);
 
   useEffect(() => {
-    getAllProducts().then(setAllProducts);
+    getAllProducts(20).then(setAllProducts);
   }, []);
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -137,7 +137,7 @@ export default function CustomerNavbar() {
                     </button>
                     <AnimatePresence>
                       {searchOpen && (
-                        <motion.div
+                        <m.div
                           initial={{ opacity: 0, y: -4 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -4 }}
@@ -223,7 +223,7 @@ export default function CustomerNavbar() {
                               )}
                             </div>
                           )}
-                        </motion.div>
+                        </m.div>
                       )}
                     </AnimatePresence>
                   </div>
@@ -244,7 +244,7 @@ export default function CustomerNavbar() {
                       </button>
                       <AnimatePresence>
                         {catOpen && (
-                          <motion.div key="categories-dropdown"
+                          <m.div key="categories-dropdown"
                             initial={{ opacity: 0, y: 6 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 6 }}
@@ -290,7 +290,7 @@ export default function CustomerNavbar() {
                                 </Link>
                               ))}
                             </div>
-                          </motion.div>
+                          </m.div>
                         )}
                       </AnimatePresence>
                     </div>
@@ -310,7 +310,7 @@ export default function CustomerNavbar() {
                         >
                           {link.label}
                           {isActive && (
-                            <motion.span
+                            <m.span
                               layoutId="nav-active"
                               className="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-0.5 bg-accent rounded-full"
                             />
@@ -421,7 +421,7 @@ export default function CustomerNavbar() {
 
         <AnimatePresence>
           {mobileOpen && (
-              <motion.div key="mobile-menu"
+              <m.div key="mobile-menu"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
@@ -506,7 +506,7 @@ export default function CustomerNavbar() {
                 </div>
               </div>
             </div>
-            </motion.div>
+            </m.div>
           )}
         </AnimatePresence>
       </nav>
@@ -643,7 +643,7 @@ function MobileCategorySection({ categories, onClose }: { categories: { label: s
       </button>
       <AnimatePresence>
         {open && (
-          <motion.div key="mobile-categories"
+          <m.div key="mobile-categories"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -676,7 +676,7 @@ function MobileCategorySection({ categories, onClose }: { categories: { label: s
                 </div>
               ))}
             </div>
-          </motion.div>
+          </m.div>
         )}
       </AnimatePresence>
     </div>

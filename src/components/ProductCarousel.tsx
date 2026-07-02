@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { m, AnimatePresence } from "framer-motion";
 import ProductCard from "./ProductCard";
 import type { Product } from "@/data/products";
 
@@ -26,9 +26,6 @@ export default function ProductCarousel({ products, title, description, maxSlide
   const slides = useMemo(() => chunk(products, PER_SLIDE).slice(0, maxSlides), [products, maxSlides]);
   const [current, setCurrent] = useState(0);
   const total = slides.length;
-
-  if (total === 0) return null;
-
   const hoverRef = useRef(false);
 
   useEffect(() => {
@@ -38,6 +35,8 @@ export default function ProductCarousel({ products, title, description, maxSlide
     }, 10000);
     return () => clearInterval(interval);
   }, [total]);
+
+  if (total === 0) return null;
 
   const prev = () => setCurrent((c) => (c - 1 + total) % total);
   const next = () => setCurrent((c) => (c + 1) % total);
@@ -80,7 +79,7 @@ export default function ProductCarousel({ products, title, description, maxSlide
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 overflow-hidden">
         <div className="relative">
           <AnimatePresence mode="wait">
-            <motion.div
+            <m.div
               key={current}
               initial={{ opacity: 0, x: 60 }}
               animate={{ opacity: 1, x: 0 }}
@@ -91,7 +90,7 @@ export default function ProductCarousel({ products, title, description, maxSlide
               {slides[current].map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
-            </motion.div>
+            </m.div>
           </AnimatePresence>
         </div>
       </div>

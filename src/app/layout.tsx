@@ -9,6 +9,7 @@ import { CartProvider } from "@/components/CartContext";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
+import MotionProvider from "@/components/MotionProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/data/site";
 import { preconnect } from "react-dom";
@@ -60,6 +61,7 @@ export default async function RootLayout({
   return (
     <html lang="en" className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
       <body className="min-h-screen flex flex-col">
+        <MotionProvider>
         <AuthProvider>
         <CartProvider>
           <ToastProvider>
@@ -73,6 +75,7 @@ export default async function RootLayout({
           </ToastProvider>
         </CartProvider>
         </AuthProvider>
+        </MotionProvider>
       </body>
     </html>
   );

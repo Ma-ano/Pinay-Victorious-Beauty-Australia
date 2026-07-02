@@ -22,6 +22,17 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
+  },
+  experimental: {
+    optimizePackageImports: [
+      "framer-motion",
+      "firebase/firestore",
+      "firebase/auth",
+      "firebase/storage",
+    ],
+  },
 };
 
 export default nextConfig;

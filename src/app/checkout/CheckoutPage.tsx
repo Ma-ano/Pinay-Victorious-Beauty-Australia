@@ -9,7 +9,7 @@ import { useAuth, type Address } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import { CheckoutFormSkeleton } from "@/components/Skeletons";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
 import { db as firebaseDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
 
@@ -158,7 +158,7 @@ export default function CheckoutPage() {
       orderData.payerEmail = payerEmail;
     }
 
-    const orderRef = doc(db, "orders", `${currentUser.uid}_${Date.now()}`);
+    const orderRef = doc(collection(db, "orders"));
     await setDoc(orderRef, orderData);
   }
 
