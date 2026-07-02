@@ -52,12 +52,12 @@ function CategoryCard({ cat, categoryImages, errored, setErrored }: {
       className="group flex flex-col items-center justify-center aspect-square p-2 bg-card border border-card-border rounded-xl transition-all duration-500 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1"
     >
       <div className="w-9 h-9 md:w-11 md:h-11 rounded-full bg-primary/10 mb-1.5 group-hover:scale-110 transition-transform duration-500 overflow-hidden flex items-center justify-center">
-        {imgUrl && !hasError ? (
+          {imgUrl && !hasError ? (
           <Image
             src={imgUrl}
             alt={cat.name}
-            width={44}
-            height={44}
+            width={36}
+            height={36}
             className="w-full h-full object-cover"
             onError={() => setErrored((prev) => new Set(prev).add(cat.slug))}
             quality={75}

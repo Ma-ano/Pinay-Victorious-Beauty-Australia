@@ -42,7 +42,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
 
   return (
     <section
-      className="relative min-h-[50vh] flex items-center overflow-hidden bg-linear-to-br from-primary/20 via-secondary/10 to-background"
+      className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden bg-linear-to-br from-primary/20 via-secondary/10 to-background"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
