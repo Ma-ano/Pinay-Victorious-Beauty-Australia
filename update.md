@@ -16,42 +16,46 @@ The homepage now shows a full-page branded loader while everything loads, then r
 
 **Bonus:** Your Google profile photo now shows when you sign in (it was being discarded before — your photo will now appear in the navbar).
 
-## 3. PayPal Integrated (Pay Now + Cards)
+## 3. Vercel Speed Insights Added
+
+Your site now tracks real-world performance — page load times, Core Web Vitals, and user experience metrics — all visible in your Vercel dashboard under Analytics → Speed Insights. The tracking script is lightweight and only activates on your live production site.
+
+## 4. PayPal Integrated (Pay Now + Cards)
 
 You can now accept PayPal and credit/debit card payments at checkout. Three button slots always show — PayPal, Pay Later placeholder, and Card — and PayPal decides which ones are available for each transaction. No more redirecting to PayPal; everything happens right on your checkout page.
 
-## 4. Order Statuses Simplified
+## 5. Order Statuses Simplified
 
 The admin order panel now uses only 5 statuses: **Processing → Approved → Completed** for the happy path, with **Rejected** and **Cancelled** for problem orders. Old orders with "delivered", "shipped", "pending", or "paid" statuses are automatically displayed in the correct category — no data lost.
 
-## 5. COD Orders Auto-Pay on Completion
+## 6. COD Orders Auto-Pay on Completion
 
 When you mark a Cash on Delivery order as **Completed**, the payment status is automatically set to **Paid** — no extra step needed. There's also a **Mark as Paid** button for edge cases where the customer paid outside the system.
 
-## 6. PayPal Refunds on Rejection
+## 7. PayPal Refunds on Rejection
 
 When you **Reject** a paid PayPal order, the system automatically processes a refund through PayPal before marking it as rejected. No more manual refunds.
 
-## 7. Colored Badges Everywhere
+## 8. Colored Badges Everywhere
 
 Payment methods, payment statuses, and order statuses now show colored badges at-a-glance:
 - **Payment**: PayPal (blue), COD (orange)
 - **Payment Status**: Paid (green), Pending (yellow), Failed (red)
 - **Order Status**: Processing (blue), Approved (purple), Completed (green), Cancelled (red), Rejected (red)
 
-## 8. Simplified Payment Data
+## 9. Simplified Payment Data
 
 The system no longer tracks "Card" as a separate payment method or "Pay Later" / "Pay Now" as payment types. Everything is simply **PayPal** or **COD** — keeping the admin panel clean and easy to understand.
 
-## 9. Admin Filters Cleaned Up
+## 10. Admin Filters Cleaned Up
 
 The Payment Type filter row is gone. Payment filters now show just **All**, **COD**, and **PayPal** — no more confusing extra options.
 
-## 10. 404 Page Added
+## 11. 404 Page Added
 
 If someone visits a page that doesn't exist, they'll see a clean "Page Not Found" page with a button to go home instead of a blank error screen.
 
-## 11. Faster Checkout Load
+## 12. Faster Checkout Load
 
 The PayPal SDK was updated to the latest version and unnecessary libraries were removed, making the checkout page load faster.
 
@@ -83,6 +87,8 @@ The PayPal SDK was updated to the latest version and unnecessary libraries were 
 - not-found.tsx: custom 404 page.
 - package.json: removed @paypal/react-paypal-js.
 - AGENTS.md: updated with project conventions.
+- layout.tsx: imported `SpeedInsights` from `@vercel/speed-insights/next` and rendered in root body.
+- package.json: added `@vercel/speed-insights` dependency.
 
 ---
 
