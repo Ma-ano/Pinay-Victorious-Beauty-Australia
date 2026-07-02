@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAdminAuth } from "@/lib/firebase-admin";
+import PayPalProvider from "@/components/PayPalProvider";
 import CheckoutPage from "./CheckoutPage";
 
 export const metadata: Metadata = {
@@ -26,5 +27,5 @@ export default async function Page() {
     redirect("/login");
   }
 
-  return <CheckoutPage />;
+  return <PayPalProvider><CheckoutPage /></PayPalProvider>;
 }

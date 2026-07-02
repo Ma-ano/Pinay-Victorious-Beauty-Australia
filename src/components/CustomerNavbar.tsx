@@ -117,10 +117,11 @@ export default function CustomerNavbar() {
               <Image
                 src="/images/PinayVictoriousLogo.png"
                 alt={site.name}
-                width={0}
-                height={0}
+                width={160}
+                height={56}
                 className="h-full w-auto rounded-lg object-contain"
                 sizes="160px"
+                quality={75}
               />
             </Link>
                 <div className="hidden lg:flex items-center gap-0">

@@ -6,7 +6,6 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthContext";
 import { ToastProvider } from "@/components/Toast";
 import { CartProvider } from "@/components/CartContext";
-import PayPalProvider from "@/components/PayPalProvider";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
@@ -61,7 +60,6 @@ export default async function RootLayout({
       <body className="min-h-screen flex flex-col">
         <AuthProvider>
         <CartProvider>
-        <PayPalProvider>
           <ToastProvider>
             <Navbar />
             <main className="flex-1">{children}</main>
@@ -71,7 +69,6 @@ export default async function RootLayout({
             <WhatsAppBubble />
             <SpeedInsights />
           </ToastProvider>
-        </PayPalProvider>
         </CartProvider>
         </AuthProvider>
       </body>

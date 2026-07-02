@@ -12,10 +12,11 @@ export default function Footer() {
                 <Image
                   src="/images/PinayVictoriousLogo.png"
                   alt={site.name}
-                  width={0}
-                  height={0}
+                  width={200}
+                  height={70}
                   className="w-44 h-auto rounded-lg object-contain mb-3"
                   sizes="200px"
+                  quality={75}
                 />
               </Link>
               <p className="text-sm text-foreground leading-relaxed max-w-xs">{site.description}</p>

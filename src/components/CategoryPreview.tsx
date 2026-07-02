@@ -60,7 +60,7 @@ function CategoryCard({ cat, categoryImages, errored, setErrored }: {
             height={44}
             className="w-full h-full object-cover"
             onError={() => setErrored((prev) => new Set(prev).add(cat.slug))}
-            unoptimized
+            quality={75}
           />
         ) : null}
       </div>

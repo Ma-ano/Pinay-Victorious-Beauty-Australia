@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   serverExternalPackages: ["firebase-admin"],
   images: {
+    qualities: [75],
     remotePatterns: [
       {
         protocol: "https",

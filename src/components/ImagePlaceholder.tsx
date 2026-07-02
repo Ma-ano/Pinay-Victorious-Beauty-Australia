@@ -125,7 +125,7 @@ export default function ImagePlaceholder({
               loaded ? "opacity-100" : "opacity-0"
             }`}
             sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 25vw"
-            unoptimized
+            quality={75}
           />
         </>
       )}
