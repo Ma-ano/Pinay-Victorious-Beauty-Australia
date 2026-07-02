@@ -9,6 +9,7 @@ interface ImagePlaceholderProps {
   imageUrl?: string;
   className?: string;
   aspectRatio?: string;
+  preload?: boolean;
 }
 
 const fallbackConfig: Record<
@@ -80,6 +81,7 @@ export default function ImagePlaceholder({
   imageUrl,
   className = "",
   aspectRatio = "aspect-square",
+  preload,
 }: ImagePlaceholderProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -126,6 +128,7 @@ export default function ImagePlaceholder({
             }`}
             sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 25vw"
             quality={75}
+            preload={preload}
           />
         </>
       )}

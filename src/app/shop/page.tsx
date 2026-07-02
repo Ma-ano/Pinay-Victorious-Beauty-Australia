@@ -4,7 +4,7 @@ import { site } from "@/data/site";
 import { fetchAllProducts, fetchAllReviewStats } from "@/lib/admin-product-store";
 import ShopPage from "./ShopPage";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export const metadata: Metadata = {
   title: "Shop",

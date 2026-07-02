@@ -210,17 +210,7 @@ export function ReviewsSectionSkeleton() {
 }
 
 export function ShopPageSkeleton() {
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-end justify-between mb-6">
-        <div>
-          <div className="h-9 w-28 skeleton" />
-          <div className="mt-1 h-4 w-24 skeleton" />
-        </div>
-      </div>
-      <ProductGridSkeleton count={8} />
-    </div>
-  );
+  return <ProductGridSkeleton count={8} />;
 }
 
 export function SalePageSkeleton() {

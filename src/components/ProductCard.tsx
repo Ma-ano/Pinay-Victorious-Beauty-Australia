@@ -10,7 +10,7 @@ import type { Product } from "@/data/products";
 
 import { useCart } from "./CartContext";
 
-export default function ProductCard({ product }: { product: Product }) {
+export default function ProductCard({ product, preload }: { product: Product; preload?: boolean }) {
   const { showToast } = useToast();
   const { addItem } = useCart();
   const displayVariant = product.variants?.[0];
@@ -43,7 +43,7 @@ export default function ProductCard({ product }: { product: Product }) {
       >
         <div className="relative aspect-square overflow-hidden">
           <div className="w-full h-full transition-transform duration-700 group-hover:scale-110">
-            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.images?.[0]?.url || ""} />
+            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.images?.[0]?.url || ""} preload={preload} />
           </div>
 
           {product.isSale && discount > 0 && (

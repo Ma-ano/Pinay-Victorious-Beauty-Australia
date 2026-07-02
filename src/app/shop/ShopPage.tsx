@@ -276,17 +276,17 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         <ShopPageSkeleton />
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-          {filtered.map((product) => (
-            <div key={product.id} className="animate-fade-in-up">
-              <ProductCard product={product} />
+          {filtered.map((product, i) => (
+            <div key={product.id}>
+              <ProductCard product={product} preload={i === 0} />
             </div>
           ))}
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map((product) => (
-            <div key={product.id} className="animate-fade-in-up">
-              <ProductCard product={product} />
+          {filtered.map((product, i) => (
+            <div key={product.id}>
+              <ProductCard product={product} preload={i === 0} />
             </div>
           ))}
         </div>
