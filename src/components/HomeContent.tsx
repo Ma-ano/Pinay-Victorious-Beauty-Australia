@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import HeroBanner from "./HeroBanner";
 import TrendingSection from "./TrendingSection";
 import BestSellingSection from "./BestSellingSection";
@@ -18,19 +17,8 @@ interface Props {
 }
 
 export default function HomeContent({ products, reviewStats, reviews, settings }: Props) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(frame);
-  }, []);
-
   return (
-    <div
-      className={`space-y-24 pb-24 transition-opacity duration-500 ${
-        visible ? "opacity-100" : "opacity-0"
-      }`}
-    >
+    <div className="space-y-24 pb-24">
       <HeroBanner featuredBrands={settings?.featuredBrands} />
 
       <TrendingSection products={products} reviewStats={reviewStats} />

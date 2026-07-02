@@ -66,7 +66,9 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
+                unoptimized
                 preload={current === 0}
+                fetchPriority="high"
                 sizes="100vw"
               />
               <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />

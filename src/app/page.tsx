@@ -1,7 +1,7 @@
 import { fetchAllProducts, fetchAllReviewStats, fetchAllSettings } from "@/lib/admin-product-store";
 import HomePage from "./HomePage";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export default async function Page() {
   try {

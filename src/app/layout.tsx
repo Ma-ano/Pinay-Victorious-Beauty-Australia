@@ -11,6 +11,7 @@ import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/data/site";
+import { preconnect } from "react-dom";
 
 export const metadata: Metadata = {
   title: {
@@ -54,6 +55,7 @@ export default async function RootLayout({
 }>) {
   const cookieStore = await cookies();
   const theme = cookieStore.get("theme")?.value || "light";
+  preconnect("https://firebasestorage.googleapis.com");
 
   return (
     <html lang="en" className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
