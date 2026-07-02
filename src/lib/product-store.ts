@@ -11,6 +11,7 @@ import {
   serverTimestamp,
   query,
   where,
+  limit,
   onSnapshot,
   FirestoreError,
 } from "firebase/firestore";
@@ -64,8 +65,9 @@ function slugify(text: string): string {
     .trim();
 }
 
-export async function getAllProducts(): Promise<Product[]> {
-  const snapshot = await getDocs(collection(db, "products"));
+export async function getAllProducts(max?: number): Promise<Product[]> {
+  const constraints = max ? [limit(max)] : [];
+  const snapshot = await getDocs(query(collection(db, "products"), ...constraints));
   const result = snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as Product;
     return {

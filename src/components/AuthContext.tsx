@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -70,14 +70,14 @@ function mapFirebaseUser(fu: FirebaseUser): User {
     uid: fu.uid,
     name: fu.displayName || fu.email?.split("@")[0] || "User",
     email: fu.email || "",
-          photoURL: "",
+          photoURL: fu.photoURL || "",
   };
 }
 
 async function syncSession(fu: FirebaseUser | null) {
   try {
     if (fu) {
-      const idToken = await fu.getIdToken(true);
+      const idToken = await fu.getIdToken();
       await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -115,25 +115,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsub = onIdTokenChanged(auth, async (fu) => {
       if (fu) {
-        setUser(mapFirebaseUser(fu));
         setEmailVerified(fu.emailVerified);
         await checkAdminClaim(fu);
+        const base = mapFirebaseUser(fu);
         try {
           const userDoc = await getDoc(doc(db, "users", fu.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
-            setUser((prev) => prev ? {
-              ...prev,
-              name: data.name || prev.name,
+            setUser({
+              ...base,
+              name: data.name || base.name,
               phone: data.phone || "",
-              photoURL: data.photoURL || prev.photoURL || "",
+              photoURL: data.photoURL || base.photoURL,
               address: data.address || { ...defaultAddress },
-            } : null);
+            });
+          } else {
+            setUser(base);
           }
         } catch {
-          // Firestore rules may not be configured yet — continue with Firebase user data
+          setUser(base);
         }
-        await syncSession(fu);
       } else {
         setUser(null);
         setEmailVerified(false);
@@ -149,7 +150,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const fu = cred.user;
-    await fu.getIdToken(true);
     setEmailVerified(fu.emailVerified);
     await checkAdminClaim(fu);
     try {
@@ -169,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "", ...defaultUser });
     }
+    await syncSession(fu);
     const tr = await fu.getIdTokenResult();
     return tr.claims.isAdmin === true;
   }, []);
@@ -318,8 +319,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const value = useMemo(() => ({
+    user, loading, emailVerified, isAuthenticated, needsVerification,
+    isAdmin, isMasterAdmin, login, register, loginWithGoogle,
+    logout, updateProfile, changePassword, resendVerification, getIdToken,
+  }), [user, loading, emailVerified, isAdmin, isMasterAdmin, isAuthenticated, needsVerification,
+    login, register, loginWithGoogle, logout, updateProfile, changePassword, resendVerification, getIdToken]);
+
   return (
-    <AuthContext.Provider value={{ user, loading, emailVerified, isAuthenticated, needsVerification, isAdmin, isMasterAdmin, login, register, loginWithGoogle, logout, updateProfile, changePassword, resendVerification, getIdToken }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -107,7 +107,7 @@ export default function ImagePlaceholder({
       {showImage && (
         <>
           <div
-            className={`absolute inset-0 transition-opacity duration-500 ${
+            className={`absolute inset-0 transition-opacity duration-200 ${
               loaded ? "opacity-0" : "opacity-100"
             }`}
             style={{
@@ -121,10 +121,10 @@ export default function ImagePlaceholder({
             fill
             onLoad={() => setLoaded(true)}
             onError={() => setErrored(true)}
-            className={`object-cover transition-opacity duration-500 ${
+            className={`object-cover transition-opacity duration-200 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
-            sizes="600px"
+            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 25vw"
             unoptimized
           />
         </>

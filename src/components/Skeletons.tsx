@@ -134,6 +134,26 @@ export function CheckoutFormSkeleton() {
   );
 }
 
+export function TrendingSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="h-7 w-40 skeleton" />
+      <div className="h-4 w-60 skeleton" />
+      <ProductGridSkeleton count={8} />
+    </div>
+  );
+}
+
+export function BestSellingSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+      <div className="h-7 w-40 skeleton" />
+      <div className="h-4 w-60 skeleton" />
+      <ProductGridSkeleton count={8} />
+    </div>
+  );
+}
+
 export function HomePageSkeleton() {
   return (
     <div className="space-y-24 pb-24">
@@ -150,6 +170,40 @@ export function HomePageSkeleton() {
       </div>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="aspect-[3/1] skeleton rounded-3xl" />
+      </div>
+    </div>
+  );
+}
+
+export function ReviewsSectionSkeleton() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20">
+      <div className="text-center mb-10 space-y-3">
+        <div className="h-4 w-24 skeleton mx-auto" />
+        <div className="h-8 w-56 skeleton mx-auto" />
+        <div className="mx-auto w-24 h-0.5 skeleton" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-card rounded-2xl border-2 border-dashed border-accent/25 p-6 space-y-4">
+            <div className="flex gap-0.5">
+              {Array.from({ length: 5 }).map((_, j) => (
+                <div key={j} className="w-4 h-4 skeleton rounded-sm" />
+              ))}
+            </div>
+            <div className="space-y-2">
+              <div className="h-3 w-full skeleton" />
+              <div className="h-3 w-11/12 skeleton" />
+              <div className="h-3 w-4/5 skeleton" />
+            </div>
+            <div className="pt-4 border-t border-dashed border-accent/20">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 skeleton rounded-full" />
+                <div className="h-4 w-20 skeleton" />
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
+  increment,
   onSnapshot,
   orderBy,
   query,
@@ -358,6 +359,17 @@ export default function AdminOrdersPage() {
       }
 
       await updateDoc(doc(db, "orders", orderId), updates);
+
+      if (newStatus === "completed" && order?.items) {
+        await Promise.all(
+          order.items.map((item) =>
+            updateDoc(doc(db, "products", item.productId), {
+              sold: increment(item.quantity),
+            }),
+          ),
+        );
+      }
+
       showToast(`Order ${orderId.slice(-8)} marked ${newStatus}`, "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update order status";
