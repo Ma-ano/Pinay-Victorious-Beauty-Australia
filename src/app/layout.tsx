@@ -10,6 +10,7 @@ import PayPalProvider from "@/components/PayPalProvider";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/data/site";
 
 export const metadata: Metadata = {
@@ -68,6 +69,7 @@ export default async function RootLayout({
             <CookieConsent />
             <BackToTop />
             <WhatsAppBubble />
+            <SpeedInsights />
           </ToastProvider>
         </PayPalProvider>
         </CartProvider>
