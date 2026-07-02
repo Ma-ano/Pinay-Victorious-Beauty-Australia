@@ -4,11 +4,15 @@ Here are the latest changes to your website, explained simply.
 
 ---
 
-## 1. Images Now Optimized — Faster Load, Better Scores
+## 1. Images & Performance Optimized — Faster Load
 
-Every image on the site is now served as optimized WebP at the exact size needed. The hero banner, product cards, category icons, and logos were all being served at full resolution — now they're compressed and resized automatically. This is the biggest factor in your Speed Insights score.
+**Smart image optimization:** Product cards, category icons, and logos are now served as optimized WebP at exact sizes — but the hero banner keeps direct CDN delivery from Firebase Storage to avoid server processing delays.
 
-**Bonus:** The PayPal SDK no longer loads on the homepage (it only loads on the checkout page), saving ~25KB of unnecessary JavaScript.
+**Other speed improvements:**
+- **Page caching:** The homepage now caches for 60 seconds (ISR) — returning visitors get instant loads instead of waiting for database queries.
+- **Early connection:** The browser connects to Firebase Storage before the page even requests images, saving ~200ms on the hero image.
+- **Instant content:** Removed the 500ms opacity fade-in delay — content appears immediately.
+- **No PayPal on homepage:** The PayPal SDK (25KB) now only loads on the checkout page.
 
 ## 2. Website Loads Much Faster (Homepage)
 
@@ -83,7 +87,7 @@ The PayPal SDK was updated to the latest version and unnecessary libraries were 
 - Skeletons.tsx: added TrendingSkeleton, BestSellingSkeleton, ReviewsSectionSkeleton.
 - ReviewCard.tsx: uses Next.js `<Image>` for profile photos with letter-avatar fallback.
 - ImagePlaceholder.tsx: `unoptimized` prop to match preloaded image URLs, responsive `sizes`.
-- useHomeData.ts: enforces 400ms min loader, preloads first 8 product images via `new Image()`.
+- useHomeData.ts: 400ms min loader (only on client fetch), removed manual image preloading.
 - AdminOrdersPage.tsx: simplified statuses, transitions, colored badges, COD auto-payment, Mark as Paid.
 - OrdersPage.tsx: simplified status display, backward compat mapping.
 - approve/route.ts: COD auto-payment logic.
@@ -93,13 +97,14 @@ The PayPal SDK was updated to the latest version and unnecessary libraries were 
 - not-found.tsx: custom 404 page.
 - package.json: removed @paypal/react-paypal-js.
 - AGENTS.md: updated with project conventions.
-- layout.tsx: imported `SpeedInsights` from `@vercel/speed-insights/next` and rendered in root body.
-- package.json: added `@vercel/speed-insights` dependency.
-- HeroBanner.tsx: removed `unoptimized`, replaced deprecated `priority` with `preload` — hero image now optimized as WebP, improving LCP.
-- ImagePlaceholder.tsx: removed `unoptimized`, added `quality={75}` — all product card images now optimized.
+- layout.tsx: added `SpeedInsights`, removed `<PayPalProvider>`, added `preconnect("https://firebasestorage.googleapis.com")`.
+- package.json: added `@vercel/speed-insights`.
+- HeroBanner.tsx: `unoptimized` restored (hero images served direct from Firebase Storage CDN), `preload` for first slide, `fetchPriority="high"`.
+- ImagePlaceholder.tsx: removed `unoptimized`, added `quality={75}` — product images optimized.
 - CategoryPreview.tsx: removed `unoptimized`, added `quality={75}` — category icons optimized.
-- CustomerNavbar.tsx / Footer.tsx: replaced `width={0}/height={0}` with explicit dimensions on logo images — logos now optimized.
-- layout.tsx: removed `<PayPalProvider>` wrapper from root — saves ~25KB JS on every page.
+- CustomerNavbar.tsx / Footer.tsx: explicit width/height on logos.
+- page.tsx: `force-dynamic` replaced with `revalidate = 60` — enables ISR caching for instant repeat visits.
+- HomeContent.tsx: removed `useEffect` opacity fade-in delay — content visible immediately.
 - checkout/page.tsx: added `<PayPalProvider>` wrapper — only loads PayPal SDK on checkout page.
 - useHomeData.ts: removed manual `new Image()` preloading — no longer bypasses Next.js image pipeline.
 - next.config.ts: added `images.qualities: [75]` to match `quality` props.
