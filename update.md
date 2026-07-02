@@ -4,11 +4,17 @@ Here are the latest changes to your website, explained simply.
 
 ---
 
-## 1. Website Loads Much Faster (Homepage)
+## 1. Images Now Optimized — Faster Load, Better Scores
+
+Every image on the site is now served as optimized WebP at the exact size needed. The hero banner, product cards, category icons, and logos were all being served at full resolution — now they're compressed and resized automatically. This is the biggest factor in your Speed Insights score.
+
+**Bonus:** The PayPal SDK no longer loads on the homepage (it only loads on the checkout page), saving ~25KB of unnecessary JavaScript.
+
+## 2. Website Loads Much Faster (Homepage)
 
 The homepage now shows a full-page branded loader while everything loads, then reveals all content at once — no more pieces popping in one by one. Product images are preloaded in the background so they appear instantly when the page shows.
 
-## 2. Auth Session & Navbar Fixed
+## 3. Auth Session & Navbar Fixed
 
 **Two bugs fixed:**
 - **Endless session requests** — The browser was making `POST /api/auth/session` calls repeatedly in a loop (sometimes thousands). This is now stopped by removing the forced token refresh inside the auth listener.
@@ -16,46 +22,46 @@ The homepage now shows a full-page branded loader while everything loads, then r
 
 **Bonus:** Your Google profile photo now shows when you sign in (it was being discarded before — your photo will now appear in the navbar).
 
-## 3. Vercel Speed Insights Added
+## 4. Vercel Speed Insights Added
 
 Your site now tracks real-world performance — page load times, Core Web Vitals, and user experience metrics — all visible in your Vercel dashboard under Analytics → Speed Insights. The tracking script is lightweight and only activates on your live production site.
 
-## 4. PayPal Integrated (Pay Now + Cards)
+## 5. PayPal Integrated (Pay Now + Cards)
 
 You can now accept PayPal and credit/debit card payments at checkout. Three button slots always show — PayPal, Pay Later placeholder, and Card — and PayPal decides which ones are available for each transaction. No more redirecting to PayPal; everything happens right on your checkout page.
 
-## 5. Order Statuses Simplified
+## 6. Order Statuses Simplified
 
 The admin order panel now uses only 5 statuses: **Processing → Approved → Completed** for the happy path, with **Rejected** and **Cancelled** for problem orders. Old orders with "delivered", "shipped", "pending", or "paid" statuses are automatically displayed in the correct category — no data lost.
 
-## 6. COD Orders Auto-Pay on Completion
+## 7. COD Orders Auto-Pay on Completion
 
 When you mark a Cash on Delivery order as **Completed**, the payment status is automatically set to **Paid** — no extra step needed. There's also a **Mark as Paid** button for edge cases where the customer paid outside the system.
 
-## 7. PayPal Refunds on Rejection
+## 8. PayPal Refunds on Rejection
 
 When you **Reject** a paid PayPal order, the system automatically processes a refund through PayPal before marking it as rejected. No more manual refunds.
 
-## 8. Colored Badges Everywhere
+## 9. Colored Badges Everywhere
 
 Payment methods, payment statuses, and order statuses now show colored badges at-a-glance:
 - **Payment**: PayPal (blue), COD (orange)
 - **Payment Status**: Paid (green), Pending (yellow), Failed (red)
 - **Order Status**: Processing (blue), Approved (purple), Completed (green), Cancelled (red), Rejected (red)
 
-## 9. Simplified Payment Data
+## 10. Simplified Payment Data
 
 The system no longer tracks "Card" as a separate payment method or "Pay Later" / "Pay Now" as payment types. Everything is simply **PayPal** or **COD** — keeping the admin panel clean and easy to understand.
 
-## 10. Admin Filters Cleaned Up
+## 11. Admin Filters Cleaned Up
 
 The Payment Type filter row is gone. Payment filters now show just **All**, **COD**, and **PayPal** — no more confusing extra options.
 
-## 11. 404 Page Added
+## 12. 404 Page Added
 
 If someone visits a page that doesn't exist, they'll see a clean "Page Not Found" page with a button to go home instead of a blank error screen.
 
-## 12. Faster Checkout Load
+## 13. Faster Checkout Load
 
 The PayPal SDK was updated to the latest version and unnecessary libraries were removed, making the checkout page load faster.
 
@@ -89,6 +95,14 @@ The PayPal SDK was updated to the latest version and unnecessary libraries were 
 - AGENTS.md: updated with project conventions.
 - layout.tsx: imported `SpeedInsights` from `@vercel/speed-insights/next` and rendered in root body.
 - package.json: added `@vercel/speed-insights` dependency.
+- HeroBanner.tsx: removed `unoptimized`, replaced deprecated `priority` with `preload` — hero image now optimized as WebP, improving LCP.
+- ImagePlaceholder.tsx: removed `unoptimized`, added `quality={75}` — all product card images now optimized.
+- CategoryPreview.tsx: removed `unoptimized`, added `quality={75}` — category icons optimized.
+- CustomerNavbar.tsx / Footer.tsx: replaced `width={0}/height={0}` with explicit dimensions on logo images — logos now optimized.
+- layout.tsx: removed `<PayPalProvider>` wrapper from root — saves ~25KB JS on every page.
+- checkout/page.tsx: added `<PayPalProvider>` wrapper — only loads PayPal SDK on checkout page.
+- useHomeData.ts: removed manual `new Image()` preloading — no longer bypasses Next.js image pipeline.
+- next.config.ts: added `images.qualities: [75]` to match `quality` props.
 
 ---
 
