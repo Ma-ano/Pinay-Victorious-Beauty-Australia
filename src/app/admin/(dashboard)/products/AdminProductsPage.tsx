@@ -91,6 +91,15 @@ export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filterCategory, setFilterCategory] = useState("");
+  const [filterType, setFilterType] = useState("");
+  const [filterBrand, setFilterBrand] = useState("");
+  const [filterAvailability, setFilterAvailability] = useState<"all" | "in-stock" | "out-of-stock">("all");
+  const [filterMinPrice, setFilterMinPrice] = useState("");
+  const [filterMaxPrice, setFilterMaxPrice] = useState("");
+  const [filterHasImages, setFilterHasImages] = useState<"all" | "yes" | "no">("all");
+  const [filterHasVariants, setFilterHasVariants] = useState<"all" | "yes" | "no">("all");
+  const [showFilters, setShowFilters] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -148,14 +157,53 @@ export default function AdminProductsPage() {
     return () => window.removeEventListener("keydown", handleKey);
   }, [showForm]);
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (filterCategory) count++;
+    if (filterType) count++;
+    if (filterBrand) count++;
+    if (filterAvailability !== "all") count++;
+    if (filterMinPrice || filterMaxPrice) count++;
+    if (filterHasImages !== "all") count++;
+    if (filterHasVariants !== "all") count++;
+    return count;
+  }, [filterCategory, filterType, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
+
   const filtered = useMemo(
     () =>
-      products.filter(
-        (p) =>
-          p.name.toLowerCase().includes(search.toLowerCase()) ||
-          p.category.toLowerCase().includes(search.toLowerCase())
-      ),
-    [products, search]
+      products.filter((p) => {
+        if (search) {
+          const q = search.toLowerCase();
+          const variantNames = (p.variants || []).map((v) => v.name.toLowerCase()).join(" ");
+          const searchable = [p.name, p.category, p.subcategory || "", p.type, p.brand || "", variantNames, p.id].join(" ").toLowerCase();
+          if (!searchable.includes(q)) return false;
+        }
+
+        if (filterCategory && p.category !== filterCategory) return false;
+        if (filterType && p.type !== filterType) return false;
+        if (filterBrand && !(p.brand || "").toLowerCase().includes(filterBrand.toLowerCase())) return false;
+
+        if (filterAvailability !== "all") {
+          const hasStock = p.variants && p.variants.length > 0
+            ? p.variants.some((v) => v.inStock)
+            : (p.stock ?? 0) > 0;
+          if (filterAvailability === "in-stock" && !hasStock) return false;
+          if (filterAvailability === "out-of-stock" && hasStock) return false;
+        }
+
+        if (filterMinPrice && p.price < parseFloat(filterMinPrice)) return false;
+        if (filterMaxPrice && p.price > parseFloat(filterMaxPrice)) return false;
+
+        if (filterHasImages === "yes" && (!p.images || p.images.length === 0)) return false;
+        if (filterHasImages === "no" && p.images && p.images.length > 0) return false;
+
+        if (filterHasVariants === "yes" && (!p.variants || p.variants.length === 0)) return false;
+        if (filterHasVariants === "no" && p.variants && p.variants.length > 0) return false;
+
+        return true;
+      }),
+    [products, search, filterCategory, filterType, filterBrand, filterAvailability,
+     filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]
   );
 
   const excludedCategorySlugs = useMemo(() => new Set(["best-sellers", "new-arrivals", "gift-sets", "sale"]), []);
@@ -867,13 +915,105 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      <input
-        type="text"
-        placeholder="Search products..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        className="w-full max-w-xs px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm mb-4"
-      />
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Search by name, category, brand, variant..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="flex-1 min-w-[200px] max-w-sm px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
+        />
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
+            showFilters || activeFilterCount > 0
+              ? "bg-accent text-white border-accent"
+              : "bg-card text-foreground border-card-border hover:border-accent/50"
+          }`}
+        >
+          Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ""}
+        </button>
+      </div>
+
+      {showFilters && (
+        <div className="bg-card rounded-2xl border border-card-border p-4 mb-4 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs text-foreground mb-1">Category</label>
+              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                <option value="">All Categories</option>
+                {categoryOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-foreground mb-1">Type</label>
+              <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                <option value="">All Types</option>
+                {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-foreground mb-1">Brand</label>
+              <input type="text" value={filterBrand} onChange={(e) => setFilterBrand(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                placeholder="Any brand" />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+            <div>
+              <label className="block text-xs text-foreground mb-1">Availability</label>
+              <select value={filterAvailability} onChange={(e) => setFilterAvailability(e.target.value as "all" | "in-stock" | "out-of-stock")}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                <option value="all">All</option>
+                <option value="in-stock">In Stock</option>
+                <option value="out-of-stock">Out of Stock</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-foreground mb-1">Min Price (AUD)</label>
+              <input type="number" min="0" step="0.01" value={filterMinPrice} onChange={(e) => setFilterMinPrice(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                placeholder="0" />
+            </div>
+            <div>
+              <label className="block text-xs text-foreground mb-1">Max Price (AUD)</label>
+              <input type="number" min="0" step="0.01" value={filterMaxPrice} onChange={(e) => setFilterMaxPrice(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                placeholder="999" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-foreground mb-1">Has Images</label>
+                <select value={filterHasImages} onChange={(e) => setFilterHasImages(e.target.value as "all" | "yes" | "no")}
+                  className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                  <option value="all">All</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-foreground mb-1">Has Variants</label>
+                <select value={filterHasVariants} onChange={(e) => setFilterHasVariants(e.target.value as "all" | "yes" | "no")}
+                  className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
+                  <option value="all">All</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          {activeFilterCount > 0 && (
+            <button onClick={() => { setFilterCategory(""); setFilterType(""); setFilterBrand(""); setFilterAvailability("all"); setFilterMinPrice(""); setFilterMaxPrice(""); setFilterHasImages("all"); setFilterHasVariants("all"); }}
+              className="text-xs text-accent hover:underline">
+              Clear all filters
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="bg-card rounded-2xl border border-card-border overflow-hidden">
         <table className="w-full text-sm">
@@ -884,7 +1024,7 @@ export default function AdminProductsPage() {
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Subcategory</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Type</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Brand</th>
-              <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Type</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Form</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Price</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Stock</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Images</th>
@@ -896,8 +1036,8 @@ export default function AdminProductsPage() {
           <tbody className="divide-y divide-primary/10">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={10} className="px-4 py-12 text-center text-foreground">
-                  {search ? "No products match your search." : 'No products yet. Click "+ Add Product" to get started.'}
+                <td colSpan={12} className="px-4 py-12 text-center text-foreground">
+                  {search || activeFilterCount > 0 ? "No products match your search or filters." : 'No products yet. Click "+ Add Product" to get started.'}
                 </td>
               </tr>
             ) : (
