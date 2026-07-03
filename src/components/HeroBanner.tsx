@@ -57,7 +57,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
           className="absolute inset-0"
         >
           {slides[current]?.image ? (
-            <div className="w-full h-full">
+            <div className="relative w-full h-full">
               <Image
                 src={slides[current].image}
                 alt=""

@@ -22,6 +22,18 @@ function EyeIcon({ open }: { open: boolean }) {
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  if (!digits.startsWith("61")) return digits;
+  const rest = digits.slice(2, 11);
+  let result = "+61";
+  if (rest.length > 0) result += " " + rest.slice(0, 3);
+  if (rest.length > 3) result += " " + rest.slice(3, 6);
+  if (rest.length > 6) result += " " + rest.slice(6, 9);
+  return result;
+}
+
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -40,6 +52,10 @@ export default function RegisterPage() {
   const { register, loginWithGoogle } = useAuth();
   const router = useRouter();
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPhone(formatPhone(e.target.value));
+  };
+
   function validate(): boolean {
     const errs: Record<string, string> = {};
 
@@ -56,7 +72,7 @@ export default function RegisterPage() {
     const trimmedPhone = phone.trim();
     if (!trimmedPhone) {
       errs.phone = "Phone number is required";
-    } else if (!/^\+?[\d\s\-()]{7,15}$/.test(trimmedPhone)) {
+    } else if (!/^\+?[\d\s\-()]{7,20}$/.test(trimmedPhone)) {
       errs.phone = "Please enter a valid phone number";
     }
 
@@ -162,7 +178,7 @@ export default function RegisterPage() {
                   <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-1">
                     Phone <span className="text-red-400">*</span>
                   </label>
-                  <input id="phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)}
+                  <input id="phone" type="tel" value={phone} onChange={handlePhoneChange}
                     className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.phone ? "border-red-400" : "border-primary/20"}`}
                     placeholder="+61 400 000 000" />
                   {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}

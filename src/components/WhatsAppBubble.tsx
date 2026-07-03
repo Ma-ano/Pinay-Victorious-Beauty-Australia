@@ -17,7 +17,7 @@ export default function WhatsAppBubble() {
   return (
     <div className="fixed bottom-6 left-6 z-50 flex items-end gap-3">
       <a
-        href="https://wa.me/YOUR_NUMBER"
+        href="https://wa.me/61413504424"
         target="_blank"
         rel="noopener noreferrer"
         className="w-14 h-14 bg-green-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-green-600 hover:scale-110 active:scale-95 transition-all animate-whatsapp-pulse shrink-0"

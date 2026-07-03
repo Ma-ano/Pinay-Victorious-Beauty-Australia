@@ -87,8 +87,8 @@ export default function ProductCarousel({ products, title, description, maxSlide
               transition={{ duration: 0.3, ease: "easeOut" }}
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6"
             >
-              {slides[current].map((product) => (
-                <ProductCard key={product.id} product={product} />
+              {slides[current].map((product, i) => (
+                <ProductCard key={product.id} product={product} preload={current === 0 && i < 2} />
               ))}
             </m.div>
           </AnimatePresence>

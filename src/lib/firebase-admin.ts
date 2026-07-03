@@ -64,6 +64,15 @@ export function getAdminDb() {
   return getFirestore(getAdminApp());
 }
 
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Firestore query timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
+
 export async function setAdminClaim(uid: string) {
   await getAdminAuth().setCustomUserClaims(uid, { isAdmin: true });
 }

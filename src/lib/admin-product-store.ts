@@ -1,4 +1,4 @@
-import { getAdminDb, FirebaseAdminNotConfigured } from "@/lib/firebase-admin";
+import { getAdminDb, FirebaseAdminNotConfigured, withTimeout } from "@/lib/firebase-admin";
 import type { Product } from "@/data/products";
 import { roundRating } from "@/lib/review-utils";
 
@@ -18,7 +18,7 @@ const LIST_FIELDS = [
 export async function fetchAllProducts(): Promise<Product[]> {
   try {
     const db = getAdminDb();
-    const snapshot = await db.collection("products").get();
+    const snapshot = await withTimeout(db.collection("products").get(), 10000);
     return snapshot.docs.map((doc) => serializeProduct(doc.id, doc.data() as Record<string, unknown>));
   } catch {
     return [];
@@ -30,7 +30,7 @@ export async function fetchProducts(opts?: { limit?: number }): Promise<Product[
     const db = getAdminDb();
     let query: FirebaseFirestore.Query = db.collection("products").select(...LIST_FIELDS);
     if (opts?.limit) query = query.limit(opts.limit);
-    const snapshot = await query.get();
+    const snapshot = await withTimeout(query.get(), 10000);
     return snapshot.docs.map((doc) => serializeProduct(doc.id, doc.data() as Record<string, unknown>));
   } catch {
     return [];
@@ -40,7 +40,7 @@ export async function fetchProducts(opts?: { limit?: number }): Promise<Product[
 export async function fetchAllReviewStats(): Promise<Record<string, { avgRating: number; reviewCount: number }>> {
   try {
     const db = getAdminDb();
-    const snapshot = await db.collection("reviews").get();
+    const snapshot = await withTimeout(db.collection("reviews").limit(1000).get(), 10000);
     const acc: Record<string, { total: number; count: number }> = {};
     snapshot.docs.forEach((d) => {
       const data = d.data();
@@ -63,7 +63,7 @@ export async function fetchAllReviewStats(): Promise<Record<string, { avgRating:
 export async function fetchAllSettings(): Promise<Record<string, unknown> | null> {
   try {
     const db = getAdminDb();
-    const snap = await db.collection("settings").doc("site").get();
+    const snap = await withTimeout(db.collection("settings").doc("site").get(), 10000);
     if (!snap.exists) return null;
     return snap.data() as Record<string, unknown>;
   } catch {

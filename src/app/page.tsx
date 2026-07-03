@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import type { Product } from "@/data/products";
 import { fetchAllSettings, fetchProducts, fetchAllReviewStats } from "@/lib/admin-product-store";
 import HeroBanner from "@/components/HeroBanner";
 import CategoryPreview from "@/components/CategoryPreview";
@@ -10,21 +11,20 @@ import { TrendingSkeleton, BestSellingSkeleton } from "@/components/Skeletons";
 
 export const revalidate = 60;
 
-async function TrendingWrapper() {
-  const [products, reviewStats] = await Promise.all([
-    fetchProducts({ limit: 20 }),
-    fetchAllReviewStats(),
-  ]);
+async function TrendingWrapper({ products }: { products: Product[] }) {
+  const reviewStats = await fetchAllReviewStats();
   return <TrendingSection products={products} reviewStats={reviewStats} />;
 }
 
-async function BestSellingWrapper() {
-  const products = await fetchProducts({ limit: 20 });
+async function BestSellingWrapper({ products }: { products: Product[] }) {
   return <BestSellingSection products={products} />;
 }
 
 export default async function Page() {
-  const settings = await fetchAllSettings();
+  const [settings, products] = await Promise.all([
+    fetchAllSettings(),
+    fetchProducts({ limit: 20 }),
+  ]);
   const s = settings ? JSON.parse(JSON.stringify(settings)) : null;
 
   return (
@@ -32,11 +32,11 @@ export default async function Page() {
       <HeroBanner featuredBrands={s?.featuredBrands} />
 
       <Suspense fallback={<TrendingSkeleton />}>
-        <TrendingWrapper />
+        <TrendingWrapper products={products} />
       </Suspense>
 
       <Suspense fallback={<BestSellingSkeleton />}>
-        <BestSellingWrapper />
+        <BestSellingWrapper products={products} />
       </Suspense>
 
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

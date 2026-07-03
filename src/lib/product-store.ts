@@ -1,6 +1,8 @@
 import { db as firebaseDb } from "@/lib/firebase";
 
-const db = firebaseDb!;
+const _db = firebaseDb;
+if (!_db) throw new Error("Firestore not initialized");
+const db = _db;
 import {
   collection,
   doc,
