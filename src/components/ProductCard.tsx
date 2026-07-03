@@ -56,7 +56,7 @@ export default function ProductCard({ product, preload }: { product: Product; pr
               New
             </span>
           )}
-            <div className="absolute inset-x-0 bottom-0 p-3 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
+            <div className="absolute inset-x-0 bottom-0 p-3 bg-linear-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 translate-y-2 group-hover:translate-y-0">
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleQuickAdd}

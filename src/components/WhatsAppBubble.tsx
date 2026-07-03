@@ -39,7 +39,7 @@ export default function WhatsAppBubble() {
           <br />
           Reach out on WhatsApp
         </p>
-        <div className="absolute left-full top-1/2 -translate-y-1/2 -ml-[5px]">
+        <div className="absolute left-full top-1/2 -translate-y-1/2 -ml-1.25">
           <div className="w-0 h-0 border-y-8 border-y-transparent border-l-8 border-l-white dark:border-l-card" />
         </div>
       </div>

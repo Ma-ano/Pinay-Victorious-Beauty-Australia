@@ -94,7 +94,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-accent/20 via-primary/10 to-accent/5 p-8 md:p-14 text-center mb-12">
+      <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-accent/20 via-primary/10 to-accent/5 p-8 md:p-14 text-center mb-12">
         <div className="absolute top-0 right-0 w-40 h-40 bg-accent/10 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
         <div className="relative z-10">

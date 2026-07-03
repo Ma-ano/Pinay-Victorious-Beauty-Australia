@@ -90,7 +90,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
         placeholder={placeholder || "Type to search..."}
         required={required}
         autoComplete="off"
-        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
       />
       <svg
         className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/60 pointer-events-none"
@@ -99,7 +99,7 @@ export default function SearchableSelect({ value, onChange, options, placeholder
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
       {open && (
-        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-xl border border-card-border bg-[var(--background)] shadow-lg">
+        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto rounded-xl border border-card-border bg-background shadow-lg">
           {filtered.length === 0 ? (
             <div className="px-4 py-3 text-sm text-foreground/60">No results</div>
           ) : (

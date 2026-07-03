@@ -209,7 +209,7 @@ export default function ProductDetailPage({ product }: Props) {
         </div>
 
         <div className="lg:sticky lg:top-28 lg:self-start">
-          <p className="text-xs text-foreground uppercase tracking-widest mb-2 capitalize">
+          <p className="text-xs text-foreground uppercase tracking-widest mb-2">
             {product.category}
           </p>
           <h1 className="text-xl md:text-2xl font-bold text-dark leading-tight">{product.name}</h1>
@@ -237,7 +237,7 @@ export default function ProductDetailPage({ product }: Props) {
             </span>
           </div>
 
-          <p className="mt-4 text-foreground leading-relaxed text-sm break-words max-h-32 overflow-y-auto">
+          <p className="mt-4 text-foreground leading-relaxed text-sm wrap-break-word max-h-32 overflow-y-auto">
             {product.description}
           </p>
 
@@ -331,7 +331,7 @@ export default function ProductDetailPage({ product }: Props) {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </summary>
-                <p className="px-4 pb-3.5 text-sm text-dark leading-relaxed break-words whitespace-pre-wrap max-h-60 overflow-y-auto">{section.content}</p>
+                <p className="px-4 pb-3.5 text-sm text-dark leading-relaxed wrap-break-word whitespace-pre-wrap max-h-60 overflow-y-auto">{section.content}</p>
               </details>
             ))}
           </div>

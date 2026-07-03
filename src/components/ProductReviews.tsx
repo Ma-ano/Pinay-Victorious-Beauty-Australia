@@ -32,7 +32,7 @@ function ExpandableReview({ content }: { content: string }) {
   const long = content.length > 200;
   return (
     <div>
-      <p className={`mt-3 text-sm text-foreground leading-relaxed break-words ${!expanded && long ? "line-clamp-3" : ""}`}>
+      <p className={`mt-3 text-sm text-foreground leading-relaxed wrap-break-word ${!expanded && long ? "line-clamp-3" : ""}`}>
         {content}
       </p>
       {long && (

@@ -32,7 +32,7 @@ export default function PromotionCards() {
         <Link
           key={promo.id}
           href={promo.code ? `/sale?code=${promo.code}` : "/sale"}
-          className="group relative overflow-hidden rounded-2xl p-6 bg-gradient-to-br shadow-sm border border-card-border transition-all hover:shadow-lg"
+          className="group relative overflow-hidden rounded-2xl p-6 bg-linear-to-br shadow-sm border border-card-border transition-all hover:shadow-lg"
           style={{ backgroundImage: `linear-gradient(to bottom right, ${gradients[i % gradients.length]})` }}
         >
           <p className="text-xs font-semibold text-accent uppercase tracking-widest">

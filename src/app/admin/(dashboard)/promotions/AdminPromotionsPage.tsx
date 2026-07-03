@@ -122,7 +122,7 @@ export default function AdminPromotionsPage() {
                     type="text"
                     value={form.code}
                     onChange={(e) => setForm({ ...form, code: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                     placeholder="e.g. SUMMER20"
                   />
                   <p className="text-[11px] text-foreground/70 mt-0.5">Customers type this at checkout. Keep it short and easy to remember.</p>
@@ -134,7 +134,7 @@ export default function AdminPromotionsPage() {
                     min="1"
                     value={form.discount || ""}
                     onChange={(e) => setForm({ ...form, discount: parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                     placeholder="e.g. 20"
                   />
                   <p className="text-[11px] text-foreground/70 mt-0.5">For Percentage, enter the number only (e.g. 20 = 20% off). For Fixed Amount, enter the dollar amount.</p>
@@ -144,7 +144,7 @@ export default function AdminPromotionsPage() {
                   <select
                     value={form.type}
                     onChange={(e) => setForm({ ...form, type: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                   >
                     <option>Percentage</option>
                     <option>Fixed Amount</option>
@@ -158,7 +158,7 @@ export default function AdminPromotionsPage() {
                     type="date"
                     value={form.startDate}
                     onChange={(e) => setForm({ ...form, startDate: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                   />
                   <p className="text-[11px] text-foreground/70 mt-0.5">Promotion becomes active from this date. Defaults to today.</p>
                 </div>
@@ -168,7 +168,7 @@ export default function AdminPromotionsPage() {
                     type="date"
                     value={form.expires}
                     onChange={(e) => setForm({ ...form, expires: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                    className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                   />
                   <p className="text-[11px] text-foreground/70 mt-0.5">After this date, the code will stop working.</p>
                 </div>

@@ -172,7 +172,7 @@ export default function AdminUsersPage() {
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by email or name..."
-            className="flex-1 px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
           />
           <button
             type="submit"
@@ -195,7 +195,7 @@ export default function AdminUsersPage() {
         <select
           value={roleFilter}
           onChange={(e) => { setRoleFilter(e.target.value); setPage(1); }}
-          className="px-4 py-2 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+          className="px-4 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
           <option value="">All Roles</option>
           <option value="customer">Customer</option>
@@ -204,7 +204,7 @@ export default function AdminUsersPage() {
         <select
           value={statusFilter}
           onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
-          className="px-4 py-2 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+          className="px-4 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
         >
           <option value="">All Status</option>
           <option value="active">Active</option>
@@ -240,7 +240,7 @@ export default function AdminUsersPage() {
                         {u.name.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <span className="text-dark font-medium truncate block max-w-[120px]">{u.name}</span>
+                        <span className="text-dark font-medium truncate block max-w-30">{u.name}</span>
                         {u.isMaster && (
                           <span className="text-[10px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full">
                             Master Admin
@@ -255,7 +255,7 @@ export default function AdminUsersPage() {
                       value={u.role}
                       onChange={(e) => handleRoleChange(u.uid, e.target.value)}
                       disabled={processing === u.uid || u.isMaster}
-                      className="text-xs px-2 py-1 rounded-lg border border-card-border bg-[var(--background)] focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50"
+                      className="text-xs px-2 py-1 rounded-lg border border-card-border bg-background focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50"
                     >
                       <option value="customer">Customer</option>
                       <option value="admin">Admin</option>

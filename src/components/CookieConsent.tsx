@@ -22,7 +22,7 @@ export default function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] p-4">
+    <div className="fixed bottom-0 left-0 right-0 z-60 p-4">
       <div className="max-w-7xl mx-auto bg-card/90 backdrop-blur-lg border border-card-border rounded-2xl p-4 sm:p-5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-6">
         <div className="text-sm text-foreground leading-relaxed">
           We use cookies to enhance your browsing experience and analyze site traffic.{' '}

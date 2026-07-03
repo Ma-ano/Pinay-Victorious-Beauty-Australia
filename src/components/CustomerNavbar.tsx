@@ -250,7 +250,7 @@ export default function CustomerNavbar() {
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 6 }}
                             transition={{ duration: 0.15 }}
-                            className="absolute top-full left-0 mt-1 min-w-[220px] max-w-[90vw] sm:min-w-[400px] lg:min-w-[500px] xl:min-w-[600px] max-h-[70vh] overflow-y-auto bg-card rounded-xl p-4 shadow-xl"
+                            className="absolute top-full left-0 mt-1 min-w-55 max-w-[90vw] sm:min-w-100 lg:min-w-125 xl:min-w-150 max-h-[70vh] overflow-y-auto bg-card rounded-xl p-4 shadow-xl"
                           >
                             <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3">
                               {categoryLinks.filter(c => c.subcategories.length > 0).map((cat) => (

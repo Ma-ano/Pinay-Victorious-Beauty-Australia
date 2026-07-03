@@ -465,20 +465,20 @@ export default function AdminProductsPage() {
                   <div className="sm:col-span-2">
                     <label className="block text-xs text-foreground mb-1">Product Name *</label>
                     <input type="text" value={form.name} onChange={(e) => updateField("name", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                       placeholder="e.g. Radiance Glow Serum" required />
                   </div>
                   <div className="sm:col-span-2">
                     <label className="block text-xs text-foreground mb-1">Slug</label>
                     <input type="text" value={form.slug} readOnly
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card/50 text-foreground/60 text-sm font-mono text-xs"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-card/50 text-foreground/60 font-mono text-xs"
                       placeholder="Auto-generated from name" />
                     <p className="text-[11px] text-foreground/70 mt-1">Auto-generated from product name</p>
                   </div>
                   <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-xs text-foreground mb-1">Category *</label>
                     {form.isBundle ? (
-                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm text-foreground/60">
+                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm text-foreground/60">
                         Gift Sets &amp; Bundles
                       </div>
                     ) : (
@@ -497,7 +497,7 @@ export default function AdminProductsPage() {
                   <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-xs text-foreground mb-1">Subcategory</label>
                     {form.isBundle ? (
-                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm text-foreground/60">
+                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm text-foreground/60">
                         —
                       </div>
                     ) : (
@@ -515,12 +515,12 @@ export default function AdminProductsPage() {
                   <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
                     <label className="block text-xs text-foreground mb-1">Type *</label>
                     {form.isBundle ? (
-                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm text-foreground/60">
+                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm text-foreground/60">
                         —
                       </div>
                     ) : (
                       <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" required>
+                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" required>
                         <option value="">Select type</option>
                         {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
                       </select>
@@ -532,7 +532,7 @@ export default function AdminProductsPage() {
                   <div>
                     <label className="block text-xs text-foreground mb-1">Brand (Optional)</label>
                     <input type="text" value={form.brand} onChange={(e) => updateField("brand", e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                       placeholder="e.g. GlowLab" />
                   </div>
                 </div>
@@ -588,7 +588,7 @@ export default function AdminProductsPage() {
                   Is Bundle Set
                 </label>
                 {form.isBundle && (
-                  <div className="p-4 rounded-xl border border-card-border bg-[var(--background)] space-y-3">
+                  <div className="p-4 rounded-xl border border-card-border bg-background space-y-3">
                     <div>
                       <label className="block text-xs text-foreground mb-1">Bundle Price (Optional)</label>
                       <input type="number" min="0" step="0.01" value={form.bundlePrice}
@@ -673,7 +673,7 @@ export default function AdminProductsPage() {
                   <label className={`flex-1 flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
                     form.variants.length === 0
                       ? "border-accent bg-accent/5"
-                      : "border-card-border bg-[var(--background)] hover:border-accent/40"
+                      : "border-card-border bg-background hover:border-accent/40"
                   }`}>
                     <input type="radio" name="productType" className="mt-0.5 accent-accent shrink-0"
                       checked={form.variants.length === 0}
@@ -686,7 +686,7 @@ export default function AdminProductsPage() {
                   <label className={`flex-1 flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-colors ${
                     form.variants.length > 0
                       ? "border-accent bg-accent/5"
-                      : "border-card-border bg-[var(--background)] hover:border-accent/40"
+                      : "border-card-border bg-background hover:border-accent/40"
                   }`}>
                     <input type="radio" name="productType" className="mt-0.5 accent-accent shrink-0"
                       checked={form.variants.length > 0}
@@ -708,19 +708,19 @@ export default function AdminProductsPage() {
                     <div>
                       <label className="block text-xs text-foreground mb-1">Selling Price (AUD) *</label>
                       <input type="number" min="0" step="0.01" value={form.price} onChange={(e) => updateField("price", e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                         placeholder="0.00" required={!form.isBundle && form.variants.length === 0} />
                     </div>
                     <div>
                       <label className="block text-xs text-foreground mb-1">Original / Compare-at Price (AUD)</label>
                       <input type="number" min="0" step="0.01" value={form.originalPrice} onChange={(e) => updateField("originalPrice", e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                         placeholder="0.00" />
                     </div>
                     <div>
                       <label className="block text-xs text-foreground mb-1">Quantity in Stock</label>
                       <input type="number" min="0" value={form.stock} onChange={(e) => updateField("stock", e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                         placeholder="e.g. 50" />
                     </div>
                     {form.isSale && parseFloat(form.price) > 0 && form.originalPrice && parseFloat(form.originalPrice) > parseFloat(form.price) && (
@@ -734,24 +734,24 @@ export default function AdminProductsPage() {
                   <div className="space-y-2">
                     <div className="flex gap-1.5 items-center px-1">
                       <span className="flex-1 text-[11px] font-medium text-foreground/70">Option Name</span>
-                      <span className="w-[120px] text-center text-[11px] font-medium text-foreground/70">Selling Price (AUD)</span>
-                      <span className="w-[120px] text-center text-[11px] font-medium text-foreground/70">Orig. Price (AUD)</span>
-                      <span className="w-[80px] text-center text-[11px] font-medium text-foreground/70">Stock</span>
-                      <span className="w-[34px]" />
+                      <span className="w-30 text-center text-[11px] font-medium text-foreground/70">Selling Price (AUD)</span>
+                      <span className="w-30 text-center text-[11px] font-medium text-foreground/70">Orig. Price (AUD)</span>
+                      <span className="w-20 text-center text-[11px] font-medium text-foreground/70">Stock</span>
+                      <span className="w-8.5" />
                     </div>
                     {form.variants.map((v, i) => (
                       <div key={v.id} className="flex gap-1.5 items-center">
                         <input type="text" value={v.name} onChange={(e) => updateVariant(i, "name", e.target.value)}
-                          className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
+                          className="flex-1 min-w-0 px-3 py-2 rounded-xl border border-card-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
                           placeholder="e.g. 30ml, Rose, Small" />
                         <input type="number" min="0" step="0.01" value={v.price} onChange={(e) => updateVariant(i, "price", e.target.value)}
-                          className="w-[120px] px-2 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
+                          className="w-30 px-2 py-2 rounded-xl border border-card-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
                           placeholder="Price" />
                         <input type="number" min="0" step="0.01" value={v.originalPrice} onChange={(e) => updateVariant(i, "originalPrice", e.target.value)}
-                          className="w-[120px] px-2 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
+                          className="w-30 px-2 py-2 rounded-xl border border-card-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
                           placeholder="Orig" />
                         <input type="number" min="0" value={v.stock} onChange={(e) => updateVariant(i, "stock", e.target.value)}
-                          className="w-[80px] px-2 py-2 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
+                          className="w-20 px-2 py-2 rounded-xl border border-card-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/40 text-center"
                           placeholder="Qty" />
                         <button type="button" onClick={() => removeVariant(i)} className="px-2.5 py-2 text-xs text-red-500 hover:bg-red-50 rounded-xl shrink-0">&times;</button>
                       </div>
@@ -775,7 +775,7 @@ export default function AdminProductsPage() {
                     <label className="block text-xs text-foreground mb-1">Description *</label>
                     <textarea rows={5} value={form.description} onChange={(e) => updateField("description", e.target.value)}
                       maxLength={2000}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Long-lasting matte lipstick with a creamy formula." required />
                     <div className="text-right text-[11px] text-foreground/70 mt-1">{form.description.length}/2000</div>
                   </div>
@@ -783,7 +783,7 @@ export default function AdminProductsPage() {
                     <label className="block text-xs text-foreground mb-1">Product Detail *</label>
                     <textarea rows={5} value={form.detail} onChange={(e) => updateField("detail", e.target.value)}
                       maxLength={2000}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Premium formula crafted with the finest ingredients." required />
                     <div className="text-right text-[11px] text-foreground/70 mt-1">{form.detail.length}/2000</div>
                   </div>
@@ -791,7 +791,7 @@ export default function AdminProductsPage() {
                     <label className="block text-xs text-foreground mb-1">Ingredients *</label>
                     <textarea rows={5} value={form.ingredients} onChange={(e) => updateField("ingredients", e.target.value)}
                       maxLength={2000}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Water, Glycerin, Hyaluronic Acid." required />
                     <div className="text-right text-[11px] text-foreground/70 mt-1">{form.ingredients.length}/2000</div>
                   </div>
@@ -799,7 +799,7 @@ export default function AdminProductsPage() {
                     <label className="block text-xs text-foreground mb-1">Shipping & Returns (Optional)</label>
                     <textarea rows={5} value={form.shippingReturns} onChange={(e) => updateField("shippingReturns", e.target.value)}
                       maxLength={2000}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Free shipping on orders over $50." />
                   </div>
                 </div>
@@ -821,7 +821,7 @@ export default function AdminProductsPage() {
                               {isUploading ? "Uploading..." : "Upload Image"}
                             </button>
                             <input type="text" value={img.name} onChange={(e) => updateImage(i, "name", e.target.value)}
-                              className="w-32 px-3 py-1.5 rounded-xl border border-card-border bg-[var(--background)] text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
+                              className="w-32 px-3 py-1.5 rounded-xl border border-card-border bg-background text-xs focus:outline-none focus:ring-2 focus:ring-accent/40"
                               placeholder="Image Name *" />
                             <button type="button" onClick={() => removeImage(i)}
                               className="px-3 py-1.5 text-xs text-red-500 hover:bg-red-50 rounded-xl">×</button>

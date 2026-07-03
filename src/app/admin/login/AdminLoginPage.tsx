@@ -73,7 +73,7 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+    <div className="min-h-screen flex items-center justify-center px-4 bg-linear-to-br from-primary/5 via-background to-accent/5">
       <div className="w-full max-w-sm">
         <div className="bg-card border border-primary/10 rounded-2xl p-6 md:p-8 shadow-xl">
           <div className="text-center mb-6">

@@ -158,7 +158,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {brands.map((brand, i) => (
-          <div key={i} className="bg-[var(--background)] rounded-xl border border-card-border p-4 space-y-3">
+          <div key={i} className="bg-background rounded-xl border border-card-border p-4 space-y-3">
             <h3 className="font-semibold text-dark text-xs flex items-center gap-2">
               <span className="w-5 h-5 rounded-full bg-accent/15 text-accent text-[11px] flex items-center justify-center font-bold">
                 {i + 1}
@@ -173,7 +173,7 @@ export default function AdminSettingsPage() {
                   type="text"
                   value={brand.brand}
                   onChange={(e) => updateBrand(i, "brand", e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                   placeholder="e.g. COSRX"
                 />
               </div>
@@ -183,7 +183,7 @@ export default function AdminSettingsPage() {
                   type="text"
                   value={brand.title}
                   onChange={(e) => updateBrand(i, "title", e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                  className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
                   placeholder="Headline for the slide"
                 />
               </div>
@@ -195,7 +195,7 @@ export default function AdminSettingsPage() {
                 rows={2}
                 value={brand.description}
                 onChange={(e) => updateBrand(i, "description", e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
+                className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-none"
                 placeholder="Brief description for the slide"
               />
             </div>
@@ -264,7 +264,7 @@ export default function AdminSettingsPage() {
             const imgUrl = categoryImages[cat.slug] || "";
             const isUploading = uploading === cat.slug;
             return (
-              <div key={cat.slug} className="bg-[var(--background)] rounded-lg border border-card-border p-2 space-y-1.5">
+              <div key={cat.slug} className="bg-background rounded-lg border border-card-border p-2 space-y-1.5">
                 <label className="block text-[11px] font-medium text-dark truncate">{cat.name}</label>
                 <div className="flex gap-1 items-center">
                   <button
@@ -328,21 +328,21 @@ export default function AdminSettingsPage() {
             <label className="block text-[11px] text-foreground mb-1">Title</label>
             <input type="text" value={saleBannerTitle}
               onChange={(e) => setSaleBannerTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
               placeholder="Limited Time" />
           </div>
           <div>
             <label className="block text-[11px] text-foreground mb-1">Subtitle</label>
             <input type="text" value={saleBannerSubtitle}
               onChange={(e) => setSaleBannerSubtitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
               placeholder="On selected skincare and makeup essentials" />
           </div>
           <div>
             <label className="block text-[11px] text-foreground mb-1">Discount %</label>
             <input type="text" value={saleBannerDiscount}
               onChange={(e) => setSaleBannerDiscount(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border border-card-border bg-[var(--background)] text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
               placeholder="30" />
           </div>
         </div>
@@ -369,7 +369,7 @@ export default function AdminSettingsPage() {
                   className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
                     checked
                       ? "border-accent bg-accent/5"
-                      : "border-card-border bg-[var(--background)] hover:border-accent/30"
+                      : "border-card-border bg-background hover:border-accent/30"
                   }`}
                 >
                   <input

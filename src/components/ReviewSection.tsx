@@ -47,7 +47,7 @@ export default function ReviewSection({ reviews }: Props) {
       className="relative overflow-hidden py-16 md:py-20"
     >
       {/* Full-bleed gradient background with pattern */}
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.07] via-primary/[0.05] to-secondary/[0.07]" />
+      <div className="absolute inset-0 bg-linear-to-br from-accent/7 via-primary/5 to-secondary/7" />
       <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
@@ -73,7 +73,7 @@ export default function ReviewSection({ reviews }: Props) {
           <h2 className="text-3xl md:text-4xl font-bold text-dark">
             What Our Customers Say
           </h2>
-          <div className="mx-auto mt-3 w-24 h-0.5 bg-gradient-to-r from-transparent via-accent/60 to-transparent" />
+          <div className="mx-auto mt-3 w-24 h-0.5 bg-linear-to-r from-transparent via-accent/60 to-transparent" />
         </div>
 
         {/* Cards */}

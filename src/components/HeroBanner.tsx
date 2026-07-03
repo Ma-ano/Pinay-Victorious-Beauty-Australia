@@ -42,7 +42,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
 
   return (
     <section
-      className="relative h-[50vh] min-h-[400px] flex items-center overflow-hidden bg-linear-to-br from-primary/20 via-secondary/10 to-background"
+      className="relative h-[50vh] min-h-100 flex items-center overflow-hidden bg-linear-to-br from-primary/20 via-secondary/10 to-background"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
@@ -71,10 +71,10 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
                 sizes="100vw"
                 quality={75}
               />
-              <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />
+              <div className="absolute inset-0 bg-linear-to-br from-accent/10 via-primary/10 to-secondary/10 -z-10" />
             </div>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-accent/10 via-primary/10 to-secondary/10" />
+            <div className="w-full h-full bg-linear-to-br from-accent/10 via-primary/10 to-secondary/10" />
           )}
           <div className="absolute inset-0 bg-linear-to-r from-background/80 via-background/50 to-transparent" />
         </m.div>
@@ -130,7 +130,7 @@ export default function HeroBanner({ featuredBrands }: { featuredBrands?: Featur
       </button>
       <button
         onClick={next}
-        className="absolute right-0 top-0 bottom-0 z-20 w-14 flex items-center justify-center bg-gradient-to-l from-background/40 to-transparent opacity-0 hover:opacity-100 transition-opacity"
+        className="absolute right-0 top-0 bottom-0 z-20 w-14 flex items-center justify-center bg-linear-to-l from-background/40 to-transparent opacity-0 hover:opacity-100 transition-opacity"
         aria-label="Next slide"
       >
         <svg className="w-6 h-6 text-dark drop-shadow" fill="none" viewBox="0 0 24 24" stroke="currentColor">

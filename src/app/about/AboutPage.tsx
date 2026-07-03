@@ -47,7 +47,7 @@ export default function AboutPage() {
   return (
     <div>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/20 via-secondary/10 to-background">
+      <section className="relative overflow-hidden bg-linear-to-br from-primary/20 via-secondary/10 to-background">
         <div className="absolute top-0 right-0 w-72 h-72 bg-accent/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4" />
         <div className="absolute bottom-0 left-0 w-56 h-56 bg-accent/5 rounded-full blur-3xl translate-y-1/3 -translate-x-1/4" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 relative z-10">
@@ -93,7 +93,7 @@ export default function AboutPage() {
 
       {/* Why Choose Us */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 md:pb-24">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-secondary/10 to-background p-8 md:p-12 lg:p-16">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-br from-primary/20 via-secondary/10 to-background p-8 md:p-12 lg:p-16">
           <div className="absolute top-0 right-0 w-48 h-48 bg-accent/10 rounded-full blur-3xl" />
           <div className="absolute bottom-0 left-0 w-40 h-40 bg-accent/5 rounded-full blur-3xl" />
           <div className="relative z-10">
@@ -173,7 +173,7 @@ export default function AboutPage() {
       </section>
 
       {/* Stats */}
-      <section className="bg-gradient-to-br from-primary/20 via-secondary/10 to-background py-16 md:py-20">
+      <section className="bg-linear-to-br from-primary/20 via-secondary/10 to-background py-16 md:py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {stats.map((stat, i) => (
@@ -192,7 +192,7 @@ export default function AboutPage() {
 
       {/* CTA */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
-        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-accent/20 via-primary/20 to-accent/10 p-8 md:p-12 text-center">
+        <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-accent/20 via-primary/20 to-accent/10 p-8 md:p-12 text-center">
           <div className="absolute -top-8 -right-8 w-36 h-36 bg-accent/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-accent/5 rounded-full blur-3xl" />
           <div className="relative z-10">
