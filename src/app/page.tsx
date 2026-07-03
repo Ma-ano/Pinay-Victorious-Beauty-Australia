@@ -7,6 +7,7 @@ import SaleBanner from "@/components/SaleBanner";
 import TrendingSection from "@/components/TrendingSection";
 import BestSellingSection from "@/components/BestSellingSection";
 import ReviewSection from "@/components/ReviewSection";
+import VerifiedToast from "@/components/VerifiedToast";
 import { TrendingSkeleton, BestSellingSkeleton } from "@/components/Skeletons";
 
 export const revalidate = 60;
@@ -29,6 +30,9 @@ export default async function Page() {
 
   return (
     <div className="space-y-24 pb-24">
+      <Suspense fallback={null}>
+        <VerifiedToast />
+      </Suspense>
       <HeroBanner featuredBrands={s?.featuredBrands} />
 
       <Suspense fallback={<TrendingSkeleton />}>

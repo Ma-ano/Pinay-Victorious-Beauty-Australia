@@ -43,7 +43,7 @@ export default function WishlistButton({ productId, className = "" }: { productI
       onClick={handleClick}
       className={`p-1.5 rounded-full transition-all ${className} ${
         wishlisted
-          ? "text-red-500 scale-110"
+          ? "text-red-500 dark:text-red-500 scale-110"
           : "text-black hover:text-red-500"
       }`}
       aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}

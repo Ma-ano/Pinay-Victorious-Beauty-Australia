@@ -33,6 +33,7 @@ export async function GET(request: Request) {
         createdAt: (firestoreData.createdAt as string) || u.metadata.creationTime || "",
         isMaster: (u.email || "").toLowerCase() === allowedAdminEmail,
         disabled: u.disabled,
+        emailVerified: u.emailVerified,
         ...firestoreData,
       };
     });

@@ -125,6 +125,7 @@ export default function ProductDetailPage({ product }: Props) {
               name={currentImage.name || product.name}
               imageUrl={currentImage.url}
               key={selectedImage}
+              preload={true}
             />
             {images.length > 1 && (
               <>

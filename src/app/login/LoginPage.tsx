@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { getAuthClient } from "@/lib/firebase";
@@ -79,22 +79,10 @@ export default function LoginPage() {
     }
   };
 
-  const isVerified = useSearchParams().get("verified") === "true";
-
   return (
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="bg-card border border-primary/10 rounded-2xl p-6 md:p-8 shadow-xl">
-          <div className="min-h-[52px] mb-4">
-            {isVerified && (
-              <div className="flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-sm px-4 py-3 rounded-xl">
-                <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                Email verified! You can now log in.
-              </div>
-            )}
-          </div>
           <h1 className="text-2xl font-semibold text-dark mb-6 text-center">Login</h1>
           <form onSubmit={handleSubmit} className="space-y-4">
           <div>

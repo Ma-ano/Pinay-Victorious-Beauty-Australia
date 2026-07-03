@@ -106,11 +106,12 @@ export default function CustomerNavbar() {
 
   return (
     <>
-      <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-card ${
+      <div
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           hidden ? "-translate-y-full" : "translate-y-0"
         }`}
       >
+        <nav className="bg-card">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <Link href="/" className="h-14 md:h-20 shrink-0">
@@ -369,7 +370,7 @@ export default function CustomerNavbar() {
                         </Link>
                       )}
                       <Link
-                        href="/profile"
+                        href={needsVerification ? "/verify-email" : "/profile"}
                         className="w-7 h-7 rounded-full bg-accent/20 flex items-center justify-center overflow-hidden text-[10px] font-semibold text-accent hover:ring-2 hover:ring-accent/50 transition-all shrink-0"
                         title="My Profile"
                       >
@@ -459,7 +460,7 @@ export default function CustomerNavbar() {
                       <MobileNavLink href="/orders" label="My Orders" pathname={pathname} onClose={() => setMobileOpen(false)} />
                       {isAdmin && <MobileNavLink href="/admin" label="Admin" pathname={pathname} onClose={() => setMobileOpen(false)} />}
                       <Link
-                        href="/profile"
+                        href={needsVerification ? "/verify-email" : "/profile"}
                         onClick={() => setMobileOpen(false)}
                         className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:text-accent hover:bg-primary/10 rounded-lg transition-colors"
                       >
@@ -510,11 +511,30 @@ export default function CustomerNavbar() {
             </m.div>
           )}
         </AnimatePresence>
-      </nav>
+        </nav>
 
+        <AnimatePresence>
+          {needsVerification && (
+            <m.div key="verify-banner"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden bg-accent border-t border-accent/30"
+            >
+              <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-center gap-1.5 text-xs text-dark">
+                <span>Your account is not verified.</span>
+                <Link href="/verify-email" className="font-medium underline hover:no-underline">
+                  Verify now
+                </Link>
+              </div>
+            </m.div>
+          )}
+        </AnimatePresence>
+      </div>
 
-
-      <div className="h-14 md:h-20" />
+      <div className={`${
+        needsVerification ? 'h-[calc(3.5rem+34px)] md:h-[calc(5rem+34px)]' : 'h-14 md:h-20'
+      }`} />
 
       {cartOpen && (
         <div className="fixed inset-0 z-60 flex justify-end">

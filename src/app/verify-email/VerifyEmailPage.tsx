@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { getAuthClient } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthContext";
 
 export default function VerifyEmailPage() {
@@ -16,6 +17,12 @@ export default function VerifyEmailPage() {
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/login");
+    }
+  }, [loading, user, router]);
 
   useEffect(() => {
     if (!loading && emailVerified) {
@@ -54,7 +61,10 @@ export default function VerifyEmailPage() {
         throw new Error((data as { error?: string }).error || "Invalid code");
       }
 
-      router.push("/login?verified=true");
+      const auth = getAuthClient();
+      await auth?.currentUser?.getIdToken(true);
+
+      window.location.href = "/?verified=true";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
     } finally {

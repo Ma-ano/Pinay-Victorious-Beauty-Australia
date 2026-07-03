@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getAdminDb } from "@/lib/firebase-admin";
-import ProductDetailPage from "./ProductDetailPage";
+import { getAdminDb, FirebaseAdminNotConfigured } from "@/lib/firebase-admin";
+import ProductDetailFetcher from "./ProductDetailFetcher";
 import type { Metadata } from "next";
 import type { Product } from "@/data/products";
 
@@ -45,16 +45,19 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function Page({ params }: Props) {
+  const { id } = await params;
   try {
-    const { id } = await params;
     const db = getAdminDb();
     const snapshot = await db.collection("products").where("slug", "==", id).limit(1).get();
     if (snapshot.empty) notFound();
     const docSnap = snapshot.docs[0];
     const { createdAt, updatedAt, ...cleanData } = docSnap.data() as Record<string, unknown>;
     const product = { ...cleanData, id: docSnap.id } as Product;
-    return <ProductDetailPage product={product} />;
-  } catch {
+    return <ProductDetailFetcher slug={id} initialProduct={product} />;
+  } catch (err) {
+    if (err instanceof FirebaseAdminNotConfigured) {
+      return <ProductDetailFetcher slug={id} />;
+    }
     notFound();
   }
 }

@@ -3,6 +3,14 @@
 import { useEffect, useState, useCallback } from "react";
 import { useToast } from "@/components/Toast";
 
+interface UserAddress {
+  street: string;
+  city: string;
+  state: string;
+  postcode: string;
+  country: string;
+}
+
 interface AdminUser {
   uid: string;
   email: string;
@@ -11,6 +19,10 @@ interface AdminUser {
   status: string;
   createdAt: string;
   isMaster: boolean;
+  emailVerified: boolean;
+  photoURL: string;
+  phone: string;
+  address: UserAddress;
 }
 
 interface ListResponse {
@@ -33,9 +45,7 @@ export default function AdminUsersPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [processing, setProcessing] = useState<string | null>(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newAdminEmail, setNewAdminEmail] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -119,29 +129,6 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function handleCreateAdmin(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newAdminEmail.trim()) return;
-    setCreating(true);
-    try {
-      const res = await fetch("/api/admin/users/create-admin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: newAdminEmail.trim() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create admin");
-      showToast(`Admin created: ${newAdminEmail.trim()}`, "success");
-      setShowCreateModal(false);
-      setNewAdminEmail("");
-      fetchUsers();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to create admin", "error");
-    } finally {
-      setCreating(false);
-    }
-  }
-
   if (loading && users.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -157,12 +144,6 @@ export default function AdminUsersPage() {
           <h1 className="text-2xl font-bold text-dark">Users</h1>
           <p className="text-sm text-foreground mt-1">{total} users</p>
         </div>
-        <button
-          onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/80 transition-colors"
-        >
-          Create Admin
-        </button>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
@@ -220,6 +201,7 @@ export default function AdminUsersPage() {
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Email</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Role</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Status</th>
+              <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Verified</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Created</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Actions</th>
             </tr>
@@ -227,18 +209,22 @@ export default function AdminUsersPage() {
           <tbody className="divide-y divide-primary/10">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-foreground">
+                <td colSpan={7} className="px-4 py-12 text-center text-foreground">
                   No users found.
                 </td>
               </tr>
             ) : (
               users.map((u) => (
-                <tr key={u.uid} className="hover:bg-primary/5">
+                <tr key={u.uid} className="hover:bg-primary/5 cursor-pointer" onClick={() => setSelectedUser(u)}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent shrink-0">
-                        {u.name.charAt(0).toUpperCase()}
-                      </div>
+                      {u.photoURL ? (
+                        <img src={u.photoURL} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-accent/20 flex items-center justify-center text-xs font-semibold text-accent shrink-0">
+                          {u.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <span className="text-dark font-medium truncate block max-w-30">{u.name}</span>
                         {u.isMaster && (
@@ -253,6 +239,7 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 hidden md:table-cell">
                     <select
                       value={u.role}
+                      onClick={(e) => e.stopPropagation()}
                       onChange={(e) => handleRoleChange(u.uid, e.target.value)}
                       disabled={processing === u.uid || u.isMaster}
                       className="text-xs px-2 py-1 rounded-lg border border-card-border bg-background focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50"
@@ -268,6 +255,13 @@ export default function AdminUsersPage() {
                       {u.status}
                     </span>
                   </td>
+                  <td className="px-4 py-3 hidden sm:table-cell">
+                    <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                      u.emailVerified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                    }`}>
+                      {u.emailVerified ? "Verified" : "Unverified"}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell text-xs">
                     {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}
                   </td>
@@ -275,7 +269,7 @@ export default function AdminUsersPage() {
                     {!u.isMaster && (
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleStatusToggle(u.uid, u.status)}
+                          onClick={(e) => { e.stopPropagation(); handleStatusToggle(u.uid, u.status); }}
                           disabled={processing === u.uid}
                           className="text-xs font-medium text-accent hover:text-accent/80 disabled:opacity-50"
                         >
@@ -284,18 +278,18 @@ export default function AdminUsersPage() {
                         {deleteConfirm === u.uid ? (
                           <span className="flex items-center gap-1">
                             <button
-                              onClick={() => handleDelete(u.uid)}
+                              onClick={(e) => { e.stopPropagation(); handleDelete(u.uid); }}
                               disabled={processing === u.uid}
                               className="text-red-500 hover:text-red-600 text-xs font-medium disabled:opacity-50"
                             >
                               Confirm
                             </button>
-                            <button onClick={() => setDeleteConfirm(null)} className="text-foreground hover:text-dark text-xs">
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }} className="text-foreground hover:text-dark text-xs">
                               Cancel
                             </button>
                           </span>
                         ) : (
-                          <button onClick={() => setDeleteConfirm(u.uid)} className="text-red-400 hover:text-red-500 text-xs font-medium">
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(u.uid); }} className="text-red-400 hover:text-red-500 text-xs font-medium">
                             Delete
                           </button>
                         )}
@@ -339,45 +333,84 @@ export default function AdminUsersPage() {
         </div>
       )}
 
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40">
-          <div className="bg-card rounded-2xl p-6 w-full max-w-sm border border-primary/10 shadow-xl">
-            <h2 className="text-lg font-semibold text-dark mb-4">Create Admin</h2>
-            <form onSubmit={handleCreateAdmin} className="space-y-4">
-              <div>
-                <label htmlFor="new-admin-email" className="block text-sm font-medium text-foreground mb-1">
-                  User Email
-                </label>
-                <input
-                  id="new-admin-email"
-                  type="email"
-                  value={newAdminEmail}
-                  onChange={(e) => setNewAdminEmail(e.target.value)}
-                  placeholder="user@example.com"
-                  required
-                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                />
-                <p className="text-xs text-foreground mt-1.5">
-                  The user must already have a registered account.
-                </p>
+      {selectedUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 bg-black/40" onClick={() => setSelectedUser(null)}>
+          <div className="bg-card rounded-2xl w-full max-w-lg border border-primary/10 shadow-xl max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between p-6 border-b border-primary/10">
+              <h2 className="text-lg font-semibold text-dark">User Details</h2>
+              <button onClick={() => setSelectedUser(null)} className="text-foreground hover:text-dark text-xl leading-none">&times;</button>
+            </div>
+            <div className="p-6 space-y-5">
+              <div className="flex items-center gap-4">
+                {selectedUser.photoURL ? (
+                  <img src={selectedUser.photoURL} alt="" className="w-16 h-16 rounded-full object-cover" />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center text-xl font-semibold text-accent shrink-0">
+                    {selectedUser.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="text-lg font-semibold text-dark">{selectedUser.name}</p>
+                  <p className="text-sm text-foreground">{selectedUser.email}</p>
+                  {selectedUser.isMaster && (
+                    <span className="text-[10px] font-semibold text-accent bg-accent/10 px-1.5 py-0.5 rounded-full mt-1 inline-block">
+                      Master Admin
+                    </span>
+                  )}
+                </div>
               </div>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => { setShowCreateModal(false); setNewAdminEmail(""); }}
-                  className="flex-1 px-4 py-2.5 rounded-xl border border-primary/20 text-sm font-medium text-foreground hover:bg-primary/10 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating || !newAdminEmail.trim()}
-                  className="flex-1 px-4 py-2.5 bg-accent text-white rounded-xl text-sm font-medium hover:bg-accent/80 transition-colors disabled:opacity-50"
-                >
-                  {creating ? "Creating..." : "Create Admin"}
-                </button>
+
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Role</p>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    selectedUser.role === "admin" ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                  }`}>
+                    {selectedUser.role}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Status</p>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    selectedUser.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {selectedUser.status}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Email Verified</p>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    selectedUser.emailVerified ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {selectedUser.emailVerified ? "Yes" : "No"}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Phone</p>
+                  <p className="text-dark">{selectedUser.phone || "—"}</p>
+                </div>
+                {selectedUser.address && selectedUser.address.street && (
+                  <div className="col-span-2">
+                    <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Address</p>
+                    <p className="text-dark">
+                      {selectedUser.address.street}
+                      {selectedUser.address.city && `, ${selectedUser.address.city}`}
+                      {selectedUser.address.state && `, ${selectedUser.address.state}`}
+                      {selectedUser.address.postcode && ` ${selectedUser.address.postcode}`}
+                      {selectedUser.address.country && `, ${selectedUser.address.country}`}
+                    </p>
+                  </div>
+                )}
+                <div className="col-span-2">
+                  <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Account Created</p>
+                  <p className="text-dark">{selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString("en-AU", { year: "numeric", month: "long", day: "numeric" }) : "—"}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">UID</p>
+                  <p className="text-dark text-xs font-mono break-all">{selectedUser.uid}</p>
+                </div>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
