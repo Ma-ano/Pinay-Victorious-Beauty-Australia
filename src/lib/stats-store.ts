@@ -1,7 +1,9 @@
 import { collection, getDocs } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 
 export interface SiteStats {
   happyCustomers: number;

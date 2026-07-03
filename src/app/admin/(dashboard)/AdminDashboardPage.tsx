@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 import Link from "next/link";
 
 export default function AdminDashboardPage() {

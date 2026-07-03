@@ -122,6 +122,7 @@ export default function CustomerNavbar() {
                 className="h-full w-auto rounded-lg object-contain"
                 sizes="160px"
                 quality={75}
+                preload={true}
               />
             </Link>
                 <div className="hidden lg:flex items-center gap-0">

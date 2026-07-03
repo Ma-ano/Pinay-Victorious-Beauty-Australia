@@ -11,13 +11,25 @@ import {
   EmailAuthProvider,
   updatePassword,
   type User as FirebaseUser,
+  type Auth,
+  type GoogleAuthProvider,
 } from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
-import { auth as firebaseAuth, db as firebaseDb, googleProvider as firebaseGoogleProvider } from "@/lib/firebase";
+import { doc, setDoc, getDoc, updateDoc, type Firestore } from "firebase/firestore";
+import { getAuthClient as getFirebaseAuth, getDb as getFirebaseDb, getGoogleProvider as getFirebaseGoogleProvider } from "@/lib/firebase";
 
-const auth = firebaseAuth!;
-const db = firebaseDb!;
-const googleProvider = firebaseGoogleProvider!;
+let _firebase: { auth: Auth; db: Firestore; googleProvider: GoogleAuthProvider } | null = null;
+function getFirebase() {
+  if (!_firebase) {
+    const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase Auth not initialized");
+    const db = getFirebaseDb();
+    if (!db) throw new Error("Firestore not initialized");
+    const googleProvider = getFirebaseGoogleProvider();
+    if (!googleProvider) throw new Error("Google Auth provider not initialized");
+    _firebase = { auth, db, googleProvider };
+  }
+  return _firebase;
+}
 
 export interface Address {
   street: string;
@@ -113,6 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    const { auth, db } = getFirebase();
     const unsub = onIdTokenChanged(auth, async (fu) => {
       if (fu) {
         setEmailVerified(fu.emailVerified);
@@ -148,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    const { auth, db } = getFirebase();
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const fu = cred.user;
     setEmailVerified(fu.emailVerified);
@@ -210,6 +224,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
+    const { auth, db, googleProvider } = getFirebase();
     let cred;
     try {
       cred = await signInWithPopup(auth, googleProvider);
@@ -263,6 +278,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    const { auth } = getFirebase();
     await signOut(auth);
     setUser(null);
     setEmailVerified(false);
@@ -281,6 +297,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.email]);
 
   const updateProfile = useCallback(async (data: { name?: string; phone?: string; photoURL?: string; address?: Address }) => {
+    const { db } = getFirebase();
     if (!user) throw new Error("Not authenticated");
 
     const updateData: Record<string, unknown> = {};
@@ -301,6 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    const { auth } = getFirebase();
     const fu = auth.currentUser;
     if (!fu || !user) throw new Error("Not authenticated");
 
@@ -310,6 +328,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const getIdToken = useCallback(async (): Promise<string | null> => {
+    const { auth } = getFirebase();
     try {
       const fu = auth.currentUser;
       if (!fu) return null;

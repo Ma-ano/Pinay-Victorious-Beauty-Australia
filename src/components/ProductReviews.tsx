@@ -2,9 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { collection, onSnapshot, query, where, type Timestamp } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 import StarDisplay from "@/components/StarDisplay";
 import { roundRating } from "@/lib/review-utils";
 import { getReviewsByProductId, type Review } from "@/data/reviews";

@@ -10,10 +10,12 @@ import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import { CheckoutFormSkeleton } from "@/components/Skeletons";
 import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";

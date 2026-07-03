@@ -1,8 +1,10 @@
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb as getFirebaseDb } from "@/lib/firebase";
 
-const _db = firebaseDb;
-if (!_db) throw new Error("Firestore not initialized");
-const db = _db;
+function getDb() {
+  const db = getFirebaseDb();
+  if (!db) throw new Error("Firestore not initialized");
+  return db;
+}
 import {
   collection,
   doc,
@@ -69,7 +71,7 @@ function slugify(text: string): string {
 
 export async function getAllProducts(max?: number): Promise<Product[]> {
   const constraints = max ? [limit(max)] : [];
-  const snapshot = await getDocs(query(collection(db, "products"), ...constraints));
+  const snapshot = await getDocs(query(collection(getDb(), "products"), ...constraints));
   const result = snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as Product;
     return {
@@ -87,7 +89,7 @@ export async function getAllProducts(max?: number): Promise<Product[]> {
 }
 
 export function subscribeProducts(callback: (products: Product[]) => void): () => void {
-  return onSnapshot(collection(db, "products"), (snapshot) => {
+  return onSnapshot(collection(getDb(), "products"), (snapshot) => {
     callback(snapshot.docs.map((docSnap) => {
       const data = docSnap.data() as Product;
       return {
@@ -105,7 +107,7 @@ export function subscribeProducts(callback: (products: Product[]) => void): () =
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const snap = await getDoc(doc(db, "products", id));
+  const snap = await getDoc(doc(getDb(), "products", id));
   if (!snap.exists()) return null;
   return { ...snap.data(), id: snap.id } as Product;
 }
@@ -126,12 +128,12 @@ export async function saveProduct(
   id: string | null,
   data: ProductFormData
 ): Promise<string> {
-  const productId = id || doc(collection(db, "products")).id;
+  const productId = id || doc(collection(getDb(), "products")).id;
   const slug = data.slug || slugify(data.name);
   const metaTitle = data.metaTitle || `Buy ${data.name} Philippines`;
   const metaDescription = data.metaDescription || data.description.slice(0, 160);
   const metaKeywords = data.metaKeywords || `${data.name}, buy online philippines, cheap ${data.name}`;
-  await setDoc(doc(db, "products", productId), stripUndefined({
+  await setDoc(doc(getDb(), "products", productId), stripUndefined({
     ...data,
     slug,
     metaTitle,
@@ -145,7 +147,7 @@ export async function saveProduct(
 
 export async function deleteProduct(id: string): Promise<void> {
   try {
-    await deleteDoc(doc(db, "products", id));
+    await deleteDoc(doc(getDb(), "products", id));
   } catch (err) {
     if (err instanceof FirestoreError && err.code === "permission-denied") {
       throw new Error("permission-denied");
@@ -156,7 +158,7 @@ export async function deleteProduct(id: string): Promise<void> {
 
 export async function getAllReviews(): Promise<{ id: string; author: string; rating: number; content: string; isVerified: boolean; productName?: string; userId?: string; createdAt?: Date }[]> {
   try {
-    const snap = await getDocs(collection(db, "reviews"));
+    const snap = await getDocs(collection(getDb(), "reviews"));
     return snap.docs.map((d) => {
       const data = d.data();
       return {
@@ -177,7 +179,7 @@ export async function getAllReviews(): Promise<{ id: string; author: string; rat
 
 export async function getAllReviewStats(): Promise<Record<string, { avgRating: number; reviewCount: number }>> {
   try {
-    const snap = await getDocs(collection(db, "reviews"));
+    const snap = await getDocs(collection(getDb(), "reviews"));
     const acc: Record<string, { total: number; count: number }> = {};
     snap.docs.forEach((d) => {
       const data = d.data();
@@ -199,7 +201,7 @@ export async function getAllReviewStats(): Promise<Record<string, { avgRating: n
 
 export async function getProductReviews(productId: string): Promise<{ avgRating: number; reviewCount: number }> {
   try {
-    const q = query(collection(db, "reviews"), where("productId", "==", productId));
+    const q = query(collection(getDb(), "reviews"), where("productId", "==", productId));
     const snap = await getDocs(q);
     if (snap.empty) return { avgRating: 0, reviewCount: 0 };
     let total = 0;
@@ -215,7 +217,7 @@ export async function getProductReviews(productId: string): Promise<{ avgRating:
 export async function getProductSoldCount(productId: string): Promise<number> {
   try {
     const q = query(
-      collection(db, "orders"),
+      collection(getDb(), "orders"),
       where("status", "in", ["completed"])
     );
     const snap = await getDocs(q);

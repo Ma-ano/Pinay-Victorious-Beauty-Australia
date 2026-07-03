@@ -14,9 +14,11 @@ import {
   where,
   type Timestamp,
 } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 import { useAuth } from "@/components/AuthContext";
 import { useToast } from "@/components/Toast";
 import ImagePlaceholder from "@/components/ImagePlaceholder";

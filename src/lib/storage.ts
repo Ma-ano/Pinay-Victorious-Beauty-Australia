@@ -1,13 +1,14 @@
+import { ref, uploadBytes, getDownloadURL, deleteObject, getMetadata } from "firebase/storage";
+import { getStorageClient } from "@/lib/firebase";
+
 const ALLOWED_TYPES = ["image/jpeg", "image/png"];
 
 export async function uploadImage(file: File, path: string): Promise<string> {
   if (!ALLOWED_TYPES.includes(file.type)) {
     throw new Error("Only JPG and PNG images are allowed");
   }
-  const { getStorage, ref, uploadBytes, getDownloadURL } = await import("firebase/storage");
-  const { app: firebaseApp } = await import("@/lib/firebase");
-  if (!firebaseApp) throw new Error("Firebase not configured");
-  const storage = getStorage(firebaseApp);
+  const storage = getStorageClient();
+  if (!storage) throw new Error("Firebase Storage not configured");
   const storageRef = ref(storage, path);
   await uploadBytes(storageRef, file);
   return getDownloadURL(storageRef);
@@ -18,10 +19,8 @@ export async function deleteImage(downloadUrl: string): Promise<void> {
     const url = new URL(downloadUrl);
     if (!url.hostname.includes("firebasestorage.googleapis.com")) return;
 
-    const { getStorage, ref, deleteObject, getMetadata } = await import("firebase/storage");
-    const { app: firebaseApp } = await import("@/lib/firebase");
-    if (!firebaseApp) return;
-    const storage = getStorage(firebaseApp);
+    const storage = getStorageClient();
+    if (!storage) return;
 
     const pathMatch = url.pathname.match(/\/o\/(.+)/);
     if (!pathMatch) return;

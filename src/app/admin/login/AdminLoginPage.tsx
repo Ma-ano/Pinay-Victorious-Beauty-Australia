@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { getAuthClient } from "@/lib/firebase";
 
-const auth = firebaseAuth!;
+const _auth = getAuthClient();
+if (!_auth) throw new Error("Firebase Auth not configured");
+const auth = _auth;
 import { useToast } from "@/components/Toast";
 
 function EyeIcon({ open }: { open: boolean }) {

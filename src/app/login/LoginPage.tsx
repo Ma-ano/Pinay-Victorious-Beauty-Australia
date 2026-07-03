@@ -4,10 +4,12 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { getAuthClient } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthContext";
 
-const auth = firebaseAuth!;
+const _auth = getAuthClient();
+if (!_auth) throw new Error("Firebase Auth not configured");
+const auth = _auth;
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (

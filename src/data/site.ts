@@ -5,7 +5,7 @@ export const site = {
     "Premium beauty and wellness essentials from South Korea, Thailand, the Philippines, and across Asia.",
   email: "pinayvictoriousbeauty@gmail.com",
   phone: "+61 413 504 424",
-  whatsapp: "+61413504424",
+  whatsapp: "+61 413 504 424",
   address: "Sydney, Australia",
   url: process.env.SITE_URL || "https://pinayvictorious.com",
   locale: "en-AU",

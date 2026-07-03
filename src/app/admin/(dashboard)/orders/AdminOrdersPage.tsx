@@ -12,9 +12,11 @@ import {
   updateDoc,
   type Timestamp,
 } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/components/AuthContext";
 import { formatPrice } from "@/lib/format";

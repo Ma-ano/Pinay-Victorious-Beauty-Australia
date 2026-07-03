@@ -2,6 +2,7 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import "firebase/firestore";
 import { getFirestore } from "firebase/firestore";
+import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -25,7 +26,44 @@ function createApp() {
   }
 }
 
-export const app = createApp();
-export const auth = app ? getAuth(app) : null;
-export const db = app ? getFirestore(app) : null;
-export const googleProvider = app ? new GoogleAuthProvider() : null;
+let _app: ReturnType<typeof initializeApp> | null | undefined;
+let _auth: ReturnType<typeof getAuth> | null | undefined;
+let _db: ReturnType<typeof getFirestore> | null | undefined;
+let _storage: ReturnType<typeof getStorage> | null | undefined;
+let _googleProvider: GoogleAuthProvider | null | undefined;
+
+export function getApp() {
+  if (_app === undefined) _app = createApp();
+  return _app;
+}
+
+export function getAuthClient() {
+  if (_auth === undefined) {
+    const a = getApp();
+    _auth = a ? getAuth(a) : null;
+  }
+  return _auth;
+}
+
+export function getDb() {
+  if (_db === undefined) {
+    const a = getApp();
+    _db = a ? getFirestore(a) : null;
+  }
+  return _db;
+}
+
+export function getStorageClient() {
+  if (_storage === undefined) {
+    const a = getApp();
+    _storage = a ? getStorage(a) : null;
+  }
+  return _storage;
+}
+
+export function getGoogleProvider() {
+  if (_googleProvider === undefined) {
+    _googleProvider = getApp() ? new GoogleAuthProvider() : null;
+  }
+  return _googleProvider;
+}

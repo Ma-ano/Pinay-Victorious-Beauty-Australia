@@ -2,14 +2,16 @@
 
 import { useEffect, useState, useRef, useMemo } from "react";
 import { doc, getDoc } from "firebase/firestore";
-import { db as firebaseDb } from "@/lib/firebase";
+import { getDb } from "@/lib/firebase";
 import { categories } from "@/data/categories";
 import { getSettings, saveSettings, type SiteSettings, type FeaturedBrandConfig, type ReviewConfig } from "@/lib/settings-store";
 import { uploadImage } from "@/lib/storage";
 import { getAllReviews } from "@/lib/product-store";
 import { useToast } from "@/components/Toast";
 
-const db = firebaseDb!;
+const _fb = getDb();
+if (!_fb) throw new Error("Firestore not initialized");
+const db = _fb;
 
 const emptyBrand: FeaturedBrandConfig = { brand: "", title: "", description: "", image: "" };
 

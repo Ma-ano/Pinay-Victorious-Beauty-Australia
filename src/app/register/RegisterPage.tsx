@@ -23,21 +23,32 @@ const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 function formatPhone(value: string): string {
-  const digits = value.replace(/\D/g, "");
-  if (!digits) return "";
-  if (!digits.startsWith("61")) return digits;
-  const rest = digits.slice(2, 11);
+  const cleaned = value.replace(/[^\d+]/g, "");
+
+  if (cleaned.startsWith("+61")) {
+    const digits = cleaned.slice(3).replace(/\D/g, "").slice(0, 9);
+    let result = "+61";
+    if (digits.length > 0) result += " " + digits.slice(0, 3);
+    if (digits.length > 3) result += " " + digits.slice(3, 6);
+    if (digits.length > 6) result += " " + digits.slice(6, 9);
+    return result;
+  }
+
+  const digits = cleaned.replace(/\D/g, "");
+  if (!digits) return cleaned;
+  if (digits === "6") return "+6";
+
   let result = "+61";
-  if (rest.length > 0) result += " " + rest.slice(0, 3);
-  if (rest.length > 3) result += " " + rest.slice(3, 6);
-  if (rest.length > 6) result += " " + rest.slice(6, 9);
+  if (digits.length > 0) result += " " + digits.slice(0, 3);
+  if (digits.length > 3) result += " " + digits.slice(3, 6);
+  if (digits.length > 6) result += " " + digits.slice(6, 9);
   return result;
 }
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState("+61 ");
   const [street, setStreet] = useState("");
   const [city, setCity] = useState("");
   const [state, setState] = useState("");

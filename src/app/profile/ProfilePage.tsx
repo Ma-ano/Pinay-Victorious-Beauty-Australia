@@ -148,8 +148,8 @@ export default function ProfilePage() {
         await deleteImage(currentUser.photoURL);
       }
       await updateProfile({ photoURL: url });
-    } catch {
-      setProfileError("Failed to upload photo");
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Failed to upload photo");
     } finally {
       setPhotoUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";

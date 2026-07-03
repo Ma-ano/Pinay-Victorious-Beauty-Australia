@@ -5,9 +5,11 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { applyActionCode } from "firebase/auth";
-import { auth as firebaseAuth } from "@/lib/firebase";
+import { getAuthClient } from "@/lib/firebase";
 
-const auth = firebaseAuth!;
+const _auth = getAuthClient();
+if (!_auth) throw new Error("Firebase Auth not configured");
+const auth = _auth;
 import { site } from "@/data/site";
 
 export default function VerifyPage() {
