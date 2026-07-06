@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { getAdminAuth } from "@/lib/firebase-admin";
 import PayPalProvider from "@/components/PayPalProvider";
+import AfterpayProvider from "@/components/AfterpayProvider";
 import CheckoutPage from "./CheckoutPage";
 
 export const metadata: Metadata = {
@@ -27,5 +28,11 @@ export default async function Page() {
     redirect("/login");
   }
 
-  return <PayPalProvider><CheckoutPage /></PayPalProvider>;
+  return (
+    <PayPalProvider>
+      <AfterpayProvider>
+        <CheckoutPage />
+      </AfterpayProvider>
+    </PayPalProvider>
+  );
 }

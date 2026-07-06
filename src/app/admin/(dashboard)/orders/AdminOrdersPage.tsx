@@ -23,7 +23,7 @@ import { formatPrice } from "@/lib/format";
 
 type OrderStatus = "processing" | "approved" | "completed" | "cancelled" | "rejected";
 
-type PaymentFilter = "all" | "cod" | "paypal";
+type PaymentFilter = "all" | "cod" | "paypal" | "afterpay";
 
 interface OrderItem {
   productId: string;
@@ -61,6 +61,8 @@ interface FirestoreOrder {
   fundingSource?: string;
   cardBrand?: string;
   payerEmail?: string;
+  afterpayOrderId?: string;
+  afterpayToken?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 }
@@ -99,6 +101,7 @@ const statusColors: Record<string, string> = {
 const paymentColors: Record<string, string> = {
   paypal: "bg-blue-100 text-blue-700",
   cod: "bg-orange-100 text-orange-700",
+  afterpay: "bg-teal-100 text-teal-700",
 };
 
 const paymentStatusColors: Record<string, string> = {
@@ -122,12 +125,16 @@ function statusLabel(status: string) {
 
 function displayPaymentMethod(method: string): string {
   if (method === "card") return "paypal";
+  if (method === "afterpay") return "afterpay";
   return method || "unknown";
 }
 
 function paymentLabel(order: FirestoreOrder): string {
   if (order.paymentMethod === "paypal" || order.paymentMethod === "card") {
     return "PayPal";
+  }
+  if (order.paymentMethod === "afterpay") {
+    return "Afterpay";
   }
   return "COD";
 }
@@ -194,6 +201,12 @@ function OrderDetailModal({
               )}
               {order.paypalCaptureId && (
                 <p><span className="font-medium text-foreground">Transaction ID:</span> {order.paypalCaptureId}</p>
+              )}
+              {order.afterpayOrderId && (
+                <p><span className="font-medium text-foreground">Afterpay Order ID:</span> {order.afterpayOrderId}</p>
+              )}
+              {order.afterpayToken && (
+                <p><span className="font-medium text-foreground">Afterpay Token:</span> {order.afterpayToken}</p>
               )}
             </div>
           </section>
@@ -326,7 +339,8 @@ export default function AdminOrdersPage() {
   const paymentCounts = useMemo(() => {
     const cod = orders.filter((o) => o.paymentMethod === "cod" || !o.paymentMethod).length;
     const paypal = orders.filter((o) => o.paymentMethod === "paypal" || o.paymentMethod === "card").length;
-    return { cod, paypal };
+    const afterpay = orders.filter((o) => o.paymentMethod === "afterpay").length;
+    return { cod, paypal, afterpay };
   }, [orders]);
 
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
@@ -411,7 +425,7 @@ export default function AdminOrdersPage() {
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {(["all", "cod", "paypal"] as PaymentFilter[]).map((pm) => (
+        {(["all", "cod", "paypal", "afterpay"] as PaymentFilter[]).map((pm) => (
           <button
             key={pm}
             type="button"
@@ -422,7 +436,7 @@ export default function AdminOrdersPage() {
                 : "bg-card text-foreground border border-card-border hover:border-accent/50"
             }`}
           >
-            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : `PayPal (${paymentCounts.paypal})`}
+            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : pm === "paypal" ? `PayPal (${paymentCounts.paypal})` : `Afterpay (${paymentCounts.afterpay})`}
           </button>
         ))}
       </div>

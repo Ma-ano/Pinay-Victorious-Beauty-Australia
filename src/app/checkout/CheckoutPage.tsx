@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import PayPalButtonGroup from "@/components/PayPalButtonGroup";
 import { usePayPalReady } from "@/components/PayPalProvider";
+import AfterpayButton from "@/components/AfterpayButton";
+import { useAfterpayEnabled } from "@/components/AfterpayProvider";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
@@ -20,7 +22,7 @@ import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";
 
-type PaymentMethod = "cod" | "paypal_cards";
+type PaymentMethod = "cod" | "paypal_cards" | "afterpay";
 
 const defaultAddress: Address = {
   street: "",
@@ -45,6 +47,8 @@ export default function CheckoutPage() {
   const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
   const [paypalError, setPaypalError] = useState("");
+  const [afterpayLoading, setAfterpayLoading] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -62,8 +66,17 @@ export default function CheckoutPage() {
     }
   }, [loading, isAuthenticated, router]);
 
+  useEffect(() => {
+    const check = () => setIsDarkMode(document.documentElement.classList.contains("dark"));
+    check();
+    const observer = new MutationObserver(check);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+    return () => observer.disconnect();
+  }, []);
+
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
   const { ready: paypalReady } = usePayPalReady();
+  const { enabled: afterpayEnabled } = useAfterpayEnabled();
 
   const checkoutAddress = addressDraft || user?.address || defaultAddress;
 
@@ -254,6 +267,61 @@ export default function CheckoutPage() {
     if (!mountedRef.current) return;
     console.error("PayPal SDK error:", err);
   }
+
+  async function handleAfterpayClick() {
+    if (!validateAddress()) return;
+    setAfterpayLoading(true);
+    try {
+      const res = await fetch("/api/payments/afterpay/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: currentUser.name,
+          customerPhone: currentUser.phone || "",
+          email: currentUser.email,
+          items: items.map((i) => ({
+            productId: i.product.id,
+            name: i.product.name,
+            price: i.variant?.price ?? i.product.price,
+            quantity: i.quantity,
+            unitAmount: i.variant?.price ?? i.product.price,
+            variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
+          })),
+          subtotal: totalPrice,
+          total: finalTotal,
+          discount,
+          discountCode: appliedPromo?.code || null,
+          shipping: {
+            name: `${currentUser.name}`,
+            line1: shippingAddress.street,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            postcode: shippingAddress.postcode,
+            country: shippingAddress.country,
+            phoneNumber: currentUser.phone || "",
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create Afterpay checkout");
+      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Afterpay error";
+      showToast(msg, "error");
+    } finally {
+      if (mountedRef.current) setAfterpayLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("afterpay") === "cancelled") {
+      showToast("Afterpay payment was cancelled", "info");
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  }, []);
   if (loading) {
     return <CheckoutFormSkeleton />;
   }
@@ -394,6 +462,27 @@ export default function CheckoutPage() {
                   </div>
                 </div>
               </label>
+
+              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "afterpay" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="afterpay"
+                  checked={paymentMethod === "afterpay"}
+                  onChange={() => setPaymentMethod("afterpay")}
+                  className="accent-accent"
+                />
+                <div className="flex items-center gap-3 flex-1">
+                  <img
+                    src={isDarkMode ? "/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Bondi_Mint.svg" : "/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Black.svg"}
+                    alt="Afterpay"
+                    className="h-5 w-auto shrink-0"
+                  />
+                    <div>
+                      <p className="text-xs text-foreground">Buy now, pay later in 4 interest-free payments</p>
+                    </div>
+                </div>
+              </label>
             </div>
           </div>
         </div>
@@ -494,6 +583,19 @@ export default function CheckoutPage() {
                 {paypalError && (
                   <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
                 )}
+              </div>
+            )}
+
+            {paymentMethod === "afterpay" && (
+              <div className="mt-4">
+                <AfterpayButton
+                  onClick={handleAfterpayClick}
+                  disabled={saving}
+                  loading={afterpayLoading}
+                />
+                <p className="text-xs text-center text-foreground mt-3">
+                  Pay in 4 interest-free installments
+                </p>
               </div>
             )}
 

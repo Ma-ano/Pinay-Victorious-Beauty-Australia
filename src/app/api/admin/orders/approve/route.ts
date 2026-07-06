@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
     const orderData = orderSnap.data()!;
-    const isPayPal = orderData.paymentMethod === "paypal" || orderData.paymentMethod === "card";
+    const isPayPal = orderData.paymentMethod === "paypal" || orderData.paymentMethod === "card" || orderData.paymentMethod === "afterpay";
 
     const updates: Record<string, unknown> = {
       updatedAt: new Date().toISOString(),
