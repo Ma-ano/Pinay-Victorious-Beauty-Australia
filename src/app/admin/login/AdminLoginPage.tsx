@@ -56,6 +56,18 @@ export default function AdminLoginPage() {
         throw new Error(data.error || "Admin login failed");
       }
 
+      // Force-refresh token to pick up custom claims set by the server
+      await fu.getIdToken(true);
+      const refreshedToken = await fu.getIdToken();
+      const sessionRes = await fetch("/api/auth/session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ idToken: refreshedToken }),
+      });
+      if (!sessionRes.ok) {
+        throw new Error("Failed to create session");
+      }
+
       showToast("Welcome Admin", "success");
       router.push("/admin");
     } catch (err: unknown) {

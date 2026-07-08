@@ -1,53 +1,63 @@
-# Technical Notes
+# What's New — Auto Logout & Admin Login Fix
 
-## 2026-07-04 — Admin users, email verification flow, navbar banner
-- **Admin Users page** (`/admin/users`):
-  - Removed "Create Admin" button, modal, state, and handler — role management is done via dropdown
-  - Added `emailVerified` to API response (`route.ts`) and `AdminUser` interface
-  - Photo URL: displays `<img>` when available, falls back to initial-letter avatar
-  - Added "Verified" column: green "Verified" / gray "Unverified" badge
-  - Added detail modal: click any row to open card with large avatar, name, email, role/status/verified badges, phone, full address, creation date, UID
-  - Action buttons (Disable/Enable, Confirm, Cancel, Delete) and role select now call `e.stopPropagation()` so they don't trigger the row's detail modal
-- **Login page** (`/login?verified=true`):
-  - Banner now uses `bg-accent text-dark` (pink bg, black text) matching the login button color scheme
-  - Message is context-aware: "Your email has been verified." if already logged in, "You can now log in." otherwise
-- **Navbar unverified banner** (`CustomerNavbar.tsx`):
-  - Added animated banner below navbar when `needsVerification` is true: `bg-accent text-dark` with "Verify now →" link
-  - Banner is wrapped in the same fixed container as the nav so it slides up/down with the scroll animation
-  - Spacer dynamically adjusts height to prevent layout shift (`h-[calc(3.5rem+34px)]`)
-- **Verify flow** (`/verify-email`):
-  - Unauthenticated users are redirected to `/login` (nothing to verify)
-  - After OTP success, forces Firebase token refresh (`getIdToken(true)`) and does a full page reload via `window.location.href` — guarantees `emailVerified` state is fresh on the next page load
-  - Redirects to `/?verified=true` (homepage) instead of `/login?verified=true`
-- **Profile redirect**: Navbar profile button (desktop + mobile) redirects unverified users to `/verify-email` instead of `/profile`
-- **VerifiedToast**: New `src/components/VerifiedToast.tsx` — reads `?verified=true` on homepage, shows a success toast "Your email has been verified!", cleans the URL with `router.replace("/")`
-- **ImagePlaceholder**: LCP images auto-set `loading="eager"` + `fetchPriority="high"` when `preload={true}`
-- **Product detail page**: Graceful fallback when Firebase Admin SDK unavailable — client-side `ProductDetailFetcher` catches `FirebaseAdminNotConfigured`
-- **WishlistButton**: Fixed heart color — `dark:text-red-500` keeps heart red in dark mode
+---
 
-## 2026-07-04 — Tailwind v4 canonical class migration
-- Replaced `bg-gradient-to-*` → `bg-linear-to-*` across 9 files
-- Replaced `bg-[var(--background)]` → `bg-background` across 5 files (18 instances)
-- Replaced `w-[120px]` → `w-30`, `w-[80px]` → `w-20`, `w-[34px]` → `w-8.5` in AdminProductsPage
-- Replaced `break-words` → `wrap-break-word` (ProductDetailPage, ProductReviews)
-- Replaced `max-w-[120px]` → `max-w-30`, `min-w-[*px]` → `min-w-*` for arbitrary values matching design tokens
-- Replaced `min-h-[400px]` → `min-h-100`, `z-[60|100]` → `z-60|100`, `-ml-[5px]` → `-ml-1.25`
-- Replaced `via-primary/[0.05]` → `via-primary/5`
-- Removed duplicate `text-sm` conflicting with `text-xs` (AdminProductsPage line 474)
-- Removed duplicate `capitalize` conflicting with `uppercase` (ProductDetailPage line 212)
-- Added `.vscode/settings.json` → `css.lint.unknownAtRules: "ignore"` (suppresses `@theme` CSS linter warning)
+## ✨ Auto Logout When Idle
 
-## Earlier
-- Firebase services converted to lazy getter functions (`getApp()`, `getAuthClient()`, `getDb()`, etc.) — eliminates module-level side effects, enables Fast Refresh in all Firebase consumer files
-- `AuthContext.tsx` uses `getFirebase()` helper called inside functions only — no module-level `auth`/`db`/`googleProvider` vars
-- Profile photo upload: switched from dynamic `await import("firebase/storage")` to static import (Turbopack tree-shaking fix); error messages show real reason
-- All Firestore admin queries wrapped with `withTimeout()` (10s) to prevent cold-start hangs
-- `.limit(1000)` added to `fetchAllReviewStats()` in admin-product-store
-- Deduplicated `fetchProducts()` in `page.tsx` — called once, shared between TrendingWrapper and BestSellingWrapper
-- Logo PNGs compressed: PinayVictoriousLogo 1.5MB→8KB, TitleBarLogo 906KB→2.9KB
-- Added `preload={true}` to navbar logo (LCP element) and first 2 carousel products
-- Added `relative` to `<Image fill>` wrapper div in HeroBanner
-- Phone field in register: auto-formats `+61 XXX XXX XXX`, digits-only input, `+61` pre-filled
-- Contact info in `site.ts`: Gmail, WhatsApp `+61 413 504 424`, Facebook, Instagram URLs
-- Footer: WhatsApp link in Support column, WhatsApp icon in Follow column, social link corrections
-- WhatsApp bubble: `href="https://wa.me/61413504424"`
+The site now automatically logs you out if you're not using it for a while. This keeps your account secure if you step away or forget to log out.
+
+### How long before auto-logout?
+
+| Who | Time before logout |
+|-----|-------------------|
+| **Admin** users | 30 minutes |
+| **Customer** users | 4 hours |
+
+### Before you're logged out, you'll see a warning
+
+60 seconds before auto-logout, a popup appears:
+> **"Your session will expire in 60 seconds due to inactivity"**
+
+You can click **"Stay Logged In"** to reset the timer and keep using the site.
+
+> **Even if you close your browser or shut down your computer**, the timer keeps counting. When you come back, if the time has passed, you'll be logged out automatically on the first page you visit.
+
+---
+
+## 🛠️ Admin Login Redirect Fixed
+
+**The problem:** After an admin logged in, the page didn't properly take them to the dashboard. They'd end up back on the login screen or the home page.
+
+**The fix:** The login process now properly refreshes your security token before redirecting, so the system correctly recognises you as an admin and takes you straight to the dashboard.
+
+---
+
+## 📋 For Developers
+
+### How auto-logout works (two layers)
+
+| Layer | What it does | Where |
+|-------|-------------|-------|
+| **Client-side timer** | Tracks mouse movements, clicks, key presses. Shows warning popup, then logs out after the idle time. Works while the browser tab is open. | `useIdleTimeout` hook + `IdleTimeoutProvider` component |
+| **Server-side middleware** | Checks a timestamp cookie on every page load. If the idle time is exceeded (even if the browser was closed), it clears the session and redirects to login. | `src/middleware.ts` |
+
+The client periodically stamps a `lastActivityAt` cookie (every 2 minutes + on activity). The middleware reads this cookie and compares against the timeout for the route (30min for `/admin/*`, 4hr for everything else).
+
+### Key files
+
+| File | What it does |
+|------|-------------|
+| `src/hooks/useIdleTimeout.ts` | Custom hook: listens for user activity, fires warning then timeout. Uses refs to prevent stale closures and ignores activity during the warning phase. |
+| `src/components/IdleTimeoutProvider.tsx` | Global provider: picks timeout duration based on role (admin 30min / customer 4hr), shows countdown modal, calls `logout()` on timeout. Also stamps the `lastActivityAt` cookie for server-side enforcement. |
+| `src/middleware.ts` | Runs on every request. If `__session` exists but `lastActivityAt` is older than the timeout, clears session and redirects to login. Excludes login pages, API routes, and static assets. |
+| `src/app/admin/login/AdminLoginPage.tsx` | After server sets admin claims, force-refreshes the Firebase ID token and creates a new session cookie so the dashboard recognises the user as admin. |
+
+### Files changed
+
+```
+M src/app/admin/login/AdminLoginPage.tsx     — login redirect fix
+M src/app/layout.tsx                          — added IdleTimeoutProvider
+A src/components/IdleTimeoutProvider.tsx       — new: idle timeout UI + heartbeat
+A src/hooks/useIdleTimeout.ts                  — new: idle detection hook
+A src/middleware.ts                            — new: server-side timeout check
+```

@@ -6,6 +6,7 @@ import Footer from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthContext";
 import { ToastProvider } from "@/components/Toast";
 import { CartProvider } from "@/components/CartContext";
+import IdleTimeoutProvider from "@/components/IdleTimeoutProvider";
 import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
@@ -65,6 +66,7 @@ export default async function RootLayout({
         <AuthProvider>
         <CartProvider>
           <ToastProvider>
+            <IdleTimeoutProvider>
             <Navbar />
             <main className="flex-1">{children}</main>
             <Footer />
@@ -72,6 +74,7 @@ export default async function RootLayout({
             <BackToTop />
             <WhatsAppBubble />
             <SpeedInsights />
+            </IdleTimeoutProvider>
           </ToastProvider>
         </CartProvider>
         </AuthProvider>
