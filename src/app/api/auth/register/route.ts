@@ -3,6 +3,8 @@ import { getAdminAuth, getAdminApp } from "@/lib/firebase-admin";
 import { getFirestore } from "firebase-admin/firestore";
 import { createAndSendOtp } from "@/lib/otp";
 
+export const dynamic = "force-dynamic";
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {

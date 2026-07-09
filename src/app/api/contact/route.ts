@@ -3,6 +3,8 @@ import { sendEmail } from "@/lib/mail";
 import { contactNotification } from "@/lib/email-templates";
 import { checkRateLimit } from "@/lib/rate-limit";
 
+export const dynamic = "force-dynamic";
+
 function getBaseUrl(request: Request): string {
   const origin = request.headers.get("origin");
   if (origin) return origin;

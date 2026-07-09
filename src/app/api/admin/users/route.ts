@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -58,8 +60,7 @@ export async function GET(request: Request) {
     const users = filtered.slice(start, start + limit);
 
     return NextResponse.json({ users, total, totalPages, page });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to fetch users";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 });
   }
 }

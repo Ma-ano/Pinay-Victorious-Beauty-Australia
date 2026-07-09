@@ -26,7 +26,8 @@ async function getAccessToken(): Promise<string> {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`PayPal auth failed (${res.status}): ${text}`);
+    console.error(`PayPal auth failed (${res.status}): ${text}`);
+    throw new Error("PayPal authentication failed");
   }
 
   const data = await res.json();
@@ -79,7 +80,8 @@ export async function createPayPalOrder(items: PayPalOrderItem[], total: number)
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`PayPal order creation failed (${res.status}): ${text}`);
+    console.error(`PayPal order creation failed (${res.status}): ${text}`);
+    throw new Error("PayPal order creation failed");
   }
 
   return res.json();
@@ -99,7 +101,8 @@ export async function refundPayPalOrder(captureId: string) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`PayPal refund failed (${res.status}): ${text}`);
+    console.error(`PayPal refund failed (${res.status}): ${text}`);
+    throw new Error("PayPal refund failed");
   }
 
   return res.json();
@@ -118,7 +121,8 @@ export async function capturePayPalOrder(orderId: string) {
 
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`PayPal capture failed (${res.status}): ${text}`);
+    console.error(`PayPal capture failed (${res.status}): ${text}`);
+    throw new Error("PayPal capture failed");
   }
 
   return res.json();

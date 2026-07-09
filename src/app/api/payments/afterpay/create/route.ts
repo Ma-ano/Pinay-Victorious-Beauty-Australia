@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAfterpayCheckout, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 function getSessionCookie(request: Request): string | null {
   const cookieHeader = request.headers.get("cookie") || "";
   const match = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/);
@@ -120,7 +122,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: validationError }, { status: 400 });
     }
 
-    const origin = request.headers.get("origin") || "http://localhost:3000";
+    const origin = request.headers.get("origin") || process.env.SITE_URL || "";
 
     const afterpayItems = items.map(
       (i: { name: string; quantity: number; unitAmount: number }) => ({
@@ -190,9 +192,8 @@ export async function POST(request: Request) {
       .set(pendingData);
 
     return NextResponse.json({ token: result.token, checkoutUrl: result.checkoutUrl });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to create Afterpay checkout";
-    console.error("Afterpay create error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    console.error("Failed to create Afterpay checkout");
+    return NextResponse.json({ error: "Payment setup failed" }, { status: 500 });
   }
 }

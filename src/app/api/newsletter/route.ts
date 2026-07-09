@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { sendEmail } from "@/lib/mail";
 import { welcomeEmail } from "@/lib/email-templates";
 
+export const dynamic = "force-dynamic";
+
 function getBaseUrl(request: Request): string {
   const origin = request.headers.get("origin");
   if (origin) return origin;

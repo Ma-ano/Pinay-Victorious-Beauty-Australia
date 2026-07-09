@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 import { refundPayPalOrder } from "@/lib/paypal";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get("Authorization");
@@ -38,10 +40,9 @@ export async function POST(request: Request) {
     if ((orderData.status === "paid" || orderData.paymentStatus === "paid") && orderData.paypalCaptureId) {
       try {
         await refundPayPalOrder(orderData.paypalCaptureId);
-      } catch (refundErr) {
-        const refundMsg = refundErr instanceof Error ? refundErr.message : "Refund failed";
-        console.error("PayPal refund error:", refundMsg);
-        return NextResponse.json({ error: `Order rejected but refund failed: ${refundMsg}` }, { status: 500 });
+      } catch {
+        console.error("PayPal refund error");
+        return NextResponse.json({ error: "Order rejected but refund failed" }, { status: 500 });
       }
     }
 
@@ -51,9 +52,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to reject order";
-    console.error("Reject order error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    console.error("Failed to reject order");
+    return NextResponse.json({ error: "Failed to reject order" }, { status: 500 });
   }
 }

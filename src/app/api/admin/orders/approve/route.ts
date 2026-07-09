@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const authHeader = request.headers.get("Authorization");
@@ -45,9 +47,8 @@ export async function POST(request: Request) {
     await getAdminDb().collection("orders").doc(orderId).update(updates);
 
     return NextResponse.json({ success: true });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to approve order";
-    console.error("Approve order error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    console.error("Failed to approve order");
+    return NextResponse.json({ error: "Failed to approve order" }, { status: 500 });
   }
 }

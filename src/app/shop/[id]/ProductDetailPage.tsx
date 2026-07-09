@@ -14,6 +14,7 @@ import { getProductReviews, getProductsByIds, getAllProducts } from "@/lib/produ
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import StructuredData from "@/components/StructuredData";
+import { site } from "@/data/site";
 
 interface Props {
   product: Product;
@@ -96,9 +97,9 @@ export default function ProductDetailPage({ product }: Props) {
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: "https://pinayvictorious.com/" },
-              { "@type": "ListItem", position: 2, name: "Shop", item: "https://pinayvictorious.com/shop" },
-              { "@type": "ListItem", position: 3, name: product.category, item: `https://pinayvictorious.com/shop?category=${product.category}` },
+              { "@type": "ListItem", position: 1, name: "Home", item: `${site.url}/` },
+              { "@type": "ListItem", position: 2, name: "Shop", item: `${site.url}/shop` },
+              { "@type": "ListItem", position: 3, name: product.category, item: `${site.url}/shop?category=${product.category}` },
               { "@type": "ListItem", position: 4, name: product.name },
             ],
           }).replace(/</g, "\\u003c"),

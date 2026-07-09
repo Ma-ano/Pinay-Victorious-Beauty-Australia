@@ -115,7 +115,8 @@ export async function createAfterpayCheckout(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Afterpay create checkout failed: ${err}`);
+    console.error(`Afterpay create checkout failed: ${err}`);
+    throw new Error("Afterpay checkout creation failed");
   }
 
   return res.json();
@@ -134,7 +135,8 @@ export async function captureAfterpayPayment(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Afterpay capture failed: ${err}`);
+    console.error(`Afterpay capture failed: ${err}`);
+    throw new Error("Afterpay capture failed");
   }
 
   return res.json();
@@ -160,7 +162,8 @@ export async function refundAfterpayPayment(
 
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(`Afterpay refund failed: ${err}`);
+    console.error(`Afterpay refund failed: ${err}`);
+    throw new Error("Afterpay refund failed");
   }
 
   return res.json();

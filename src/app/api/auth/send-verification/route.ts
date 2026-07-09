@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createAndSendOtp } from "@/lib/otp";
 
+export const dynamic = "force-dynamic";
+
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export async function POST(request: Request) {

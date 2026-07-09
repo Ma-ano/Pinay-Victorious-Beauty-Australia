@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function PATCH(request: Request, { params }: { params: Promise<{ uid: string }> }) {
   try {
     const { uid } = await params;
@@ -42,9 +44,8 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ ui
     }
 
     return NextResponse.json({ success: true, uid });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to update user";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
 
@@ -59,8 +60,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ u
     await db.collection("users").doc(uid).delete();
 
     return NextResponse.json({ success: true, uid });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to delete user";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
   }
 }

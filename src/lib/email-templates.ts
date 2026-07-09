@@ -2,7 +2,18 @@ const brandColor = "#B76E79";
 const bgColor = "#FAF6F3";
 const textColor = "#3A2E2A";
 
-function baseTemplate(content: string, baseUrl: string = "https://pinayvictorious.com") {
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+import { site } from "@/data/site";
+
+function baseTemplate(content: string, baseUrl: string = site.url) {
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -77,7 +88,7 @@ export function welcomeEmail(name: string, baseUrl?: string) {
     <table cellpadding="0" cellspacing="0" style="margin:0 auto 24px;">
       <tr>
         <td style="background-color:${brandColor};border-radius:8px;padding:14px 32px;">
-          <a href="${baseUrl || "https://pinayvictorious.com"}/shop" style="color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;display:inline-block;">Shop Now</a>
+          <a href="${baseUrl || site.url}/shop" style="color:#ffffff;font-size:15px;font-weight:bold;text-decoration:none;display:inline-block;">Shop Now</a>
         </td>
       </tr>
     </table>
@@ -102,7 +113,7 @@ export function contactNotification({ name, email, message }: { name: string; em
       </tr>
       <tr>
         <td style="padding:4px 0;font-weight:bold;vertical-align:top;">Message:</td>
-        <td style="padding:4px 0;white-space:pre-wrap;">${message}</td>
+        <td style="padding:4px 0;white-space:pre-wrap;">${escapeHtml(message)}</td>
       </tr>
     </table>
   `);

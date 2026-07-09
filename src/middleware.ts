@@ -8,12 +8,41 @@ const CUSTOMER_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 // const ADMIN_TIMEOUT_MS = 30 * 1000;      // 30 seconds
 // const CUSTOMER_TIMEOUT_MS = 30 * 1000;   // 30 seconds
 
+function addSecurityHeaders(res: NextResponse): NextResponse {
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.firebaseio.com https://apis.google.com https://www.googletagmanager.com",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://lh3.googleusercontent.com https://images.unsplash.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "connect-src 'self' https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.paypal.com https://api.afterpay.com https://api-sandbox.afterpay.com https://firebasestorage.googleapis.com",
+    "frame-src https://www.paypal.com https://www.sandbox.paypal.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+  ].join("; ");
+
+  const headers: Record<string, string> = {
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "X-XSS-Protection": "1; mode=block",
+    "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+    "Content-Security-Policy": csp,
+  };
+
+  for (const [key, value] of Object.entries(headers)) {
+    res.headers.set(key, value);
+  }
+
+  return res;
+}
+
 export function middleware(request: NextRequest) {
   const sessionCookie = request.cookies.get("__session")?.value;
   const lastActivity = request.cookies.get("lastActivityAt")?.value;
 
   if (!sessionCookie) {
-    return NextResponse.next();
+    return addSecurityHeaders(NextResponse.next());
   }
 
   const now = Date.now();
@@ -26,9 +55,9 @@ export function middleware(request: NextRequest) {
     res.cookies.set("lastActivityAt", now.toString(), {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
-      sameSite: "lax",
+      sameSite: "strict",
     });
-    return res;
+    return addSecurityHeaders(res);
   }
 
   const lastActivityTime = parseInt(lastActivity, 10);
@@ -37,9 +66,9 @@ export function middleware(request: NextRequest) {
     res.cookies.set("lastActivityAt", now.toString(), {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
-      sameSite: "lax",
+      sameSite: "strict",
     });
-    return res;
+    return addSecurityHeaders(res);
   }
 
   if (now - lastActivityTime > timeout) {
@@ -48,7 +77,7 @@ export function middleware(request: NextRequest) {
     res.cookies.set("__session", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
       maxAge: 0,
     });
@@ -56,10 +85,10 @@ export function middleware(request: NextRequest) {
       path: "/",
       maxAge: 0,
     });
-    return res;
+    return addSecurityHeaders(res);
   }
 
-  return NextResponse.next();
+  return addSecurityHeaders(NextResponse.next());
 }
 
 export const config = {

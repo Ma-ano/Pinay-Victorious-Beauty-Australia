@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
@@ -14,6 +14,11 @@ import MotionProvider from "@/components/MotionProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/data/site";
 import { preconnect } from "react-dom";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   title: {

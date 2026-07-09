@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAdminAuth } from "@/lib/firebase-admin";
 import { verifyOtp } from "@/lib/otp";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { email, code } = await request.json();

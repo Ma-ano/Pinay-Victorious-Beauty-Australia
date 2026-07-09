@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { refundAfterpayPayment, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     if (!hasAfterpayCredentials()) {
@@ -53,9 +55,8 @@ export async function POST(request: Request) {
       refundId: result.id,
       status: result.status,
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to refund Afterpay payment";
-    console.error("Afterpay refund error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    console.error("Afterpay refund error");
+    return NextResponse.json({ error: "Refund failed" }, { status: 500 });
   }
 }

@@ -1,4 +1,5 @@
 import type { Product } from "@/data/products";
+import { site } from "@/data/site";
 
 interface StructuredDataProps {
   product: Product;
@@ -20,7 +21,7 @@ export default function StructuredData({ product }: StructuredDataProps) {
       priceCurrency: "AUD",
       price: product.price,
       availability: "https://schema.org/InStock",
-      url: `https://pinayvictorious.com/shop/${product.slug}`,
+      url: `${site.url}/shop/${product.slug}`,
     },
   };
 

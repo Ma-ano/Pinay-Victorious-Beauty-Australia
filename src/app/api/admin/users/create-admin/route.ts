@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { email } = await request.json();
@@ -41,9 +43,8 @@ export async function POST(request: Request) {
       uid: userRecord.uid,
       email: trimmedEmail,
     });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to create admin";
-    console.error("Create admin error:", message);
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    console.error("Failed to create admin");
+    return NextResponse.json({ error: "Failed to create admin" }, { status: 500 });
   }
 }

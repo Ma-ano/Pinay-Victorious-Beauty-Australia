@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { captureAfterpayPayment, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 function getSessionCookie(request: Request): string | null {
   const cookieHeader = request.headers.get("cookie") || "";
   const match = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/);
@@ -118,11 +120,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Payment amount mismatch" }, { status: 400 });
     }
     if (err instanceof CaptureError) {
-      return NextResponse.json({ error: err.message }, { status: 400 });
+      return NextResponse.json({ error: "Payment capture failed" }, { status: 400 });
     }
-    const msg = err instanceof Error ? err.message : "Failed to capture Afterpay payment";
-    console.error("Afterpay capture error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    console.error("Afterpay capture error");
+    return NextResponse.json({ error: "Payment capture failed" }, { status: 500 });
   }
 }
 

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, setAdminVerified } from "@/lib/firebase-admin";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { email, setupSecret } = await request.json();
@@ -24,8 +26,7 @@ export async function POST(request: Request) {
     await setAdminVerified(user.uid);
 
     return NextResponse.json({ success: true, uid: user.uid, message: "Admin promoted and email verified" });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to set admin claim";
-    return NextResponse.json({ error: message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Failed to set admin claim" }, { status: 500 });
   }
 }

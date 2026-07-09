@@ -3,6 +3,7 @@ import { getAdminDb, FirebaseAdminNotConfigured } from "@/lib/firebase-admin";
 import ProductDetailFetcher from "./ProductDetailFetcher";
 import type { Metadata } from "next";
 import type { Product } from "@/data/products";
+import { site } from "@/data/site";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const snapshot = await db.collection("products").where("slug", "==", id).limit(1).get();
     if (snapshot.empty) return {};
     const data = snapshot.docs[0].data() as Product;
-    const url = `https://pinayvictorious.com/shop/${data.slug || id}`;
+    const url = `${site.url}/shop/${data.slug || id}`;
     const firstImageUrl = data.images?.[0]?.url;
     const images = firstImageUrl ? [{ url: firstImageUrl, width: 800, height: 800 }] : [];
     return {

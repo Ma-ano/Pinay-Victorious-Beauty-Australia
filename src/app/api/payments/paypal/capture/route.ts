@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { capturePayPalOrder } from "@/lib/paypal";
 
+export const dynamic = "force-dynamic";
+
 export async function POST(request: Request) {
   try {
     const { orderID } = await request.json();
@@ -32,9 +34,8 @@ export async function POST(request: Request) {
       success: false,
       status: captureData.status,
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Failed to capture PayPal order";
-    console.error("PayPal capture error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+  } catch {
+    console.error("Failed to capture PayPal order");
+    return NextResponse.json({ error: "Payment capture failed" }, { status: 500 });
   }
 }
