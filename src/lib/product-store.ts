@@ -88,8 +88,13 @@ export async function getAllProducts(max?: number): Promise<Product[]> {
   return result;
 }
 
-export function subscribeProducts(callback: (products: Product[]) => void): () => void {
-  return onSnapshot(collection(getDb(), "products"), (snapshot) => {
+export function subscribeProducts(
+  callback: (products: Product[]) => void,
+  opts?: { limit?: number }
+): () => void {
+  const col = collection(getDb(), "products");
+  const q = opts?.limit ? query(col, limit(opts.limit)) : col;
+  return onSnapshot(q, (snapshot) => {
     callback(snapshot.docs.map((docSnap) => {
       const data = docSnap.data() as Product;
       return {

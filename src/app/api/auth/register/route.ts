@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       address: address || { street: "", city: "", state: "", postcode: "", country: "Australia" },
       role: "customer",
       status: "active",
+      emailVerified: false,
       createdAt: new Date().toISOString(),
     });
 

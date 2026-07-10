@@ -127,9 +127,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const { auth, db } = getFirebase();
+    let fresh = false;
     const unsub = onIdTokenChanged(auth, async (fu) => {
       if (fu) {
         setEmailVerified(fu.emailVerified);
+        if (!fresh) {
+          fresh = true;
+          await fu.getIdToken(true);
+          return;
+        }
         await checkAdminClaim(fu);
         const base = mapFirebaseUser(fu);
         try {
@@ -213,6 +219,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const data = await res.json();
+
+    const { auth } = getFirebase();
+    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+    const fu = cred.user;
+    await syncSession(fu);
+
     setUser({
       uid: (data as { uid: string }).uid,
       name: name.trim(),

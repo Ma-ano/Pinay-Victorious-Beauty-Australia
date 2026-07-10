@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useToast } from "@/components/Toast";
 
 interface UserAddress {
@@ -70,6 +70,21 @@ export default function AdminUsersPage() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  const fetchUsersRef = useRef(fetchUsers);
+  fetchUsersRef.current = fetchUsers;
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchUsersRef.current();
+    }, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // One-time backfill: sync emailVerified from Firebase Auth to Firestore
+  useEffect(() => {
+    fetch("/api/admin/sync-verification", { method: "POST" }).catch(() => {});
+  }, []);
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -271,7 +286,7 @@ export default function AdminUsersPage() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleStatusToggle(u.uid, u.status); }}
                           disabled={processing === u.uid}
-                          className="text-xs font-medium text-accent hover:text-accent/80 disabled:opacity-50"
+                          className="px-2.5 py-1 text-xs font-medium rounded-full border border-accent/30 text-accent hover:bg-accent/10 disabled:opacity-50 transition-colors"
                         >
                           {u.status === "active" ? "Disable" : "Enable"}
                         </button>
@@ -280,16 +295,16 @@ export default function AdminUsersPage() {
                             <button
                               onClick={(e) => { e.stopPropagation(); handleDelete(u.uid); }}
                               disabled={processing === u.uid}
-                              className="text-red-500 hover:text-red-600 text-xs font-medium disabled:opacity-50"
+                              className="px-2.5 py-1 text-xs font-medium rounded-full border border-red-400 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition-colors"
                             >
                               Confirm
                             </button>
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }} className="text-foreground hover:text-dark text-xs">
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }} className="px-2.5 py-1 text-xs font-medium rounded-full border border-primary/20 text-foreground hover:bg-primary/10 transition-colors">
                               Cancel
                             </button>
                           </span>
                         ) : (
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(u.uid); }} className="text-red-400 hover:text-red-500 text-xs font-medium">
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(u.uid); }} className="px-2.5 py-1 text-xs font-medium rounded-full border border-red-300 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                             Delete
                           </button>
                         )}
@@ -308,7 +323,7 @@ export default function AdminUsersPage() {
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}
-            className="px-3 py-1.5 rounded-xl border border-card-border text-sm font-medium text-foreground hover:text-dark hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="px-3 py-1.5 rounded-full border border-card-border text-sm font-medium text-foreground hover:text-dark hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
           >
             Previous
           </button>
@@ -316,7 +331,7 @@ export default function AdminUsersPage() {
             <button
               key={p}
               onClick={() => setPage(p)}
-              className={`w-8 h-8 rounded-xl text-sm font-medium transition-all ${
+              className={`w-8 h-8 rounded-full text-sm font-medium transition-all ${
                 p === page ? "bg-accent text-white" : "text-foreground hover:bg-primary/10 hover:text-dark"
               }`}
             >
@@ -326,7 +341,7 @@ export default function AdminUsersPage() {
           <button
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page >= totalPages}
-            className="px-3 py-1.5 rounded-xl border border-card-border text-sm font-medium text-foreground hover:text-dark hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
+            className="px-3 py-1.5 rounded-full border border-card-border text-sm font-medium text-foreground hover:text-dark hover:border-accent/50 disabled:opacity-30 disabled:pointer-events-none transition-all"
           >
             Next
           </button>

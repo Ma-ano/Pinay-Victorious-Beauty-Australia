@@ -1,66 +1,90 @@
-# What's New — Address Dropdowns, Pagination & More
+# What's New — Realtime Admin, Cost-Optimized Products & Verified Status Fix
 
 ---
 
 # Previous Updates
 
-## ✨ Auto Logout When Idle
+---
 
-The site now automatically logs you out if you're not using it for a while. This keeps your account secure if you step away or forget to log out.
+## ✨ Realtime Admin Dashboard (No More Polling)
 
-### How long before auto-logout?
+The admin users page now updates in real-time — no more waiting 10 seconds for changes to appear. When you update a role, toggle a user's status, or delete a user, the table updates instantly.
 
-| Who | Time before logout |
-|-----|-------------------|
-| **Admin** users | 30 minutes |
-| **Customer** users | 4 hours |
+### How it works
 
-### Before you're logged out, you'll see a warning
+| Mode | What it does | Cost |
+|------|-------------|------|
+| **Browsing** (no filters) | `onSnapshot` with cursor pagination — 20 users per page, real-time | 20 reads per page |
+| **Filtering** (role/status) | `getDocs` with Firestore `where` — fetches matching users only | 1 read per matching user |
+| **Search** | `getDocs` full collection, client-side filter by email/name | 1 read per user (one-time) |
 
-60 seconds before auto-logout, a popup appears:
-> **"Your session will expire in 60 seconds due to inactivity"**
+An amber banner appears when filters are active — real-time resumes when you clear all filters.
 
-You can click **"Stay Logged In"** to reset the timer and keep using the site.
+### Action buttons styling
 
-> **Even if you close your browser or shut down your computer**, the timer keeps counting. When you come back, if the time has passed, you'll be logged out automatically on the first page you visit.
+Edit, Delete, Confirm, Cancel, Enable/Disable, Previous, Next, and page number buttons across both `/admin/products` and `/admin/users` now use **bubble border styling** (`rounded-full` with colored borders and hover backgrounds).
 
 ---
 
-## 🛠️ Admin Login Redirect Fixed
+## 💰 Products Page — Cost-Optimized Data Fetching
 
-**The problem:** After an admin logged in, the page didn't properly take them to the dashboard. They'd end up back on the login screen or the home page.
+The admin products page now reads only **15 documents** per page instead of 200+.
 
-**The fix:** The login process now properly refreshes your security token before redirecting, so the system correctly recognises you as an admin and takes you straight to the dashboard.
+| Mode | Reads | How |
+|------|-------|-----|
+| **Browsing** (no filters) | **15 reads** | `getDocs` with `limit(15)` + cursor pagination |
+| **Search/filters** | 1 read per product | `getDocs` all matching, client-side post-filter |
+| **Bundle form** | One-time fetch | Separate `allProducts` state for the bundle picker |
+
+No more `onSnapshot` recurring costs — only one-time reads per page load.
+
+---
+
+## ✅ Verified Status Now Works Correctly
+
+**The problem:** After switching to direct Firestore queries, all users showed as "Unverified" because `emailVerified` was only stored in Firebase Auth — not in Firestore docs.
+
+**The fix:**
+1. **Register** — New users get `emailVerified: false` written to Firestore at signup
+2. **Verify email** — The OTP verify route now also writes `emailVerified: true` to the Firestore user doc
+3. **Backfill API** — `POST /api/admin/sync-verification` syncs every user's `emailVerified` from Firebase Auth to Firestore
+4. **Auto-sync** — The admin users page calls this API once on mount to fix all existing users
+
+---
+
+## 🔁 Verify Email Redirect Fixed
+
+**The problem:** After verifying, the page showed "Verified! Redirecting you to the homepage..." but the redirect never happened — it relied on the Firebase Auth listener which didn't always fire.
+
+**The fix:** Added a `setTimeout` on the local `verified` state that guarantees redirect after 1.5 seconds, independent of Firebase listener propagation.
 
 ---
 
 ## 📋 For Developers
 
-### How auto-logout works (two layers)
-
-| Layer | What it does | Where |
-|-------|-------------|-------|
-| **Client-side timer** | Tracks mouse movements, clicks, key presses. Shows warning popup, then logs out after the idle time. Works while the browser tab is open. | `useIdleTimeout` hook + `IdleTimeoutProvider` component |
-| **Server-side middleware** | Checks a timestamp cookie on every page load. If the idle time is exceeded (even if the browser was closed), it clears the session and redirects to login. | `src/proxy.ts` |
-
-The client periodically stamps a `lastActivityAt` cookie (every 2 minutes + on activity). The middleware reads this cookie and compares against the timeout for the route (30min for `/admin/*`, 4hr for everything else).
-
-### Key files
-
-| File | What it does |
-|------|-------------|
-| `src/hooks/useIdleTimeout.ts` | Custom hook: listens for user activity, fires warning then timeout. Uses refs to prevent stale closures and ignores activity during the warning phase. |
-| `src/components/IdleTimeoutProvider.tsx` | Global provider: picks timeout duration based on role (admin 30min / customer 4hr), shows countdown modal, calls `logout()` on timeout. Also stamps the `lastActivityAt` cookie for server-side enforcement. |
-| `src/proxy.ts` | Runs on every request. If `__session` exists but `lastActivityAt` is older than the timeout, clears session and redirects to login. Excludes login pages, API routes, and static assets. |
-| `src/app/admin/login/AdminLoginPage.tsx` | After server sets admin claims, force-refreshes the Firebase ID token and creates a new session cookie so the dashboard recognises the user as admin. |
-
-### Files changed
+### Key files changed
 
 ```
-M src/app/admin/login/AdminLoginPage.tsx     — login redirect fix
-M src/app/layout.tsx                          — added IdleTimeoutProvider
-A src/components/IdleTimeoutProvider.tsx       — new: idle timeout UI + heartbeat
-A src/hooks/useIdleTimeout.ts                  — new: idle detection hook
-A src/middleware.ts                            — new: server-side timeout check
-R src/middleware.ts → src/proxy.ts             — renamed for Next.js 16
+M src/app/admin/(dashboard)/products/AdminProductsPage.tsx  — cursor pagination, cost-optimized, bubble buttons
+M src/app/admin/(dashboard)/users/AdminUsersPage.tsx        — onSnapshot, cursor pagination, Auto-sync, bubble buttons
+M src/app/api/auth/verify-otp/route.ts                      — writes emailVerified to Firestore
+M src/app/api/auth/register/route.ts                        — adds emailVerified: false to Firestore doc
+A src/app/api/admin/sync-verification/route.ts              — backfills emailVerified from Auth to Firestore
+M src/app/verify-email/VerifyEmailPage.tsx                   — guaranteed redirect after verification
 ```
+
+### Read cost comparison (Products page)
+
+| Before | After |
+|--------|-------|
+| `onSnapshot` with 200 docs → recurring reads on reconnect | `getDocs` with `limit(15)` → 15 reads per page load |
+| 500 page loads × 200 = 100k reads | 500 page loads × 15 = 7.5k reads |
+| Ongoing subscription cost | One-time read per page load |
+
+### Read cost comparison (Users page)
+
+| Before | After |
+|--------|-------|
+| `setInterval` polling every 10s → reads all users each time | `onSnapshot` → reads current page (20) + changes only |
+| `listUsers(1000)` API cap | No cap — Firestore cursor pagination |
+| API route merging Auth + Firestore data | Direct Firestore reads only |

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth } from "@/lib/firebase-admin";
+import { getAdminAuth, getAdminApp } from "@/lib/firebase-admin";
+import { getFirestore } from "firebase-admin/firestore";
 import { verifyOtp } from "@/lib/otp";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,9 @@ export async function POST(request: Request) {
     }
 
     await auth.updateUser(user.uid, { emailVerified: true });
+
+    const db = getFirestore(getAdminApp());
+    await db.collection("users").doc(user.uid).update({ emailVerified: true });
 
     return NextResponse.json({ success: true });
   } catch (error) {

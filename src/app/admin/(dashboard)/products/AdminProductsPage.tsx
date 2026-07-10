@@ -4,11 +4,29 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { productTypes } from "@/data/productTypes";
 import { categories } from "@/data/categories";
 import type { Product, ProductImage } from "@/data/products";
-import { getAllProducts, getProductsByIds, saveProduct, deleteProduct } from "@/lib/product-store";
+import { saveProduct, deleteProduct, getAllProducts } from "@/lib/product-store";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { useToast } from "@/components/Toast";
 import { formatPrice } from "@/lib/format";
 import SearchableSelect from "@/components/SearchableSelect";
+import { getDb as getFirebaseDb } from "@/lib/firebase";
+import {
+  collection,
+  query,
+  orderBy,
+  limit,
+  startAfter,
+  getDocs,
+  where,
+  getCountFromServer,
+} from "firebase/firestore";
+import type { DocumentSnapshot } from "firebase/firestore";
+
+function getDb() {
+  const db = getFirebaseDb();
+  if (!db) throw new Error("Firestore not initialized");
+  return db;
+}
 
 function slugify(text: string): string {
   return text
@@ -106,17 +124,25 @@ export default function AdminProductsPage() {
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [bundleSearch, setBundleSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
+  const [realTimePaused, setRealTimePaused] = useState(false);
+  const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [total, setTotal] = useState(0);
+
+  const pageCursors = useRef<Map<number, DocumentSnapshot | null>>(new Map());
+  const fetchCountId = useRef(0);
 
   const bundleAutoSum = useMemo(() => {
     if (form.bundleItems.length === 0) return 0;
-    return products
+    return allProducts
       .filter((p) => form.bundleItems.includes(p.id))
       .reduce((sum, p) => sum + p.price, 0);
-  }, [form.bundleItems, products]);
+  }, [form.bundleItems, allProducts]);
 
   const bundleMinStock = useMemo(() => {
     if (form.bundleItems.length === 0) return 0;
-    const selected = products.filter((p) => form.bundleItems.includes(p.id));
+    const selected = allProducts.filter((p) => form.bundleItems.includes(p.id));
     if (selected.length === 0) return 0;
     const stocks = selected.map((p) => {
       if (p.variants && p.variants.length > 0) {
@@ -125,14 +151,123 @@ export default function AdminProductsPage() {
       return p.stock ?? 0;
     });
     return Math.min(...stocks);
-  }, [form.bundleItems, products]);
+  }, [form.bundleItems, allProducts]);
 
+  // Pre-fetch all products for bundle form (one-time, no table impact)
   useEffect(() => {
-    getAllProducts().then((all) => {
-      setProducts(all);
+    getAllProducts().then(setAllProducts);
+  }, []);
+
+  const hasFilters = !!(search || filterCategory || filterType || filterBrand ||
+    filterAvailability !== "all" || filterMinPrice || filterMaxPrice ||
+    filterHasImages !== "all" || filterHasVariants !== "all");
+
+  // Default mode (no filters): cursor pagination — 15 reads per page
+  useEffect(() => {
+    if (hasFilters) return;
+
+    setRealTimePaused(false);
+    setLoading(true);
+
+    const db = getDb();
+    const countId = ++fetchCountId.current;
+
+    const constraints: Parameters<typeof query>[1][] = [
+      orderBy("createdAt", "desc"),
+      limit(pageSize),
+    ];
+
+    const cursor = pageCursors.current.get(page - 1);
+    if (cursor) constraints.push(startAfter(cursor));
+
+    const q = query(collection(db, "products"), ...constraints);
+
+    getDocs(q).then((snapshot) => {
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1] || null;
+      pageCursors.current.set(page, lastDoc);
+
+      setProducts(snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product)));
+      setLoading(false);
+    }).catch(() => {
+      showToast("Failed to load products", "error");
       setLoading(false);
     });
-  }, []);
+
+    getCountFromServer(collection(db, "products")).then((snap) => {
+      if (countId === fetchCountId.current) {
+        setTotal(snap.data().count);
+      }
+    }).catch(() => {});
+  }, [page, hasFilters, showToast]);
+
+  // Search/filter mode: getDocs all products, client-side filter + paginate
+  useEffect(() => {
+    if (!hasFilters) return;
+
+    setRealTimePaused(true);
+    setLoading(true);
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const db = getDb();
+        const constraints: Parameters<typeof query>[1][] = [];
+        if (filterCategory) constraints.push(where("category", "==", filterCategory));
+        if (filterType) constraints.push(where("type", "==", filterType));
+
+        const q = constraints.length > 0
+          ? query(collection(db, "products"), ...constraints)
+          : collection(db, "products");
+
+        const snapshot = await getDocs(q);
+        if (cancelled) return;
+
+        let results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
+
+        const qs = search.toLowerCase();
+        results = results.filter((p) => {
+          if (search) {
+            const variantNames = (p.variants || []).map((v) => v.name.toLowerCase()).join(" ");
+            const searchable = [p.name, p.category, p.subcategory || "", p.type, p.brand || "", variantNames, p.id].join(" ").toLowerCase();
+            if (!searchable.includes(qs)) return false;
+          }
+          if (filterBrand && !(p.brand || "").toLowerCase().includes(filterBrand.toLowerCase())) return false;
+          if (filterAvailability !== "all") {
+            const hasStock = p.variants && p.variants.length > 0
+              ? p.variants.some((v) => v.inStock)
+              : (p.stock ?? 0) > 0;
+            if (filterAvailability === "in-stock" && !hasStock) return false;
+            if (filterAvailability === "out-of-stock" && hasStock) return false;
+          }
+          if (filterMinPrice && p.price < parseFloat(filterMinPrice)) return false;
+          if (filterMaxPrice && p.price > parseFloat(filterMaxPrice)) return false;
+          if (filterHasImages === "yes" && (!p.images || p.images.length === 0)) return false;
+          if (filterHasImages === "no" && p.images && p.images.length > 0) return false;
+          if (filterHasVariants === "yes" && (!p.variants || p.variants.length === 0)) return false;
+          if (filterHasVariants === "no" && p.variants && p.variants.length > 0) return false;
+          return true;
+        });
+
+        setProducts(results);
+        setTotal(results.length);
+      } catch {
+        if (!cancelled) showToast("Failed to load products", "error");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [page, search, filterCategory, filterType, filterBrand, filterAvailability,
+      filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants, hasFilters, showToast]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+    pageCursors.current.clear();
+  }, [search, filterCategory, filterType, filterBrand, filterAvailability,
+      filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
   useEffect(() => {
     const el = document.body;
@@ -167,53 +302,23 @@ export default function AdminProductsPage() {
     return count;
   }, [filterCategory, filterType, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
-  const filtered = useMemo(
-    () =>
-      products.filter((p) => {
-        if (search) {
-          const q = search.toLowerCase();
-          const variantNames = (p.variants || []).map((v) => v.name.toLowerCase()).join(" ");
-          const searchable = [p.name, p.category, p.subcategory || "", p.type, p.brand || "", variantNames, p.id].join(" ").toLowerCase();
-          if (!searchable.includes(q)) return false;
-        }
+  const displayTotal = hasFilters
+    ? Math.max(1, Math.ceil(products.length / pageSize))
+    : Math.max(1, Math.ceil(total / pageSize));
 
-        if (filterCategory && p.category !== filterCategory) return false;
-        if (filterType && p.type !== filterType) return false;
-        if (filterBrand && !(p.brand || "").toLowerCase().includes(filterBrand.toLowerCase())) return false;
-
-        if (filterAvailability !== "all") {
-          const hasStock = p.variants && p.variants.length > 0
-            ? p.variants.some((v) => v.inStock)
-            : (p.stock ?? 0) > 0;
-          if (filterAvailability === "in-stock" && !hasStock) return false;
-          if (filterAvailability === "out-of-stock" && hasStock) return false;
-        }
-
-        if (filterMinPrice && p.price < parseFloat(filterMinPrice)) return false;
-        if (filterMaxPrice && p.price > parseFloat(filterMaxPrice)) return false;
-
-        if (filterHasImages === "yes" && (!p.images || p.images.length === 0)) return false;
-        if (filterHasImages === "no" && p.images && p.images.length > 0) return false;
-
-        if (filterHasVariants === "yes" && (!p.variants || p.variants.length === 0)) return false;
-        if (filterHasVariants === "no" && p.variants && p.variants.length > 0) return false;
-
-        return true;
-      }),
-    [products, search, filterCategory, filterType, filterBrand, filterAvailability,
-     filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]
-  );
-
-  const excludedCategorySlugs = useMemo(() => new Set(["best-sellers", "new-arrivals", "gift-sets", "sale"]), []);
+  const displayProducts = hasFilters
+    ? products.slice((page - 1) * pageSize, page * pageSize)
+    : products;
 
   const categoryOptions = useMemo(() => {
+    const excluded = new Set(["best-sellers", "new-arrivals", "gift-sets", "sale"]);
     const options: { value: string; label: string }[] = [];
     for (const cat of categories) {
-      if (excludedCategorySlugs.has(cat.slug)) continue;
+      if (excluded.has(cat.slug)) continue;
       options.push({ value: cat.slug, label: cat.name });
     }
     return options;
-  }, [excludedCategorySlugs]);
+  }, []);
 
   const categoryLabelMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -395,7 +500,7 @@ export default function AdminProductsPage() {
 
       const isBundle = form.isBundle;
       const bundleAutoSum = isBundle && form.bundleItems.length > 0
-        ? products.filter((p) => form.bundleItems.includes(p.id)).reduce((sum, p) => sum + p.price, 0)
+        ? allProducts.filter((p) => form.bundleItems.includes(p.id)).reduce((sum, p) => sum + p.price, 0)
         : 0;
       const finalBundlePrice = isBundle
         ? (form.bundlePrice ? parseFloat(form.bundlePrice) : bundleAutoSum)
@@ -431,13 +536,10 @@ export default function AdminProductsPage() {
         bundleItems: isBundle ? form.bundleItems : [],
         bundlePrice: finalBundlePrice,
       });
-      const all = await getAllProducts();
-      setProducts(all);
       showToast(editingId ? "Product updated" : "Product created", "success");
       cancelForm();
     } catch (err) {
       showToast("Failed to save product", "error");
-      console.error(err);
     } finally {
       setSaving(false);
     }
@@ -445,7 +547,7 @@ export default function AdminProductsPage() {
 
   async function handleDelete(id: string) {
     try {
-      const product = products.find((p) => p.id === id);
+      const product = allProducts.find((p) => p.id === id);
       if (product?.images) {
         await Promise.allSettled(product.images.map((img) => deleteImage(img.url)));
       }
@@ -474,7 +576,7 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-dark">Products</h1>
-          <p className="text-sm text-foreground mt-1">{products.length} total products</p>
+          <p className="text-sm text-foreground mt-1">{total} total products</p>
         </div>
         <button
           onClick={startAdd}
@@ -665,7 +767,7 @@ export default function AdminProductsPage() {
                         placeholder="Type to search products..." />
                     </div>
                     <div className="max-h-48 overflow-y-auto space-y-1 border border-card-border rounded-xl p-1">
-                      {products
+                      {allProducts
                         .filter((p) => {
                           if (editingId && p.id === editingId) return false;
                           const hasStock = p.variants && p.variants.length > 0
@@ -697,7 +799,7 @@ export default function AdminProductsPage() {
                             </label>
                           );
                         })}
-                      {products.filter((p) => editingId && p.id !== editingId).length === 0 && (
+                      {allProducts.filter((p) => editingId && p.id !== editingId).length === 0 && (
                         <p className="text-xs text-foreground/60 px-3 py-4 text-center">No products available</p>
                       )}
                     </div>
@@ -1004,6 +1106,15 @@ export default function AdminProductsPage() {
         </div>
       )}
 
+      {realTimePaused && (
+        <div className="flex items-center gap-2 mb-4 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 text-sm text-amber-700 dark:text-amber-400">
+          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          Filters or search active — loading all matching products.
+        </div>
+      )}
+
       <div className="bg-card rounded-2xl border border-card-border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-primary/10">
@@ -1023,14 +1134,14 @@ export default function AdminProductsPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-primary/10">
-            {filtered.length === 0 ? (
+            {displayProducts.length === 0 ? (
               <tr>
                 <td colSpan={12} className="px-4 py-12 text-center text-foreground">
                   {search || activeFilterCount > 0 ? "No products match your search or filters." : 'No products yet. Click "+ Add Product" to get started.'}
                 </td>
               </tr>
             ) : (
-              filtered.map((p) => (
+              displayProducts.map((p) => (
                 <tr key={p.id} className="hover:bg-primary/5">
                   <td className="px-4 py-3 font-medium text-dark"><span className="line-clamp-2">{p.name}</span></td>
                   <td className="px-4 py-3 text-foreground capitalize hidden sm:table-cell">
@@ -1095,7 +1206,7 @@ export default function AdminProductsPage() {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => startEdit(p)}
-                        className="text-accent hover:text-accent/80 text-xs font-medium"
+                        className="px-2.5 py-1 text-xs font-medium rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
                       >
                         Edit
                       </button>
@@ -1103,13 +1214,13 @@ export default function AdminProductsPage() {
                         <span className="flex items-center gap-1">
                           <button
                             onClick={() => handleDelete(p.id)}
-                            className="text-red-500 hover:text-red-600 text-xs font-medium"
+                            className="px-2.5 py-1 text-xs font-medium rounded-full border border-red-400 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                           >
                             Confirm
                           </button>
                           <button
                             onClick={() => setDeleteConfirm(null)}
-                            className="text-foreground hover:text-dark text-xs"
+                            className="px-2.5 py-1 text-xs font-medium rounded-full border border-primary/20 text-foreground hover:bg-primary/10 transition-colors"
                           >
                             Cancel
                           </button>
@@ -1117,7 +1228,7 @@ export default function AdminProductsPage() {
                       ) : (
                         <button
                           onClick={() => setDeleteConfirm(p.id)}
-                          className="text-red-400 hover:text-red-500 text-xs font-medium"
+                          className="px-2.5 py-1 text-xs font-medium rounded-full border border-red-300 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                         >
                           Delete
                         </button>
@@ -1129,6 +1240,30 @@ export default function AdminProductsPage() {
             )}
           </tbody>
         </table>
+        {displayTotal > 1 && (
+          <div className="flex items-center justify-center gap-6 mt-4 px-1">
+            <p className="text-sm text-foreground whitespace-nowrap">{total} products</p>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-1.5 text-sm rounded-full border border-primary/20 text-foreground hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Previous
+              </button>
+              <span className="text-sm text-foreground">
+                {page} of {displayTotal}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(displayTotal, p + 1))}
+                disabled={page === displayTotal}
+                className="px-3 py-1.5 text-sm rounded-full border border-primary/20 text-foreground hover:bg-primary/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { getAuthClient } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthContext";
 
 export default function VerifyEmailPage() {
   const { user, emailVerified, loading } = useAuth();
-  const router = useRouter();
   const searchParams = useSearchParams();
   const emailParam = searchParams.get("email");
 
@@ -16,19 +15,27 @@ export default function VerifyEmailPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [verified, setVerified] = useState(false);
   const [countdown, setCountdown] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      window.location.href = "/login";
     }
-  }, [loading, user, router]);
+  }, [loading, user]);
 
   useEffect(() => {
     if (!loading && emailVerified) {
-      router.push("/");
+      window.location.href = "/";
     }
-  }, [loading, emailVerified, router]);
+  }, [loading, emailVerified]);
+
+  useEffect(() => {
+    if (verified) {
+      const t = setTimeout(() => window.location.href = "/", 1500);
+      return () => clearTimeout(t);
+    }
+  }, [verified]);
 
   useEffect(() => {
     if (countdown > 0) {
@@ -63,14 +70,13 @@ export default function VerifyEmailPage() {
 
       const auth = getAuthClient();
       await auth?.currentUser?.getIdToken(true);
-
-      window.location.href = "/?verified=true";
+      setVerified(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Verification failed");
     } finally {
       setSubmitting(false);
     }
-  }, [code, email, router]);
+  }, [code, email]);
 
   const handleResend = useCallback(async () => {
     if (sending || countdown > 0) return;
@@ -113,55 +119,69 @@ export default function VerifyEmailPage() {
         </p>
         <p className="text-sm font-medium text-dark mb-6">{email}</p>
 
-        {error && (
-          <div className="flex items-center gap-2 bg-red-100 dark:bg-red-900/20 text-red-500 text-sm px-4 py-2.5 rounded-xl mb-4 text-left">
-            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {error}
+        {verified ? (
+          <div className="text-center py-6">
+            <div className="w-14 h-14 mx-auto rounded-full bg-green-100 dark:bg-green-900/20 flex items-center justify-center mb-4">
+              <svg className="w-7 h-7 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <h2 className="text-lg font-semibold text-dark mb-1">Verified!</h2>
+            <p className="text-sm text-foreground">Redirecting you to the homepage...</p>
           </div>
+        ) : (
+          <>
+            {error && (
+              <div className="flex items-center gap-2 bg-red-100 dark:bg-red-900/20 text-red-500 text-sm px-4 py-2.5 rounded-xl mb-4 text-left">
+                <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleVerify} className="space-y-4">
+              <div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={code}
+                  onChange={(e) => {
+                    setCode(e.target.value.replace(/\D/g, ""));
+                    setError("");
+                  }}
+                  placeholder="000000"
+                  className="w-full text-center text-2xl tracking-[0.5em] px-4 py-3 rounded-xl border border-primary/20 bg-transparent text-dark font-mono focus:outline-none focus:border-accent transition-colors"
+                  autoFocus
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={submitting || code.length !== 6}
+                className="w-full bg-accent text-white py-2.5 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50"
+              >
+                {submitting ? "Verifying..." : "Verify Email"}
+              </button>
+            </form>
+
+            <button
+              onClick={handleResend}
+              disabled={sending || countdown > 0}
+              className="w-full mt-3 py-2.5 rounded-xl border border-primary/20 text-sm text-foreground hover:bg-primary/10 transition-all disabled:opacity-50"
+            >
+              {sending ? "Sending..." : countdown > 0 ? `Resend in ${countdown}s` : "Resend Code"}
+            </button>
+
+            <p className="text-xs text-foreground/60 mt-6">
+              Didn&apos;t receive it? Check your spam folder or{" "}
+              <Link href="/register" className="text-accent hover:underline">
+                try a different email
+              </Link>
+            </p>
+          </>
         )}
-
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={code}
-              onChange={(e) => {
-                setCode(e.target.value.replace(/\D/g, ""));
-                setError("");
-              }}
-              placeholder="000000"
-              className="w-full text-center text-2xl tracking-[0.5em] px-4 py-3 rounded-xl border border-primary/20 bg-transparent text-dark font-mono focus:outline-none focus:border-accent transition-colors"
-              autoFocus
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={submitting || code.length !== 6}
-            className="w-full bg-accent text-white py-2.5 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50"
-          >
-            {submitting ? "Verifying..." : "Verify Email"}
-          </button>
-        </form>
-
-        <button
-          onClick={handleResend}
-          disabled={sending || countdown > 0}
-          className="w-full mt-3 py-2.5 rounded-xl border border-primary/20 text-sm text-foreground hover:bg-primary/10 transition-all disabled:opacity-50"
-        >
-          {sending ? "Sending..." : countdown > 0 ? `Resend in ${countdown}s` : "Resend Code"}
-        </button>
-
-        <p className="text-xs text-foreground/60 mt-6">
-          Didn&apos;t receive it? Check your spam folder or{" "}
-          <Link href="/register" className="text-accent hover:underline">
-            try a different email
-          </Link>
-        </p>
       </div>
     </div>
   );

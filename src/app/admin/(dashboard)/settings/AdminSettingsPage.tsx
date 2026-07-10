@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { onSnapshot, doc, collection, getDocs, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { categories } from "@/data/categories";
-import { getSettings, saveSettings, type SiteSettings, type FeaturedBrandConfig, type ReviewConfig } from "@/lib/settings-store";
+import { saveSettings, type SiteSettings, type FeaturedBrandConfig, type ReviewConfig } from "@/lib/settings-store";
 import { uploadImage } from "@/lib/storage";
-import { getAllReviews } from "@/lib/product-store";
 import { useToast } from "@/components/Toast";
 
 const _fb = getDb();
@@ -34,42 +33,63 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false);
   const initialRef = useRef("");
 
+  const initialSnapshotRef = useRef(false);
+
   useEffect(() => {
-    Promise.all([
-      getSettings(),
-      getAllReviews(),
-    ]).then(([s, fetchedReviews]) => {
-      setBrands(s.featuredBrands);
-      setCategoryImages(s.categoryImages || {});
-      setSaleBannerTitle(s.saleBannerTitle || "");
-      setSaleBannerSubtitle(s.saleBannerSubtitle || "");
-      setSaleBannerOfferText(s.saleBannerOfferText || "");
-      setReviews(s.reviews || []);
-      setFreeShippingThreshold(s.freeShippingThreshold ?? 120);
-      setShippingReturns(s.shippingReturns || "");
-      setAllReviews(fetchedReviews);
-      const savedIds = new Set((s.reviews || []).map((r) => (r as any)._id).filter(Boolean));
-      setSelectedReviewIds(savedIds);
-      initialRef.current = JSON.stringify({ brands: s.featuredBrands, categoryImages: s.categoryImages || {}, saleBannerTitle: s.saleBannerTitle || "", saleBannerSubtitle: s.saleBannerSubtitle || "", saleBannerOfferText: s.saleBannerOfferText || "", reviews: s.reviews || [], freeShippingThreshold: s.freeShippingThreshold ?? 120, shippingReturns: s.shippingReturns || "" });
-
-      // batch-fetch user avatars
-      const userIds = [...new Set(fetchedReviews.map((r) => r.userId).filter(Boolean))] as string[];
-      if (userIds.length > 0) {
-        Promise.all(
-          userIds.map((uid) =>
-            getDoc(doc(db, "users", uid))
-              .then((snap) => (snap.exists() ? snap.data().photoURL || "" : ""))
-              .catch(() => "")
-          )
-        ).then((urls) => {
-          const map: Record<string, string> = {};
-          userIds.forEach((uid, i) => { if (urls[i]) map[uid] = urls[i]; });
-          setUserAvatars(map);
-        });
+    const unsubSettings = onSnapshot(doc(db, "settings", "site"), (snap) => {
+      if (snap.exists()) {
+        const data = snap.data();
+        let brandsData: FeaturedBrandConfig[];
+        if (!data.featuredBrands && data.featuredBrand) {
+          brandsData = [
+            { brand: data.featuredBrand || "", title: data.featuredBrandTitle || "", description: data.featuredBrandDescription || "", image: data.featuredBrandImage || "" },
+            { ...emptyBrand }, { ...emptyBrand },
+          ];
+        } else {
+          const raw = data.featuredBrands;
+          brandsData = Array.isArray(raw) ? raw.filter((b: unknown): b is FeaturedBrandConfig => b !== null && typeof b === "object" && "brand" in (b as any)) : [];
+          while (brandsData.length < 3) brandsData.push({ ...emptyBrand });
+          brandsData = brandsData.slice(0, 3);
+        }
+        setBrands(brandsData);
+        setCategoryImages(data.categoryImages || {});
+        setSaleBannerTitle(data.saleBannerTitle || "");
+        setSaleBannerSubtitle(data.saleBannerSubtitle || "");
+        setSaleBannerOfferText(data.saleBannerOfferText || "");
+        setReviews(data.reviews || []);
+        setFreeShippingThreshold(typeof data.freeShippingThreshold === "number" ? data.freeShippingThreshold : 120);
+        setShippingReturns(data.shippingReturns || "");
+        const savedIds = new Set((data.reviews || []).map((r: any) => r._id).filter(Boolean));
+        setSelectedReviewIds(savedIds);
+        if (!initialSnapshotRef.current) {
+          initialSnapshotRef.current = true;
+          initialRef.current = JSON.stringify({ brands: brandsData, categoryImages: data.categoryImages || {}, saleBannerTitle: data.saleBannerTitle || "", saleBannerSubtitle: data.saleBannerSubtitle || "", saleBannerOfferText: data.saleBannerOfferText || "", reviews: data.reviews || [], freeShippingThreshold: typeof data.freeShippingThreshold === "number" ? data.freeShippingThreshold : 120, shippingReturns: data.shippingReturns || "" });
+        }
       }
-
       setLoading(false);
     });
+
+    const unsubReviews = onSnapshot(collection(db, "reviews"), (snap) => {
+      const fetchedReviews = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as any);
+      setAllReviews(fetchedReviews);
+      const userIds = [...new Set(fetchedReviews.map((r: any) => r.userId).filter(Boolean))] as string[];
+      if (userIds.length > 0) {
+        (async () => {
+          const map: Record<string, string> = {};
+          for (let i = 0; i < userIds.length; i += 10) {
+            const batch = userIds.slice(i, i + 10);
+            const snap = await getDocs(query(collection(db, "users"), where("__name__", "in", batch)));
+            snap.forEach((d) => {
+              const data = d.data();
+              if (data.photoURL) map[d.id] = data.photoURL;
+            });
+          }
+          setUserAvatars(map);
+        })();
+      }
+    });
+
+    return () => { unsubSettings(); unsubReviews(); };
   }, []);
 
   const hasChanges = useMemo(() => {
