@@ -59,7 +59,7 @@ export default function AdminSettingsPage() {
         setReviews(data.reviews || []);
         setFreeShippingThreshold(typeof data.freeShippingThreshold === "number" ? data.freeShippingThreshold : 120);
         setShippingReturns(data.shippingReturns || "");
-        const savedIds = new Set((data.reviews || []).map((r: any) => r._id).filter(Boolean));
+        const savedIds = new Set<string>((data.reviews || []).map((r: any) => r._id).filter(Boolean));
         setSelectedReviewIds(savedIds);
         if (!initialSnapshotRef.current) {
           initialSnapshotRef.current = true;
