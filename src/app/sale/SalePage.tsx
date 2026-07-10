@@ -10,6 +10,8 @@ import type { Promotion } from "@/lib/promotions-store";
 import { formatPrice } from "@/lib/format";
 import { isPromotionActive, calculateDiscount, findBestPromotion } from "@/lib/promotion-utils";
 
+const ITEMS_PER_PAGE = 24;
+
 interface SalePageProps {
   initialSaleProducts?: Product[];
   initialReviewStats?: Record<string, { avgRating: number; reviewCount: number }>;
@@ -32,6 +34,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
     return [];
   });
   const [loading, setLoading] = useState(!hasInitial);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     getAllPromotions().then(setAllPromotions).catch(() => {});
@@ -39,6 +42,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
 
   useEffect(() => {
     if (hasInitial) return;
+    setPage(1);
     Promise.all([
       getAllProducts().catch(() => [] as Product[]),
       getAllReviewStats().catch(() => ({} as Record<string, { avgRating: number; reviewCount: number }>)),
@@ -89,6 +93,8 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
     setError("");
   }
 
+  const totalPages = Math.ceil(saleProducts.length / ITEMS_PER_PAGE);
+  const paginatedSaleProducts = saleProducts.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
   const subtotal = saleProducts.reduce((s, p) => s + p.price, 0);
   const discount = appliedPromo ? calculateDiscount(appliedPromo, subtotal) / saleProducts.length : 0;
 
@@ -147,7 +153,7 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
             </p>
           )}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-            {saleProducts.map((product) => {
+            {paginatedSaleProducts.map((product) => {
               const discountedPrice = appliedPromo
                 ? Math.max(0, product.price - discount)
                 : product.price;
@@ -158,6 +164,44 @@ export default function SalePage({ initialSaleProducts, initialReviewStats }: Sa
               );
             })}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-10">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="px-3 py-2 rounded-lg text-sm font-medium border border-primary/20 bg-card text-foreground hover:bg-accent hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground"
+              >
+                Prev
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+                .map((p, idx, arr) => (
+                  <span key={p} className="flex items-center">
+                    {idx > 0 && arr[idx - 1] !== p - 1 && (
+                      <span className="px-1 text-foreground/40 text-sm">...</span>
+                    )}
+                    <button
+                      onClick={() => setPage(p)}
+                      className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                        p === page
+                          ? "bg-accent text-white"
+                          : "border border-primary/20 bg-card text-foreground hover:bg-accent hover:text-white"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  </span>
+                ))}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="px-3 py-2 rounded-lg text-sm font-medium border border-primary/20 bg-card text-foreground hover:bg-accent hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </>
       )}
 

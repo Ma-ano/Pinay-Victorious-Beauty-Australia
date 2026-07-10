@@ -11,6 +11,8 @@ import { productTypes } from "@/data/productTypes";
 import { formatPrice } from "@/lib/format";
 
 
+const ITEMS_PER_PAGE = 24;
+
 type Sort = "default" | "price-asc" | "price-desc" | "name";
 type View = "grid" | "list";
 
@@ -42,7 +44,12 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
 
   const [sort, setSort] = useState<Sort>("default");
   const [view, setView] = useState<View>("grid");
+  const [page, setPage] = useState(1);
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, selectedCategory, selectedSubcategory, selectedType, sort, priceRange]);
 
   function handleCategoryChange(slug: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -157,6 +164,9 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
     }
     return result;
   }, [search, selectedCategory, selectedSubcategory, selectedType, sort, priceRange]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -276,7 +286,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         <ShopPageSkeleton />
       ) : view === "grid" ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 md:gap-6">
-          {filtered.map((product, i) => (
+          {paginated.map((product, i) => (
             <div key={product.id}>
               <ProductCard product={product} preload={i === 0} />
             </div>
@@ -284,11 +294,49 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         </div>
       ) : (
         <div className="space-y-4">
-          {filtered.map((product, i) => (
+          {paginated.map((product, i) => (
             <div key={product.id}>
               <ProductCard product={product} preload={i === 0} />
             </div>
           ))}
+        </div>
+      )}
+
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1.5 mt-10">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-primary/20 bg-card text-foreground hover:bg-accent hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground"
+          >
+            Prev
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1)
+            .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 2)
+            .map((p, idx, arr) => (
+              <span key={p} className="flex items-center">
+                {idx > 0 && arr[idx - 1] !== p - 1 && (
+                  <span className="px-1 text-foreground/40 text-sm">...</span>
+                )}
+                <button
+                  onClick={() => setPage(p)}
+                  className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                    p === page
+                      ? "bg-accent text-white"
+                      : "border border-primary/20 bg-card text-foreground hover:bg-accent hover:text-white"
+                  }`}
+                >
+                  {p}
+                </button>
+              </span>
+            ))}
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            className="px-3 py-2 rounded-lg text-sm font-medium border border-primary/20 bg-card text-foreground hover:bg-accent hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-card disabled:hover:text-foreground"
+          >
+            Next
+          </button>
         </div>
       )}
 

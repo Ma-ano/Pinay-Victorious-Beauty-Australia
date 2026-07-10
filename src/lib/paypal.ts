@@ -1,3 +1,5 @@
+import { normalizeState } from "@/data/address-config";
+
 function getApiBase(): string {
   if (process.env.PAYPAL_API_BASE_URL) return process.env.PAYPAL_API_BASE_URL;
   if (process.env.PAYPAL_USE_SANDBOX === "true") return "https://api-m.sandbox.paypal.com";
@@ -40,20 +42,68 @@ export interface PayPalOrderItem {
   unitAmount: number;
 }
 
-export async function createPayPalOrder(items: PayPalOrderItem[], total: number) {
+function normalizeCountry(raw: string): string {
+  const c = raw?.trim().toLowerCase() || "";
+  if (c === "australia" || c === "au" || c === "australian") return "AU";
+  return "AU";
+}
+
+function buildShipping(
+  raw?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+): Record<string, unknown> | undefined {
+  if (!raw) return undefined;
+
+  const street = raw.street?.trim();
+  const suburb = raw.suburb?.trim();
+  const city = raw.city?.trim();
+  const state = raw.state?.trim();
+  const postcode = raw.postcode?.trim();
+  const country = raw.country?.trim();
+
+  if (!street || !city || !state || !postcode || !country) return undefined;
+
+  const countryCode = normalizeCountry(country);
+  const adminArea1 = normalizeState(state);
+
+  const address: Record<string, unknown> = {
+    address_line_1: street,
+    address_line_2: suburb || undefined,
+    admin_area_2: city,
+    admin_area_1: adminArea1,
+    postal_code: postcode,
+    country_code: countryCode,
+  };
+
+  return {
+    type: "SHIPPING",
+    address,
+  };
+}
+
+export async function createPayPalOrder(
+  items: PayPalOrderItem[],
+  total: number,
+  shipping?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+) {
   const token = await getAccessToken();
 
-  const body = {
+  const computedTotal = items.reduce((sum, i) => sum + i.unitAmount * i.quantity, 0);
+  const finalTotal = total > 0 ? total : computedTotal;
+  const itemTotal = computedTotal > 0 ? computedTotal : finalTotal;
+
+  const shippingObj = buildShipping(shipping);
+
+  const body: Record<string, unknown> = {
     intent: "CAPTURE",
     purchase_units: [
       {
         amount: {
           currency_code: "AUD",
-          value: total.toFixed(2),
+          value: finalTotal.toFixed(2),
           breakdown: {
             item_total: {
               currency_code: "AUD",
-              value: total.toFixed(2),
+              value: itemTotal.toFixed(2),
             },
           },
         },
@@ -69,6 +119,10 @@ export async function createPayPalOrder(items: PayPalOrderItem[], total: number)
     ],
   };
 
+  if (shippingObj) {
+    (body.purchase_units as Record<string, unknown>[])[0].shipping = shippingObj;
+  }
+
   const res = await fetch(`${API_BASE}/v2/checkout/orders`, {
     method: "POST",
     headers: {
@@ -81,7 +135,7 @@ export async function createPayPalOrder(items: PayPalOrderItem[], total: number)
   if (!res.ok) {
     const text = await res.text();
     console.error(`PayPal order creation failed (${res.status}): ${text}`);
-    throw new Error("PayPal order creation failed");
+    throw new Error(`PayPal order creation failed: ${text}`);
   }
 
   return res.json();
@@ -122,7 +176,7 @@ export async function capturePayPalOrder(orderId: string) {
   if (!res.ok) {
     const text = await res.text();
     console.error(`PayPal capture failed (${res.status}): ${text}`);
-    throw new Error("PayPal capture failed");
+    throw new Error(`PayPal capture failed: ${text}`);
   }
 
   return res.json();

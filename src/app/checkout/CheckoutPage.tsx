@@ -14,6 +14,7 @@ import { CheckoutFormSkeleton } from "@/components/Skeletons";
 import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
+import { getPostcode, normalizeState } from "@/data/address-config";
 
 const _fb = getDb();
 if (!_fb) throw new Error("Firestore not initialized");
@@ -26,6 +27,7 @@ type PaymentMethod = "cod" | "paypal_cards" | "afterpay";
 
 const defaultAddress: Address = {
   street: "",
+  suburb: "",
   city: "",
   state: "",
   postcode: "",
@@ -38,7 +40,8 @@ export default function CheckoutPage() {
   const { showToast } = useToast();
   const router = useRouter();
 
-  const [addressDraft, setAddressDraft] = useState<Address | null>(null);
+  const [addressDraft] = useState<Address | null>(null);
+  const [addressError, setAddressError] = useState("");
   const [saving, setSaving] = useState(false);
   const [placed, setPlaced] = useState(false);
   const [promoCode, setPromoCode] = useState("");
@@ -78,7 +81,7 @@ export default function CheckoutPage() {
   const { ready: paypalReady } = usePayPalReady();
   const { enabled: afterpayEnabled } = useAfterpayEnabled();
 
-  const checkoutAddress = addressDraft || user?.address || defaultAddress;
+  const checkoutAddress = user?.address || defaultAddress;
 
   const discount = appliedPromo ? calculateDiscount(appliedPromo, totalPrice) : 0;
   const finalTotal = Math.max(0, totalPrice - discount);
@@ -110,24 +113,39 @@ export default function CheckoutPage() {
   }
 
   function validateAddress(): boolean {
-    if (
-      !checkoutAddress.street.trim() ||
-      !checkoutAddress.city.trim() ||
-      !checkoutAddress.state.trim() ||
-      !checkoutAddress.postcode.trim() ||
-      !checkoutAddress.country.trim()
-    ) {
-      showToast("Please fill in all shipping address fields", "error");
+    const missing: string[] = [];
+    if (!checkoutAddress.street.trim()) missing.push("Street");
+    if (!checkoutAddress.suburb?.trim()) missing.push("Suburb");
+    if (!checkoutAddress.city.trim()) missing.push("City");
+    if (!checkoutAddress.state.trim()) missing.push("State");
+    if (!checkoutAddress.postcode.trim()) missing.push("Postcode");
+    if (missing.length > 0) {
+      setAddressError(`Missing shipping address fields: ${missing.join(", ")}. Please update your profile.`);
+      showToast("Shipping address is incomplete", "error");
       return false;
     }
+    const postcode = checkoutAddress.postcode.trim();
+    if (!/^\d{4}$/.test(postcode)) {
+      setAddressError("Postcode must be a valid 4-digit Australian postcode. Please update your profile.");
+      showToast("Invalid postcode", "error");
+      return false;
+    }
+    const stateCode = normalizeState(checkoutAddress.state);
+    if (!stateCode || !["NSW","VIC","QLD","WA","SA","TAS","ACT","NT"].includes(stateCode)) {
+      setAddressError(`State "${checkoutAddress.state}" is not a valid Australian state. Please update your profile.`);
+      showToast("Invalid state", "error");
+      return false;
+    }
+    setAddressError("");
     return true;
   }
 
   const shippingAddress: Address = {
     street: checkoutAddress.street.trim(),
+    suburb: checkoutAddress.suburb?.trim() || "",
     city: checkoutAddress.city.trim(),
-    state: checkoutAddress.state.trim(),
-    postcode: checkoutAddress.postcode.trim(),
+    state: normalizeState(checkoutAddress.state),
+    postcode: getPostcode(checkoutAddress.suburb?.trim() || "", normalizeState(checkoutAddress.state)) || checkoutAddress.postcode.trim(),
     country: checkoutAddress.country.trim(),
   };
 
@@ -206,6 +224,8 @@ export default function CheckoutPage() {
             unitAmount: i.variant?.price ?? i.product.price,
           })),
           total: finalTotal,
+          shipping: shippingAddress,
+          customerEmail: currentUser?.email,
         }),
       });
       const responseData = await res.json();
@@ -379,44 +399,38 @@ export default function CheckoutPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
         <div className="md:col-span-3 space-y-6">
-          <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-1">
-            <h2 className="text-lg font-semibold text-dark mb-4">Shipping Address</h2>
-            <div className="space-y-4">
+          {addressError && (
+            <div className="flex items-start gap-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-700 dark:text-red-300 text-sm px-4 py-3 rounded-xl">
+              <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
               <div>
-                <label htmlFor="checkout-street" className="block text-sm font-medium text-foreground mb-1">Street</label>
-                <input id="checkout-street" type="text" value={checkoutAddress.street} onChange={(e) => setAddressDraft({ ...checkoutAddress, street: e.target.value })}
-                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                  placeholder="123 Beauty Lane" />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="checkout-city" className="block text-sm font-medium text-foreground mb-1">City</label>
-                  <input id="checkout-city" type="text" value={checkoutAddress.city} onChange={(e) => setAddressDraft({ ...checkoutAddress, city: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                    placeholder="Sydney" />
-                </div>
-                <div>
-                  <label htmlFor="checkout-state" className="block text-sm font-medium text-foreground mb-1">State</label>
-                  <input id="checkout-state" type="text" value={checkoutAddress.state} onChange={(e) => setAddressDraft({ ...checkoutAddress, state: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                    placeholder="NSW" />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label htmlFor="checkout-postcode" className="block text-sm font-medium text-foreground mb-1">Postcode</label>
-                  <input id="checkout-postcode" type="text" value={checkoutAddress.postcode} onChange={(e) => setAddressDraft({ ...checkoutAddress, postcode: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                    placeholder="2000" />
-                </div>
-                <div>
-                  <label htmlFor="checkout-country" className="block text-sm font-medium text-foreground mb-1">Country</label>
-                  <input id="checkout-country" type="text" value={checkoutAddress.country} onChange={(e) => setAddressDraft({ ...checkoutAddress, country: e.target.value })}
-                    className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                    placeholder="Australia" />
-                </div>
+                <p className="font-medium">Shipping address invalid</p>
+                <p className="mt-1">{addressError}</p>
+                <Link href="/profile" className="mt-2 inline-block text-red-700 dark:text-red-300 font-medium underline hover:no-underline">
+                  Update in profile
+                </Link>
               </div>
             </div>
+          )}
+          <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-1">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-dark">Shipping Address</h2>
+              <Link href="/profile" className="text-sm text-accent hover:text-accent/80 font-medium transition-colors">
+                Edit
+              </Link>
+            </div>
+            {checkoutAddress.street ? (
+              <div className="text-sm text-foreground space-y-1">
+                <p>{checkoutAddress.street}</p>
+                <p>{checkoutAddress.suburb}{checkoutAddress.suburb ? ", " : ""}{checkoutAddress.city} {checkoutAddress.state} {checkoutAddress.postcode}</p>
+                <p>{checkoutAddress.country}</p>
+              </div>
+            ) : (
+              <div className="text-sm text-foreground/60">
+                <p>No address set. <Link href="/profile" className="text-accent hover:underline">Add one in your profile.</Link></p>
+              </div>
+            )}
           </div>
 
           <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-2">

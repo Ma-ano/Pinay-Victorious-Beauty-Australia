@@ -37,7 +37,7 @@ function addSecurityHeaders(res: NextResponse): NextResponse {
   return res;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const sessionCookie = request.cookies.get("__session")?.value;
   const lastActivity = request.cookies.get("lastActivityAt")?.value;
 

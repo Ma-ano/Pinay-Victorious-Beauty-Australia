@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { uploadImage, deleteImage } from "@/lib/storage";
 import { ProfileSkeleton } from "@/components/Skeletons";
+import { COUNTRIES, getStates, getCities, getSuburbs } from "@/data/address-config";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -26,7 +27,23 @@ export default function ProfilePage() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState<Address>({ street: "", city: "", state: "", postcode: "", country: "Australia" });
+  const [address, setAddress] = useState<Address>({ street: "", suburb: "", city: "", state: "", postcode: "", country: "Australia" });
+  const profileStates = getStates(address.country);
+  const profileCities = address.country && address.state ? getCities(address.country, address.state) : [];
+  const profileSuburbs = address.country && address.state && address.city ? getSuburbs(address.country, address.state, address.city) : [];
+
+  function handleProfileCountry(value: string) {
+    setAddress({ ...address, country: value, state: "", city: "", suburb: "" });
+  }
+
+  function handleProfileState(value: string) {
+    setAddress({ ...address, state: value, city: "", suburb: "" });
+  }
+
+  function handleProfileCity(value: string) {
+    setAddress({ ...address, city: value, suburb: "" });
+  }
+
   const [editing, setEditing] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileError, setProfileError] = useState("");
@@ -61,7 +78,7 @@ export default function ProfilePage() {
   function startEditing() {
     setName(currentUser.name);
     setPhone(currentUser.phone || "");
-    setAddress(currentUser.address || { street: "", city: "", state: "", postcode: "", country: "Australia" });
+    setAddress(currentUser.address || { street: "", suburb: "", city: "", state: "", postcode: "", country: "Australia" });
     setEditing(true);
     setProfileSuccess(false);
     setProfileError("");
@@ -135,7 +152,7 @@ export default function ProfilePage() {
     }
   }
 
-  const addr = user.address || { street: "", city: "", state: "", postcode: "", country: "Australia" };
+  const addr = user.address || { street: "", suburb: "", city: "", state: "", postcode: "", country: "Australia" };
 
   async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -238,6 +255,10 @@ export default function ProfilePage() {
                 <span className="text-dark font-medium">{addr.street || "—"}</span>
               </div>
               <div>
+                <span className="text-foreground/60 block mb-0.5">Suburb</span>
+                <span className="text-dark font-medium">{addr.suburb || "—"}</span>
+              </div>
+              <div>
                 <span className="text-foreground/60 block mb-0.5">City</span>
                 <span className="text-dark font-medium">{addr.city || "—"}</span>
               </div>
@@ -317,26 +338,77 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label htmlFor="profile-city" className="block text-sm font-medium text-foreground mb-1">City</label>
-              <input
-                id="profile-city"
-                type="text"
-                value={address.city}
-                onChange={(e) => setAddress({ ...address, city: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                placeholder="Sydney"
-              />
+              <label htmlFor="profile-country" className="block text-sm font-medium text-foreground mb-1">Country</label>
+              <select
+                id="profile-country"
+                value={address.country}
+                onChange={(e) => handleProfileCountry(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+              >
+                {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div>
               <label htmlFor="profile-state" className="block text-sm font-medium text-foreground mb-1">State</label>
-              <input
+              <select
                 id="profile-state"
-                type="text"
                 value={address.state}
-                onChange={(e) => setAddress({ ...address, state: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                placeholder="NSW"
-              />
+                onChange={(e) => handleProfileState(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+              >
+                <option value="">Select</option>
+                {profileStates.map((s) => <option key={s.label} value={s.label}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="profile-city" className="block text-sm font-medium text-foreground mb-1">City</label>
+              {profileCities.length > 0 ? (
+                <select
+                  id="profile-city"
+                  value={address.city}
+                  onChange={(e) => handleProfileCity(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!address.state}
+                >
+                  <option value="">Select</option>
+                  {profileCities.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <select
+                  id="profile-city"
+                  value={address.city}
+                  onChange={(e) => handleProfileCity(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!address.state}
+                >
+                  <option value="">Select city</option>
+                </select>
+              )}
+            </div>
+            <div>
+              <label htmlFor="profile-suburb" className="block text-sm font-medium text-foreground mb-1">Suburb</label>
+              {profileSuburbs.length > 0 ? (
+                <select
+                  id="profile-suburb"
+                  value={address.suburb}
+                  onChange={(e) => setAddress({ ...address, suburb: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!address.city}
+                >
+                  <option value="">Select</option>
+                  {profileSuburbs.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              ) : (
+                <select
+                  id="profile-suburb"
+                  value={address.suburb}
+                  onChange={(e) => setAddress({ ...address, suburb: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!address.city}
+                >
+                  <option value="">Select suburb</option>
+                </select>
+              )}
             </div>
             <div>
               <label htmlFor="profile-postcode" className="block text-sm font-medium text-foreground mb-1">Postcode</label>
@@ -347,17 +419,6 @@ export default function ProfilePage() {
                 onChange={(e) => setAddress({ ...address, postcode: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
                 placeholder="2000"
-              />
-            </div>
-            <div>
-              <label htmlFor="profile-country" className="block text-sm font-medium text-foreground mb-1">Country</label>
-              <input
-                id="profile-country"
-                type="text"
-                value={address.country}
-                onChange={(e) => setAddress({ ...address, country: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                placeholder="Australia"
               />
             </div>
           </div>
