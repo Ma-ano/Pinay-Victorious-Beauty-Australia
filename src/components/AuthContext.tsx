@@ -33,6 +33,7 @@ function getFirebase() {
 
 export interface Address {
   street: string;
+  suburb: string;
   city: string;
   state: string;
   postcode: string;
@@ -66,7 +67,7 @@ interface AuthContextType {
   getIdToken: () => Promise<string | null>;
 }
 
-const defaultAddress: Address = { street: "", city: "", state: "", postcode: "", country: "Australia" };
+const defaultAddress: Address = { street: "", suburb: "", city: "", state: "", postcode: "", country: "Australia" };
 
 const defaultUser: Omit<User, "uid" | "name" | "email"> = {
   phone: "",
