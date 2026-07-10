@@ -23,7 +23,7 @@ function EyeIcon({ open }: { open: boolean }) {
   );
 }
 
-export default function AdminLoginPage() {
+export default function AdminLoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -56,7 +56,6 @@ export default function AdminLoginPage() {
         throw new Error(data.error || "Admin login failed");
       }
 
-      // Force-refresh token to pick up custom claims set by the server
       await fu.getIdToken(true);
       const refreshedToken = await fu.getIdToken();
       const sessionRes = await fetch("/api/auth/session", {

@@ -1,5 +1,5 @@
-import AdminLoginPage from "./AdminLoginPage";
+import AdminLoginForm from "@/components/AdminLoginForm";
 
 export default function Page() {
-  return <AdminLoginPage />;
+  return <AdminLoginForm />;
 }

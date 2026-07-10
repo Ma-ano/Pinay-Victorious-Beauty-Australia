@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { signOut } from "firebase/auth";
@@ -30,11 +30,13 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [adminAlert, setAdminAlert] = useState(false);
+  const loginAttemptRef = useRef(false);
   const { login, loginWithGoogle, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && !loginAttemptRef.current) {
       router.push("/");
     }
   }, [authLoading, isAuthenticated, router]);
@@ -48,10 +50,12 @@ export default function LoginPage() {
     }
     setLoading(true);
     try {
+      loginAttemptRef.current = true;
       const isAdmin = await login(email, password);
+      loginAttemptRef.current = false;
       if (isAdmin) {
         await signOut(auth);
-        setError("Admins must use the admin login page");
+        setAdminAlert(true);
         setLoading(false);
         return;
       }
@@ -73,10 +77,12 @@ export default function LoginPage() {
   const handleGoogle = async () => {
     setError("");
     try {
+      loginAttemptRef.current = true;
       const isAdmin = await loginWithGoogle();
+      loginAttemptRef.current = false;
       if (isAdmin) {
         await signOut(auth);
-        setError("Admins must use the admin login page");
+        setAdminAlert(true);
         return;
       }
       router.push("/");
@@ -100,6 +106,15 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="bg-card border border-primary/10 rounded-2xl p-6 md:p-8 shadow-xl">
           <h1 className="text-2xl font-semibold text-dark mb-6 text-center">Login</h1>
+          {adminAlert && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4 mb-6">
+              <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">Admin access required</p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                You are registered as an admin. Please use the{" "}
+                <Link href="/admin/login" className="underline font-medium">admin login page</Link>.
+              </p>
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">
