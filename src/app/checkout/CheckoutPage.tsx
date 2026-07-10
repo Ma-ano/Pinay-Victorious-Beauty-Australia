@@ -6,7 +6,6 @@ import Link from "next/link";
 import PayPalButtonGroup from "@/components/PayPalButtonGroup";
 import { usePayPalReady } from "@/components/PayPalProvider";
 import AfterpayButton from "@/components/AfterpayButton";
-import { useAfterpayEnabled } from "@/components/AfterpayProvider";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
@@ -22,8 +21,9 @@ const db = _fb;
 import { getAllPromotions } from "@/lib/promotions-store";
 import type { Promotion } from "@/lib/promotions-store";
 import { isPromotionActive, calculateDiscount } from "@/lib/promotion-utils";
+import { getSettings } from "@/lib/settings-store";
 
-type PaymentMethod = "cod" | "paypal_cards" | "afterpay";
+type PaymentMethod = "card" | "afterpay" | "paypal";
 
 const defaultAddress: Address = {
   street: "",
@@ -33,6 +33,50 @@ const defaultAddress: Address = {
   postcode: "",
   country: "Australia",
 };
+
+function CreditCardIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="1" y="4" width="22" height="16" rx="2" />
+      <path d="M1 10h22" />
+      <path d="M6 14h6" strokeWidth={2} />
+    </svg>
+  );
+}
+
+function AfterpayIcon() {
+  return (
+    <>
+      <img
+        src="/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Black.png"
+        alt="Afterpay"
+        className="h-5 w-auto dark:hidden"
+      />
+      <img
+        src="/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Bondi_Mint.png"
+        alt="Afterpay"
+        className="h-5 w-auto hidden dark:block"
+      />
+    </>
+  );
+}
+
+function PayPalIcon() {
+  return (
+    <>
+      <img
+        src="/images/paypal-logo.png"
+        alt="PayPal"
+        className="h-5 w-auto dark:hidden"
+      />
+      <img
+        src="/images/paypal-white.png"
+        alt="PayPal"
+        className="h-5 w-auto hidden dark:block"
+      />
+    </>
+  );
+}
 
 export default function CheckoutPage() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -48,11 +92,19 @@ export default function CheckoutPage() {
   const [appliedPromo, setAppliedPromo] = useState<Promotion | null>(null);
   const [promoError, setPromoError] = useState("");
   const [allPromotions, setAllPromotions] = useState<Promotion[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cod");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("card");
   const [paypalError, setPaypalError] = useState("");
   const [afterpayLoading, setAfterpayLoading] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
   const mountedRef = useRef(true);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
+
+  useEffect(() => {
+    getSettings().then((s) => setFreeShippingThreshold(s.freeShippingThreshold ?? 120));
+  }, []);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -69,17 +121,8 @@ export default function CheckoutPage() {
     }
   }, [loading, isAuthenticated, router]);
 
-  useEffect(() => {
-    const check = () => setIsDarkMode(document.documentElement.classList.contains("dark"));
-    check();
-    const observer = new MutationObserver(check);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => observer.disconnect();
-  }, []);
-
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
   const { ready: paypalReady } = usePayPalReady();
-  const { enabled: afterpayEnabled } = useAfterpayEnabled();
 
   const checkoutAddress = user?.address || defaultAddress;
 
@@ -140,6 +183,19 @@ export default function CheckoutPage() {
     return true;
   }
 
+  function formatCardNumber(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 16);
+    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
+  }
+
+  function formatExpiry(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    if (digits.length >= 3) {
+      return digits.slice(0, 2) + " / " + digits.slice(2);
+    }
+    return digits;
+  }
+
   const shippingAddress: Address = {
     street: checkoutAddress.street.trim(),
     suburb: checkoutAddress.suburb?.trim() || "",
@@ -195,18 +251,49 @@ export default function CheckoutPage() {
     await setDoc(orderRef, orderData);
   }
 
-  async function handlePlaceOrderCod() {
+  async function handleCardPay() {
     if (!validateAddress()) return;
-    setSaving(true);
+    setAfterpayLoading(true);
     try {
-      await createFirestoreOrder();
-      clearCart();
-      setPlaced(true);
-      showToast("Order placed successfully!", "success");
-    } catch {
-      showToast("Failed to place order. Please try again.", "error");
+      const res = await fetch("/api/payments/afterpay/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerName: currentUser.name,
+          customerPhone: currentUser.phone || "",
+          email: currentUser.email,
+          items: items.map((i) => ({
+            productId: i.product.id,
+            name: i.product.name,
+            price: i.variant?.price ?? i.product.price,
+            quantity: i.quantity,
+            unitAmount: i.variant?.price ?? i.product.price,
+            variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
+          })),
+          subtotal: totalPrice,
+          total: finalTotal,
+          discount,
+          discountCode: appliedPromo?.code || null,
+          shipping: {
+            name: `${currentUser.name}`,
+            line1: shippingAddress.street,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            postcode: shippingAddress.postcode,
+            country: shippingAddress.country,
+            phoneNumber: currentUser.phone || "",
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create checkout");
+      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
+      window.location.href = data.checkoutUrl;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Payment error";
+      showToast(msg, "error");
     } finally {
-      setSaving(false);
+      if (mountedRef.current) setAfterpayLoading(false);
     }
   }
 
@@ -252,8 +339,6 @@ export default function CheckoutPage() {
       if (!res.ok || !result.success) {
         throw new Error(result.error || "Payment capture failed");
       }
-
-      const usedFundingSource = (result.fundingSource as string) || "";
 
       if (!mountedRef.current) return;
 
@@ -342,6 +427,7 @@ export default function CheckoutPage() {
       window.history.replaceState({}, "", cleanUrl);
     }
   }, []);
+
   if (loading) {
     return <CheckoutFormSkeleton />;
   }
@@ -393,6 +479,12 @@ export default function CheckoutPage() {
     );
   }
 
+  const tabs: Array<{ key: PaymentMethod; label: string; icon: React.ReactNode }> = [
+    { key: "card", label: "Debit / Credit Card", icon: <CreditCardIcon /> },
+    { key: "afterpay", label: "Afterpay", icon: <AfterpayIcon /> },
+    { key: "paypal", label: "PayPal", icon: <PayPalIcon /> },
+  ];
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
       <h1 className="text-2xl md:text-3xl font-bold text-dark mb-8 animate-fade-in-up">Checkout</h1>
@@ -413,114 +505,221 @@ export default function CheckoutPage() {
               </div>
             </div>
           )}
+
           <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-1">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-dark">Shipping Address</h2>
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+                </svg>
+                <h2 className="text-lg font-semibold text-dark">Shipping Address</h2>
+              </div>
               <Link href="/profile" className="text-sm text-accent hover:text-accent/80 font-medium transition-colors">
                 Edit
               </Link>
             </div>
             {checkoutAddress.street ? (
-              <div className="text-sm text-foreground space-y-1">
+              <div className="text-sm text-foreground space-y-1 pl-7">
                 <p>{checkoutAddress.street}</p>
                 <p>{checkoutAddress.suburb}{checkoutAddress.suburb ? ", " : ""}{checkoutAddress.city} {checkoutAddress.state} {checkoutAddress.postcode}</p>
                 <p>{checkoutAddress.country}</p>
               </div>
             ) : (
-              <div className="text-sm text-foreground/60">
+              <div className="text-sm text-foreground/60 pl-7">
                 <p>No address set. <Link href="/profile" className="text-accent hover:underline">Add one in your profile.</Link></p>
               </div>
             )}
           </div>
 
           <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm animate-fade-in-delay-2">
-            <h2 className="text-lg font-semibold text-dark mb-4">Payment Method</h2>
-            <div className="space-y-3">
-              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "cod" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cod"
-                  checked={paymentMethod === "cod"}
-                  onChange={() => setPaymentMethod("cod")}
-                  className="accent-accent"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <svg className="w-6 h-6 text-accent shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-dark">Cash on Delivery</p>
-                    <p className="text-xs text-foreground">Pay when your order arrives</p>
-                  </div>
-                </div>
-              </label>
+            <h2 className="text-lg font-semibold text-dark mb-5">Payment Method</h2>
 
-              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "paypal_cards" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="paypal_cards"
-                  checked={paymentMethod === "paypal_cards"}
-                  onChange={() => setPaymentMethod("paypal_cards")}
-                  className="accent-accent"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24" fill="#003087">
-                    <path d="M7.076 21.337H2.47a.641.641 0 01-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/>
-                    <path d="M19.19 6.534c-.023.144-.047.289-.077.438-1.068 5.49-4.25 7.463-8.646 7.463h-2.19c-.524 0-.968.382-1.05.9L6.12 22.41l-.012.073a.641.641 0 00.634.742h4.08c.524 0 .968-.382 1.05-.9l1.12-7.106h.003c.082-.521.522-.9 1.05-.9h2.19c4.349 0 7.58-1.963 8.648-6.797.413-1.86.203-3.419-.69-4.486-.494-.59-1.14-1.002-1.904-1.302z" opacity=".25"/>
-                  </svg>
-                  <div>
-                    <p className="text-sm font-medium text-dark">PayPal (Pay Now or Pay Later)</p>
-                    <p className="text-xs text-foreground">Pay securely with your PayPal account or card</p>
-                  </div>
-                </div>
-              </label>
-
-              <label className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === "afterpay" ? "border-accent bg-accent/5" : "border-primary/20 bg-transparent hover:border-accent/30"}`}>
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="afterpay"
-                  checked={paymentMethod === "afterpay"}
-                  onChange={() => setPaymentMethod("afterpay")}
-                  className="accent-accent"
-                />
-                <div className="flex items-center gap-3 flex-1">
-                  <img
-                    src={isDarkMode ? "/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Bondi_Mint.svg" : "/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Black.svg"}
-                    alt="Afterpay"
-                    className="h-5 w-auto shrink-0"
-                  />
-                    <div>
-                      <p className="text-xs text-foreground">Buy now, pay later in 4 interest-free payments</p>
-                    </div>
-                </div>
-              </label>
+            <div className="grid grid-cols-3 gap-2 mb-6">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setPaymentMethod(tab.key)}
+                  className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl text-xs font-medium transition-all ${
+                    paymentMethod === tab.key
+                      ? "bg-accent/10 text-accent border border-accent/30 shadow-sm"
+                      : "bg-primary/5 text-foreground/70 border border-transparent hover:bg-primary/10 hover:text-dark"
+                  }`}
+                >
+                  {tab.icon}
+                </button>
+              ))}
             </div>
+
+            {paymentMethod === "card" && (
+              <div className="space-y-5">
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1.5">Card Number</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <rect x="1" y="4" width="22" height="16" rx="2" />
+                        <path d="M1 10h22" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                      placeholder="1234 5678 9012 3456"
+                      maxLength={19}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-foreground mb-1.5">Cardholder Name</label>
+                  <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                        <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={cardName}
+                      onChange={(e) => setCardName(e.target.value)}
+                      placeholder="John Doe"
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1.5">Expiry</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <rect x="3" y="4" width="18" height="18" rx="2" />
+                          <path d="M16 2v4M8 2v4M3 10h18" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
+                        placeholder="MM / YY"
+                        maxLength={7}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1.5">CVV</label>
+                    <div className="relative">
+                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <rect x="3" y="7" width="18" height="12" rx="2" />
+                          <circle cx="12" cy="13" r="2" />
+                          <path d="M18 7V5a2 2 0 00-2-2H8a2 2 0 00-2 2v2" />
+                        </svg>
+                      </div>
+                      <input
+                        type="text"
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                        placeholder="123"
+                        maxLength={4}
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCardPay}
+                  disabled={afterpayLoading}
+                  className="w-full bg-accent text-white py-3.5 rounded-xl font-semibold hover:bg-accent/85 transition-all text-sm disabled:opacity-50 shadow-sm active:scale-[0.98]"
+                >
+                  {afterpayLoading ? "Redirecting to Afterpay..." : `Pay $${finalTotal.toFixed(2)}`}
+                </button>
+
+                <div className="flex items-center justify-center gap-2 text-xs text-foreground/60">
+                  <svg className="w-4 h-4 text-accent/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <rect x="3" y="11" width="18" height="10" rx="2" />
+                    <path d="M7 11V7a5 5 0 0110 0v4" />
+                  </svg>
+                  <span>Secured by <span className="font-medium text-accent/80">Afterpay</span>. Your payment is safely processed on their site.</span>
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "afterpay" && (
+              <div className="text-center py-6">
+                <p className="text-sm text-foreground/70 mb-6 max-w-xs mx-auto">
+                  Split your payment into 4 interest-free installments. Pay every 2 weeks.
+                </p>
+                <AfterpayButton
+                  onClick={handleAfterpayClick}
+                  disabled={saving}
+                  loading={afterpayLoading}
+                />
+              </div>
+            )}
+
+            {paymentMethod === "paypal" && (
+              <div className="text-center py-6">
+                <p className="text-sm text-foreground/70 mb-6 max-w-xs mx-auto">
+                  Fast, secure payments with PayPal.
+                </p>
+                {paypalClientId ? (
+                  <>
+                    <PayPalButtonGroup
+                      createOrder={handlePayPalCreateOrder}
+                      onApprove={handlePayPalApprove}
+                      onCancel={handlePayPalCancel}
+                      onError={handlePayPalError}
+                      disabled={saving}
+                      isReady={paypalReady}
+                      amount={finalTotal}
+                      fundingSources={["paypal"]}
+                    />
+                    {paypalError && (
+                      <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-red-500">PayPal is not configured.</p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
         <div className="md:col-span-2">
-          <div className="bg-white dark:bg-white border border-gray-200 dark:border-gray-200 rounded-2xl p-6 sticky top-24 shadow-sm animate-fade-in-delay-3">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Order Summary</h2>
-            <div className="space-y-3 mb-4">
+          <div className="bg-card border border-primary/10 rounded-2xl p-6 shadow-sm sticky top-24 animate-fade-in-delay-3">
+            <div className="flex items-center gap-2 mb-5">
+              <svg className="w-5 h-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h2 className="text-lg font-semibold text-dark">Order Summary</h2>
+            </div>
+
+            <div className="space-y-3 mb-5">
               {items.map((item) => (
                 <div key={item.key} className="flex justify-between text-sm">
-                  <div className="flex-1 min-w-0 pr-2">
-                    <p className="text-xs text-gray-500">Product:</p>
-                    <p className="text-gray-900 truncate">{item.product.name}</p>
+                  <div className="flex-1 min-w-0 pr-3">
+                    <p className="text-foreground truncate">{item.product.name}</p>
                     {item.variant && (
-                      <p className="text-xs text-gray-500">Variant: {item.variant.name}</p>
+                      <p className="text-xs text-foreground/60">{item.variant.name}</p>
                     )}
-                    <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                    <p className="text-xs text-foreground/50">Qty: {item.quantity}</p>
                   </div>
-                  <span className="text-gray-900 font-medium shrink-0">{formatPrice((item.variant?.price ?? item.product.salePrice ?? item.product.price) * item.quantity)}</span>
+                  <span className="text-dark font-medium shrink-0">{formatPrice((item.variant?.price ?? item.product.salePrice ?? item.product.price) * item.quantity)}</span>
                 </div>
               ))}
             </div>
 
-            <div className="space-y-2 mb-4">
+            <div className="space-y-2.5 mb-5">
               <div className="flex gap-2">
                 <input
                   type="text"
@@ -528,14 +727,13 @@ export default function CheckoutPage() {
                   onChange={(e) => setPromoCode(e.target.value)}
                   placeholder={appliedPromo ? `Code: ${appliedPromo.code}` : "Discount code"}
                   disabled={!!appliedPromo}
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-200 bg-gray-50 dark:bg-gray-50 text-gray-900 text-xs focus:outline-none focus:border-accent transition-colors disabled:opacity-50"
-                  style={{ color: "#111827", WebkitTextFillColor: "#111827" }}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-primary/20 bg-background text-dark text-xs focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all disabled:opacity-50"
                 />
                 {appliedPromo ? (
                   <button
                     type="button"
                     onClick={handleClearCode}
-                    className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-100 text-gray-700 text-xs font-medium hover:bg-gray-200 dark:hover:bg-gray-200 transition-colors shrink-0"
+                    className="px-4 py-2.5 rounded-xl bg-primary/20 text-foreground text-xs font-medium hover:bg-primary/30 transition-all shrink-0"
                   >
                     Clear
                   </button>
@@ -543,7 +741,7 @@ export default function CheckoutPage() {
                   <button
                     type="button"
                     onClick={handleApplyCode}
-                    className="px-3 py-2 rounded-xl bg-accent text-white text-xs font-medium hover:bg-accent/80 transition-colors shrink-0"
+                    className="px-4 py-2.5 rounded-xl bg-accent text-white text-xs font-medium hover:bg-accent/80 transition-all shrink-0"
                   >
                     Apply
                   </button>
@@ -552,67 +750,32 @@ export default function CheckoutPage() {
               {promoError && <p className="text-red-500 text-xs">{promoError}</p>}
             </div>
 
-            <hr className="border-gray-200 dark:border-gray-200 mb-4" />
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-600">Subtotal</span>
-                <span className="text-gray-900">{formatPrice(totalPrice)}</span>
+            <div className="border-t border-primary/10 pt-4 space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-foreground/70">Subtotal</span>
+                <span className="text-dark">{formatPrice(totalPrice)}</span>
               </div>
               {discount > 0 && (
-                <div className="flex items-center justify-between">
-                  <span className="text-green-600">Discount ({appliedPromo?.code})</span>
-                  <span className="text-green-600">-{formatPrice(discount)}</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-green-600 dark:text-green-400">Discount{appliedPromo?.code ? ` (${appliedPromo.code})` : ""}</span>
+                  <span className="text-green-600 dark:text-green-400">-{formatPrice(discount)}</span>
                 </div>
               )}
-              <div className="flex items-center justify-between text-base pt-2 border-t border-gray-200 dark:border-gray-200">
-                <span className="font-semibold text-gray-900">Total</span>
-                <span className="text-lg font-bold text-accent">{formatPrice(finalTotal)}</span>
-              </div>
-            </div>
-
-            {paymentMethod === "cod" && (
-              <>
-                <button
-                  onClick={handlePlaceOrderCod}
-                  disabled={saving}
-                  className="w-full bg-accent text-white py-3 rounded-xl font-medium hover:bg-accent/80 transition-all text-sm disabled:opacity-50 mt-4"
-                >
-                  {saving ? "Placing Order..." : "Place Order"}
-                </button>
-                <p className="text-xs text-center text-foreground mt-3">You pay when your order arrives</p>
-              </>
-            )}
-
-            {paypalClientId && paymentMethod === "paypal_cards" && (
-              <div className="mt-4">
-                <PayPalButtonGroup
-                  createOrder={handlePayPalCreateOrder}
-                  onApprove={handlePayPalApprove}
-                  onCancel={handlePayPalCancel}
-                  onError={handlePayPalError}
-                  disabled={saving}
-                  isReady={paypalReady}
-                  amount={finalTotal}
-                />
-                {paypalError && (
-                  <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-foreground/70">Shipping</span>
+                {totalPrice >= freeShippingThreshold ? (
+                  <span className="text-green-600 dark:text-green-400 font-medium">Free ✓</span>
+                ) : (
+                  <span className="text-foreground/60">
+                    Add {formatPrice(freeShippingThreshold - totalPrice)} more for free
+                  </span>
                 )}
               </div>
-            )}
-
-            {paymentMethod === "afterpay" && (
-              <div className="mt-4">
-                <AfterpayButton
-                  onClick={handleAfterpayClick}
-                  disabled={saving}
-                  loading={afterpayLoading}
-                />
-                <p className="text-xs text-center text-foreground mt-3">
-                  Pay in 4 interest-free installments
-                </p>
+              <div className="flex items-center justify-between pt-3 border-t border-primary/10">
+                <span className="text-base font-semibold text-dark">Total</span>
+                <span className="text-xl font-bold text-accent">{formatPrice(finalTotal)}</span>
               </div>
-            )}
-
+            </div>
           </div>
         </div>
       </div>

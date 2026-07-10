@@ -10,6 +10,7 @@ interface PayPalButtonGroupProps {
   disabled: boolean;
   isReady: boolean;
   amount: number;
+  fundingSources?: Array<"paypal" | "paylater" | "card">;
 }
 
 function placeholderHtml(fundingSource: string) {
@@ -22,7 +23,7 @@ function placeholderHtml(fundingSource: string) {
   </div>`;
 }
 
-export default function PayPalButtonGroup({ createOrder, onApprove, onError, onCancel, disabled, isReady, amount }: PayPalButtonGroupProps) {
+export default function PayPalButtonGroup({ createOrder, onApprove, onError, onCancel, disabled, isReady, amount, fundingSources }: PayPalButtonGroupProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const createOrderRef = useRef(createOrder);
   const onApproveRef = useRef(onApprove);
@@ -44,49 +45,51 @@ export default function PayPalButtonGroup({ createOrder, onApprove, onError, onC
     const container = containerRef.current;
     if (!container) return;
 
-    const allSources: Array<"paypal" | "card"> = ["paypal", "card"];
+    const activeSources = fundingSources ?? ["paypal", "card"];
     const controller = new AbortController();
 
     (async () => {
       let eligibleSources: string[] | null = null;
 
-      try {
-        if (paypal.findEligibleMethods) {
-          const methods = await paypal.findEligibleMethods({
-            currencyCode: "AUD",
-            amount: String(amount),
-          });
-          if (controller.signal.aborted) return;
-          eligibleSources = allSources.filter((fs) => methods.isEligible(fs));
-        } else if (paypal.createInstance) {
-          const instance = await paypal.createInstance({
-            components: ["buttons"],
-            pageType: "checkout",
-          });
-          const methods = await instance.findEligibleMethods({
-            currencyCode: "AUD",
-            amount: String(amount),
-          });
-          if (controller.signal.aborted) return;
-          eligibleSources = allSources.filter((fs) => methods.isEligible(fs));
+      if (!fundingSources) {
+        try {
+          if (paypal.findEligibleMethods) {
+            const methods = await paypal.findEligibleMethods({
+              currencyCode: "AUD",
+              amount: String(amount),
+            });
+            if (controller.signal.aborted) return;
+            eligibleSources = activeSources.filter((fs) => methods.isEligible(fs));
+          } else if (paypal.createInstance) {
+            const instance = await paypal.createInstance({
+              components: ["buttons"],
+              pageType: "checkout",
+            });
+            const methods = await instance.findEligibleMethods({
+              currencyCode: "AUD",
+              amount: String(amount),
+            });
+            if (controller.signal.aborted) return;
+            eligibleSources = activeSources.filter((fs) => methods.isEligible(fs));
+          }
+        } catch {
+          // Fall back to showing all sources
         }
-      } catch {
-        // Fall back to showing all sources
       }
 
       if (controller.signal.aborted) return;
 
-      const activeSources = eligibleSources ?? allSources;
+      const enabledSources = eligibleSources ?? activeSources;
       const newButtons: Array<{ close?: () => void }> = [];
 
       container.innerHTML = "";
 
-      allSources.forEach((fundingSource) => {
+      activeSources.forEach((fundingSource) => {
         const wrapper = document.createElement("div");
         wrapper.id = "paypal-button-container-" + fundingSource;
         container.appendChild(wrapper);
 
-        if (activeSources.includes(fundingSource)) {
+        if (enabledSources.includes(fundingSource)) {
           const btn = paypal.Buttons({
             fundingSource,
             style: { layout: "vertical", shape: "rect" },

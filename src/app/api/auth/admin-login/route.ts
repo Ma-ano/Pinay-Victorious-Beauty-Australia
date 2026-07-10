@@ -21,18 +21,27 @@ export async function POST(request: Request) {
 
     const allowedAdminEmail = process.env.ADMIN_EMAIL || "admin@glowmuse.com";
     const userEmail = decoded.email || "";
+    const uid = decoded.uid;
 
-    if (userEmail.toLowerCase() !== allowedAdminEmail.toLowerCase()) {
+    let userRecord;
+    try {
+      userRecord = await auth.getUser(uid);
+    } catch {
+      return NextResponse.json({ error: "Failed to look up user" }, { status: 500 });
+    }
+
+    const claims = userRecord.customClaims || {};
+    const isMasterAdmin = userEmail.toLowerCase() === allowedAdminEmail.toLowerCase();
+
+    if (!isMasterAdmin && !claims.isAdmin) {
       return NextResponse.json(
-        { error: "This email is not authorized as the master admin account" },
+        { error: "You are not authorized as an admin" },
         { status: 403 },
       );
     }
 
-    const uid = decoded.uid;
-
     try {
-      await auth.setCustomUserClaims(uid, { isAdmin: true, isMasterAdmin: true, email_verified: true });
+      await auth.setCustomUserClaims(uid, { isAdmin: true, isMasterAdmin, email_verified: true });
     } catch {
       return NextResponse.json({ error: "Failed to set admin claims" }, { status: 500 });
     }

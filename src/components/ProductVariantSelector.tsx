@@ -21,7 +21,7 @@ export default function ProductVariantSelector({ product, selectedVariant, onVar
         {cartButton("flex-1")}
         <WishlistButton
           productId={product.id}
-          className="w-12 h-12 shrink-0 flex items-center justify-center bg-secondary rounded-xl text-dark dark:text-gray-900"
+          className="w-12 h-12 shrink-0 flex items-center justify-center bg-accent rounded-xl text-white"
         />
       </div>
     );
@@ -55,7 +55,7 @@ export default function ProductVariantSelector({ product, selectedVariant, onVar
         {cartButton("flex-1")}
         <WishlistButton
           productId={product.id}
-          className="w-12 h-12 shrink-0 flex items-center justify-center bg-secondary rounded-xl text-dark dark:text-gray-900"
+          className="w-12 h-12 shrink-0 flex items-center justify-center bg-accent rounded-xl text-white"
         />
       </div>
     </div>

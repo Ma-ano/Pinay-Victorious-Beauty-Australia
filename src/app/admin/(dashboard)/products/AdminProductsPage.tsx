@@ -44,7 +44,6 @@ interface ProductForm {
   salePrice: string;
   description: string;
   detail: string;
-  shippingReturns: string;
   ingredients: string;
   images: ProductImage[];
   variants: VariantForm[];
@@ -70,8 +69,7 @@ function emptyForm(): ProductForm {
     salePrice: "",
     description: "",
     detail: "",
-    shippingReturns: "",
-    ingredients: "",
+      ingredients: "",
     images: [],
     variants: [],
     isSale: false,
@@ -258,7 +256,6 @@ export default function AdminProductsPage() {
       salePrice: product.salePrice ? product.salePrice.toString() : "",
       description: product.description,
       detail: product.detail || "",
-      shippingReturns: product.shippingReturns || "",
       ingredients: product.ingredients || "",
       images: product.images || [],
       variants: (product.variants || []).map((v) => ({
@@ -416,7 +413,6 @@ export default function AdminProductsPage() {
         salePrice,
         description,
         detail,
-        shippingReturns: stripHtml(form.shippingReturns.trim()),
         ingredients,
         images: form.images.filter((img) => img.url),
         variants: form.variants.filter((v) => v.name.trim()).map((v) => ({
@@ -842,13 +838,6 @@ export default function AdminProductsPage() {
                       className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
                       placeholder="e.g. Water, Glycerin, Hyaluronic Acid." required />
                     <div className="text-right text-[11px] text-foreground/70 mt-1">{form.ingredients.length}/2000</div>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-foreground mb-1">Shipping & Returns (Optional)</label>
-                    <textarea rows={5} value={form.shippingReturns} onChange={(e) => updateField("shippingReturns", e.target.value)}
-                      maxLength={2000}
-                      className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
-                      placeholder="e.g. Free shipping on orders over $50." />
                   </div>
                 </div>
               </div>

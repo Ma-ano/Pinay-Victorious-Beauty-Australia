@@ -21,8 +21,10 @@ export default function AdminSettingsPage() {
   const [categoryImages, setCategoryImages] = useState<Record<string, string>>({});
   const [saleBannerTitle, setSaleBannerTitle] = useState("");
   const [saleBannerSubtitle, setSaleBannerSubtitle] = useState("");
-  const [saleBannerDiscount, setSaleBannerDiscount] = useState("");
+  const [saleBannerOfferText, setSaleBannerOfferText] = useState("");
   const [reviews, setReviews] = useState<ReviewConfig[]>([]);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
+  const [shippingReturns, setShippingReturns] = useState("");
   const [allReviews, setAllReviews] = useState<{ id: string; author: string; rating: number; content: string; isVerified: boolean; productName?: string; userId?: string }[]>([]);
   const [userAvatars, setUserAvatars] = useState<Record<string, string>>({});
   const [selectedReviewIds, setSelectedReviewIds] = useState<Set<string>>(new Set());
@@ -41,12 +43,14 @@ export default function AdminSettingsPage() {
       setCategoryImages(s.categoryImages || {});
       setSaleBannerTitle(s.saleBannerTitle || "");
       setSaleBannerSubtitle(s.saleBannerSubtitle || "");
-      setSaleBannerDiscount(s.saleBannerDiscount || "");
+      setSaleBannerOfferText(s.saleBannerOfferText || "");
       setReviews(s.reviews || []);
+      setFreeShippingThreshold(s.freeShippingThreshold ?? 120);
+      setShippingReturns(s.shippingReturns || "");
       setAllReviews(fetchedReviews);
       const savedIds = new Set((s.reviews || []).map((r) => (r as any)._id).filter(Boolean));
       setSelectedReviewIds(savedIds);
-      initialRef.current = JSON.stringify({ brands: s.featuredBrands, categoryImages: s.categoryImages || {}, saleBannerTitle: s.saleBannerTitle || "", saleBannerSubtitle: s.saleBannerSubtitle || "", saleBannerDiscount: s.saleBannerDiscount || "", reviews: s.reviews || [] });
+      initialRef.current = JSON.stringify({ brands: s.featuredBrands, categoryImages: s.categoryImages || {}, saleBannerTitle: s.saleBannerTitle || "", saleBannerSubtitle: s.saleBannerSubtitle || "", saleBannerOfferText: s.saleBannerOfferText || "", reviews: s.reviews || [], freeShippingThreshold: s.freeShippingThreshold ?? 120, shippingReturns: s.shippingReturns || "" });
 
       // batch-fetch user avatars
       const userIds = [...new Set(fetchedReviews.map((r) => r.userId).filter(Boolean))] as string[];
@@ -69,9 +73,9 @@ export default function AdminSettingsPage() {
   }, []);
 
   const hasChanges = useMemo(() => {
-    const current = JSON.stringify({ brands, categoryImages, saleBannerTitle, saleBannerSubtitle, saleBannerDiscount, reviews });
+    const current = JSON.stringify({ brands, categoryImages, saleBannerTitle, saleBannerSubtitle, saleBannerOfferText, reviews, freeShippingThreshold, shippingReturns });
     return current !== initialRef.current;
-  }, [brands, categoryImages, saleBannerTitle, saleBannerSubtitle, saleBannerDiscount, reviews]);
+  }, [brands, categoryImages, saleBannerTitle, saleBannerSubtitle, saleBannerOfferText, reviews, freeShippingThreshold, shippingReturns]);
 
   function updateBrand(index: number, field: keyof FeaturedBrandConfig, value: string) {
     setBrands((prev) => {
@@ -122,11 +126,13 @@ export default function AdminSettingsPage() {
         categoryImages: cleaned,
         saleBannerTitle,
         saleBannerSubtitle,
-        saleBannerDiscount,
+        saleBannerOfferText,
         reviews,
+        freeShippingThreshold,
+        shippingReturns,
       };
       await saveSettings(data);
-      initialRef.current = JSON.stringify({ brands, categoryImages: cleaned, saleBannerTitle, saleBannerSubtitle, saleBannerDiscount, reviews });
+      initialRef.current = JSON.stringify({ brands, categoryImages: cleaned, saleBannerTitle, saleBannerSubtitle, saleBannerOfferText, reviews, freeShippingThreshold, shippingReturns });
       showToast("Settings saved", "success");
     } catch {
       showToast("Failed to save settings", "error");
@@ -339,11 +345,37 @@ export default function AdminSettingsPage() {
               placeholder="On selected skincare and makeup essentials" />
           </div>
           <div>
-            <label className="block text-[11px] text-foreground mb-1">Discount %</label>
-            <input type="text" value={saleBannerDiscount}
-              onChange={(e) => setSaleBannerDiscount(e.target.value)}
+            <label className="block text-[11px] text-foreground mb-1">Offer Text</label>
+            <input type="text" value={saleBannerOfferText}
+              onChange={(e) => setSaleBannerOfferText(e.target.value)}
               className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
-              placeholder="30" />
+              placeholder="e.g. Summer Sale" />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-card rounded-2xl border border-card-border p-4 space-y-3 mb-6">
+        <div>
+          <h2 className="font-semibold text-dark text-sm">Shipping</h2>
+          <p className="text-[11px] text-foreground/80 mt-0.5">
+            Configure free shipping threshold and policy text.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="block text-[11px] text-foreground mb-1">Free Shipping Threshold (AUD)</label>
+            <input type="number" min={0} value={freeShippingThreshold}
+              onChange={(e) => setFreeShippingThreshold(Number(e.target.value))}
+              className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+              placeholder="120" />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-[11px] text-foreground mb-1">Shipping & Returns Policy</label>
+            <textarea rows={3} value={shippingReturns}
+              onChange={(e) => setShippingReturns(e.target.value)}
+              maxLength={2000}
+              className="w-full px-3 py-2 rounded-lg border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40 resize-vertical"
+              placeholder="Free shipping on orders over $120. 30-day return policy." />
           </div>
         </div>
       </div>

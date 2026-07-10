@@ -26,7 +26,7 @@ export interface Product {
   salePrice?: number;
   description: string;
   detail: string;
-  shippingReturns: string;
+  shippingReturns?: string;
   ingredients: string;
   images: ProductImage[];
   rating: number;

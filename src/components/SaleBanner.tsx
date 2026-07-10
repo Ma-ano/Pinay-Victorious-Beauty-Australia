@@ -3,11 +3,11 @@ import Link from "next/link";
 export default function SaleBanner({
   title,
   subtitle,
-  discount,
+  offerText,
 }: {
   title?: string | null;
   subtitle?: string | null;
-  discount?: string | null;
+  offerText?: string | null;
 }) {
   return (
     <section className="relative bg-linear-to-r from-accent/20 via-primary/20 to-accent/10">
@@ -17,7 +17,7 @@ export default function SaleBanner({
             {title || "Limited Time"}
           </p>
           <h2 className="text-2xl md:text-4xl font-bold text-dark mt-2">
-            {discount ? `Up to ${discount}% Off` : "Up to 30% Off"}
+            {offerText || "Sale"}
           </h2>
           <p className="text-foreground mt-2">
             {subtitle || "On selected skincare and makeup essentials"}

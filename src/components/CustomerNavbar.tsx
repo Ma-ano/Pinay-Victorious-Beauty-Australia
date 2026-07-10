@@ -9,6 +9,7 @@ import { m, AnimatePresence } from "framer-motion";
 import { site, navLinks } from "@/data/site";
 import { categories } from "@/data/categories";
 import { getAllProducts } from "@/lib/product-store";
+import { getSettings } from "@/lib/settings-store";
 import type { Product } from "@/data/products";
 import ThemeToggle from "./ThemeToggle";
 import { useCart } from "./CartContext";
@@ -30,6 +31,11 @@ export default function CustomerNavbar() {
   const [hidden, setHidden] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
+
+  useEffect(() => {
+    getSettings().then((s) => setFreeShippingThreshold(s.freeShippingThreshold ?? 120));
+  }, []);
 
   useEffect(() => {
     getAllProducts(20).then(setAllProducts);
@@ -622,7 +628,14 @@ export default function CustomerNavbar() {
                 >
                   Checkout
                 </button>
-                <p className="text-xs text-center text-foreground">Cash on Delivery · Free shipping over $50</p>
+                {totalPrice >= freeShippingThreshold ? (
+                  <p className="text-xs text-center text-green-600 dark:text-green-400">You qualify for free shipping ✓</p>
+                ) : (
+                  <p className="text-xs text-center text-foreground/70">
+                    Add {formatPrice(freeShippingThreshold - totalPrice)} more for free shipping
+                  </p>
+                )}
+                <p className="text-xs text-center text-foreground">Cash on Delivery</p>
               </div>
             )}
           </div>

@@ -64,14 +64,14 @@ export default function ProductCard({ product, preload }: { product: Product; pr
                   className={`flex-1 py-2.5 text-sm font-medium rounded-xl transition-all ${
                     quickAddOutOfStock
                       ? "bg-gray-400/80 text-white cursor-not-allowed"
-                      : "bg-white/90 backdrop-blur-sm text-black hover:bg-white"
+                      : "bg-accent text-white hover:bg-accent/85"
                   }`}
                 >
                   {quickAddOutOfStock ? "Out of Stock" : "Quick Add"}
                 </button>
                 <WishlistButton
                   productId={product.id}
-                  className="w-9 h-9 shrink-0 flex items-center justify-center bg-white/90 backdrop-blur-sm rounded-xl"
+                  className="w-9 h-9 shrink-0 flex items-center justify-center bg-accent rounded-xl text-white"
                 />
               </div>
             </div>

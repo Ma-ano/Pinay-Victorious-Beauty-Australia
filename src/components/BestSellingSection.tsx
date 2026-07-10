@@ -20,9 +20,10 @@ export default function BestSellingSection({ products }: Props) {
       });
   }, [products]);
 
-  if (bestSelling.length === 0) return null;
+  const display = bestSelling.length > 0 ? bestSelling : products;
+  if (display.length === 0) return null;
 
   return (
-    <ProductCarousel products={bestSelling} title="Best Selling" description="Most purchased products" maxSlides={5} />
+    <ProductCarousel products={display} title="Best Selling" description="Most purchased products" maxSlides={5} />
   );
 }

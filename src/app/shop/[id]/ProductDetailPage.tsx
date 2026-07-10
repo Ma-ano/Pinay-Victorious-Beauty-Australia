@@ -11,6 +11,7 @@ import ProductReviews from "@/components/ProductReviews";
 import WishlistButton from "@/components/WishlistButton";
 import { formatPrice } from "@/lib/format";
 import { getProductReviews, getProductsByIds, getAllProducts } from "@/lib/product-store";
+import { getSettings } from "@/lib/settings-store";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import StructuredData from "@/components/StructuredData";
@@ -52,6 +53,15 @@ export default function ProductDetailPage({ product }: Props) {
   const [liveReviewCount, setLiveReviewCount] = useState(product.reviews);
   const [bundleProducts, setBundleProducts] = useState<Product[]>([]);
   const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
+  const [shippingReturnsText, setShippingReturnsText] = useState("");
+
+  useEffect(() => {
+    getSettings().then((s) => {
+      setFreeShippingThreshold(s.freeShippingThreshold ?? 120);
+      setShippingReturnsText(s.shippingReturns || "");
+    });
+  }, []);
 
   useEffect(() => {
     getProductReviews(product.id).then((stats) => {
@@ -156,7 +166,7 @@ export default function ProductDetailPage({ product }: Props) {
               </span>
             )}
             {product.isNew && (
-              <span className="absolute top-4 left-4 bg-primary text-dark text-sm font-semibold px-3 py-1.5 rounded-full z-10">
+              <span className="absolute top-4 left-4 bg-accent text-white text-sm font-semibold px-3 py-1.5 rounded-full z-10">
                 New
               </span>
             )}
@@ -174,7 +184,7 @@ export default function ProductDetailPage({ product }: Props) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
               </button>
-              <div className="flex gap-2 flex-1 overflow-hidden">
+              <div className="flex gap-2 flex-1">
                 {images.slice(thumbStart, thumbStart + maxVisibleThumbs).map((img, i) => {
                   const realIndex = thumbStart + i;
                   return (
@@ -183,7 +193,7 @@ export default function ProductDetailPage({ product }: Props) {
                       onClick={() => setSelectedImage(realIndex)}
                       className={`flex-1 aspect-square rounded-xl overflow-hidden transition-all cursor-pointer ${
                         realIndex === selectedImage
-                          ? "ring-2 ring-accent ring-offset-2 opacity-100"
+                          ? "border-2 border-accent opacity-100"
                           : "opacity-60 hover:opacity-100"
                       }`}
                     >
@@ -255,7 +265,7 @@ export default function ProductDetailPage({ product }: Props) {
                   }}
                   className={`flex-1 py-3.5 rounded-xl font-medium transition-all ${
                     bundleInStock
-                      ? "bg-secondary text-dark dark:text-gray-900 hover:bg-secondary/80 hover:shadow-lg hover:shadow-secondary/25"
+                      ? "bg-accent text-white hover:bg-accent/80 hover:shadow-lg hover:shadow-accent/25"
                       : "bg-primary/10 text-foreground cursor-not-allowed"
                   }`}
                 >
@@ -263,7 +273,7 @@ export default function ProductDetailPage({ product }: Props) {
                 </button>
                 <WishlistButton
                   productId={product.id}
-                  className="w-12 h-12 shrink-0 flex items-center justify-center bg-secondary rounded-xl text-dark dark:text-gray-900"
+                  className="w-12 h-12 shrink-0 flex items-center justify-center bg-accent rounded-xl text-white"
                 />
               </div>
             ) : (
@@ -277,7 +287,7 @@ export default function ProductDetailPage({ product }: Props) {
               <svg className="w-4 h-4 text-accent" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
               </svg>
-              <span>PayPal accepted · Free shipping over $50</span>
+              <span>PayPal accepted · Free shipping over ${freeShippingThreshold}</span>
             </div>
           </div>
 
@@ -323,7 +333,7 @@ export default function ProductDetailPage({ product }: Props) {
           <div className="mt-8 divide-y divide-primary/10 rounded-xl border border-card-border bg-card">
             {[
               { title: "Details", content: product.detail || "Premium formula crafted with the finest ingredients." },
-              { title: "Shipping & Returns", content: product.shippingReturns || "Free shipping on orders over $50. 30-day return policy." },
+              { title: "Shipping & Returns", content: shippingReturnsText || `Free shipping on orders over $${freeShippingThreshold}. 30-day return policy.` },
               { title: "Ingredients", content: product.ingredients || "Contact us for ingredient details." },
             ].map((section) => (
               <details key={section.title} className="group">

@@ -31,7 +31,7 @@ export default function AddToCartButton({ product, selectedVariant, className = 
       className={`${className || "w-full"} py-3.5 rounded-xl font-medium transition-all ${
         outOfStock
           ? "bg-primary/10 text-foreground cursor-not-allowed"
-          : "bg-secondary text-dark dark:text-gray-900 hover:bg-secondary/80 hover:shadow-lg hover:shadow-secondary/25"
+          : "bg-accent text-white hover:bg-accent/80 hover:shadow-lg hover:shadow-accent/25"
       }`}
     >
       {outOfStock ? "Out of Stock" : `Add to Cart — ${formatPrice(displayPrice)}`}

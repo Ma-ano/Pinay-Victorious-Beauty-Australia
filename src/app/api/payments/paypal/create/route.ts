@@ -5,21 +5,22 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { items, total } = await request.json();
+    const { items, total, shipping } = await request.json();
 
     if (!items?.length || total == null) {
       return NextResponse.json({ error: "Items and total are required" }, { status: 400 });
     }
 
-    const paypalOrder = await createPayPalOrder(items, total);
+    const paypalOrder = await createPayPalOrder(items, total, shipping);
 
     if (!paypalOrder?.id) {
       return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
     }
 
     return NextResponse.json({ id: paypalOrder.id });
-  } catch {
-    console.error("Failed to create PayPal order");
-    return NextResponse.json({ error: "Payment failed" }, { status: 500 });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Payment failed";
+    console.error("Failed to create PayPal order:", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

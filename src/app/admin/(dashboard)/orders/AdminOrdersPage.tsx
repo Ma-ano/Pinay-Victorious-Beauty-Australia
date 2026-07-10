@@ -328,7 +328,12 @@ export default function AdminOrdersPage() {
   const filtered = useMemo(() => {
     let result = orders;
     if (paymentFilter !== "all") {
-      result = result.filter((o) => o.paymentMethod === paymentFilter);
+      result = result.filter((o) => {
+        if (paymentFilter === "paypal") {
+          return o.paymentMethod === "paypal" || o.paymentMethod === "card";
+        }
+        return o.paymentMethod === paymentFilter;
+      });
     }
     if (filter !== "all") {
       result = result.filter((o) => displayStatus(o.status) === filter);

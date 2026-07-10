@@ -28,8 +28,10 @@ export interface SiteSettings {
   categoryImages?: Record<string, string>;
   saleBannerTitle?: string;
   saleBannerSubtitle?: string;
-  saleBannerDiscount?: string;
+  saleBannerOfferText?: string;
   reviews?: ReviewConfig[];
+  freeShippingThreshold?: number;
+  shippingReturns?: string;
 }
 
 const emptyBrand: FeaturedBrandConfig = { brand: "", title: "", description: "", image: "" };
@@ -38,6 +40,8 @@ const defaultSettings: SiteSettings = {
   featuredBrands: [emptyBrand, emptyBrand, emptyBrand],
   categoryImages: {},
   reviews: [],
+  freeShippingThreshold: 120,
+  shippingReturns: "Free shipping on orders over $120. 30-day return policy.",
 };
 
 export async function getSettings(): Promise<SiteSettings> {
@@ -57,7 +61,13 @@ export async function getSettings(): Promise<SiteSettings> {
       { ...emptyBrand },
       { ...emptyBrand },
     ];
-    return { featuredBrands: brands, categoryImages: data.categoryImages || {} };
+    return {
+      featuredBrands: brands,
+      categoryImages: data.categoryImages || {},
+      reviews: [],
+      freeShippingThreshold: typeof data.freeShippingThreshold === "number" ? data.freeShippingThreshold : 120,
+      shippingReturns: data.shippingReturns || "Free shipping on orders over $120. 30-day return policy.",
+    };
   }
 
   const raw = data.featuredBrands;
@@ -67,7 +77,13 @@ export async function getSettings(): Promise<SiteSettings> {
       )
     : [];
   while (brands.length < 3) brands.push({ ...emptyBrand });
-  return { featuredBrands: brands.slice(0, 3), categoryImages: data.categoryImages || {}, reviews: data.reviews || [] };
+  return {
+    featuredBrands: brands.slice(0, 3),
+    categoryImages: data.categoryImages || {},
+    reviews: data.reviews || [],
+    freeShippingThreshold: typeof data.freeShippingThreshold === "number" ? data.freeShippingThreshold : 120,
+    shippingReturns: data.shippingReturns || "Free shipping on orders over $120. 30-day return policy.",
+  };
 }
 
 export async function saveSettings(data: SiteSettings): Promise<void> {

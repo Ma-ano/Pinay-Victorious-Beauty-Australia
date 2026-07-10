@@ -51,7 +51,7 @@ export default async function Page() {
         <SaleBanner
           title={s?.saleBannerTitle}
           subtitle={s?.saleBannerSubtitle}
-          discount={s?.saleBannerDiscount}
+          offerText={s?.saleBannerOfferText}
         />
       </section>
 

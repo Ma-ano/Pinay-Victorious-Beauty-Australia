@@ -3,7 +3,7 @@ const AFTERPAY_SECRET_KEY = process.env.AFTERPAY_SECRET_KEY || "";
 
 const API_BASE =
   process.env.AFTERPAY_USE_SANDBOX === "true"
-    ? "https://api-sandbox.afterpay.com/v2"
+    ? "https://global-api-sandbox.afterpay.com/v2"
     : "https://api.afterpay.com/v2";
 
 function getAuthToken(): string {

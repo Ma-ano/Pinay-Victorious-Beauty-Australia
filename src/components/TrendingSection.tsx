@@ -24,9 +24,10 @@ export default function TrendingSection({ products, reviewStats }: Props) {
       });
   }, [products, reviewStats]);
 
-  if (trending.length === 0) return null;
+  const display = trending.length > 0 ? trending : products;
+  if (display.length === 0) return null;
 
   return (
-    <ProductCarousel products={trending} title="Trending Now" description="Top-rated by our customers" maxSlides={5} />
+    <ProductCarousel products={display} title="Trending Now" description="Top-rated by our customers" maxSlides={5} />
   );
 }

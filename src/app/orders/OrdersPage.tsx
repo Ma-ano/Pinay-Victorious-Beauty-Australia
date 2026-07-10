@@ -345,7 +345,6 @@ export default function OrdersPage() {
       ) : (
         <div className="space-y-5">
           {orders.map((order) => {
-            const isPaypal = order.paymentMethod === "paypal" || order.paymentMethod === "afterpay";
             const canCancel = displayStatus(order.status) === "processing";
 
             return (
