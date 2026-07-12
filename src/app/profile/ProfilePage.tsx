@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useAuth, type Address } from "@/components/AuthContext";
 import { uploadImage, deleteImage } from "@/lib/storage";
+import { formatPhone } from "@/lib/format";
 import { ProfileSkeleton } from "@/components/Skeletons";
 import { COUNTRIES, getStates, getCities, getSuburbs } from "@/data/address-config";
 
@@ -77,7 +78,7 @@ export default function ProfilePage() {
 
   function startEditing() {
     setName(currentUser.name);
-    setPhone(currentUser.phone || "");
+    setPhone(currentUser.phone ? formatPhone(currentUser.phone) : "+61 ");
     setAddress(currentUser.address || { street: "", suburb: "", city: "", state: "", postcode: "", country: "Australia" });
     setEditing(true);
     setProfileSuccess(false);
@@ -92,6 +93,10 @@ export default function ProfilePage() {
     }
     if (!phone.trim()) {
       setProfileError("Phone number is required");
+      return;
+    }
+    if (!/^\+61 \d{3} \d{3} \d{3}$/.test(phone.trim())) {
+      setProfileError("Enter a valid Australian phone number (e.g. +61 400 000 000)");
       return;
     }
     setProfileSaving(true);
@@ -314,14 +319,29 @@ export default function ProfilePage() {
             </div>
             <div className="md:col-span-2">
               <label htmlFor="profile-phone" className="block text-sm font-medium text-foreground mb-1">Phone <span className="text-red-400">*</span></label>
-              <input
-                id="profile-phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors"
-                placeholder="+61 400 000 000"
-              />
+              <div className="flex items-center w-full px-4 py-2.5 rounded-xl border border-primary/20 bg-transparent text-dark text-sm focus-within:border-accent transition-colors">
+                <span className="text-foreground font-medium mr-1 select-none">+61</span>
+                <input
+                  id="profile-phone"
+                  type="tel"
+                  value={phone.startsWith("+61 ") ? phone.slice(4) : phone}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    let formatted = "+61";
+                    if (digits.length > 0) {
+                      formatted += " " + digits.slice(0, 3);
+                      if (digits.length > 3) formatted += " " + digits.slice(3, 6);
+                      if (digits.length > 6) formatted += " " + digits.slice(6, 9);
+                    } else {
+                      formatted += " ";
+                    }
+                    setPhone(formatted);
+                  }}
+                  maxLength={11}
+                  className="flex-1 bg-transparent outline-none text-dark text-sm"
+                  placeholder="400 000 000"
+                />
+              </div>
             </div>
             <div className="md:col-span-2">
               <h3 className="text-sm font-semibold text-dark mb-3 mt-1">Address</h3>

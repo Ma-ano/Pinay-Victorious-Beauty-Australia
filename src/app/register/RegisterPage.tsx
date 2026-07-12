@@ -23,26 +23,6 @@ function EyeIcon({ open }: { open: boolean }) {
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
-function formatPhone(value: string): string {
-  const cleaned = value.replace(/[^\d+]/g, "");
-  if (cleaned.startsWith("+61")) {
-    const digits = cleaned.slice(3).replace(/\D/g, "").slice(0, 9);
-    let result = "+61";
-    if (digits.length > 0) result += " " + digits.slice(0, 3);
-    if (digits.length > 3) result += " " + digits.slice(3, 6);
-    if (digits.length > 6) result += " " + digits.slice(6, 9);
-    return result;
-  }
-  const digits = cleaned.replace(/\D/g, "");
-  if (!digits) return cleaned;
-  if (digits === "6") return "+6";
-  let result = "+61";
-  if (digits.length > 0) result += " " + digits.slice(0, 3);
-  if (digits.length > 3) result += " " + digits.slice(3, 6);
-  if (digits.length > 6) result += " " + digits.slice(6, 9);
-  return result;
-}
-
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -89,12 +69,6 @@ export default function RegisterPage() {
     setCity(value);
     setSuburb("");
   }
-
-  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setPhone(formatPhone(e.target.value));
-  };
-
-
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -193,8 +167,26 @@ export default function RegisterPage() {
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-1">Phone <span className="text-red-400">*</span></label>
-                  <input id="phone" type="tel" value={phone} onChange={handlePhoneChange}
-                    className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.phone ? "border-red-400" : "border-primary/20"}`} placeholder="+61 400 000 000" />
+                  <div className={`flex items-center w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus-within:border-accent transition-colors ${errors.phone ? "border-red-400" : "border-primary/20"}`}>
+                    <span className="text-foreground font-medium mr-1 select-none">+61</span>
+                    <input id="phone" type="tel"
+                      value={phone.startsWith("+61 ") ? phone.slice(4) : phone}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                        let formatted = "+61";
+                        if (digits.length > 0) {
+                          formatted += " " + digits.slice(0, 3);
+                          if (digits.length > 3) formatted += " " + digits.slice(3, 6);
+                          if (digits.length > 6) formatted += " " + digits.slice(6, 9);
+                        } else {
+                          formatted += " ";
+                        }
+                        setPhone(formatted);
+                      }}
+                      maxLength={11}
+                      className="flex-1 bg-transparent outline-none text-dark text-sm"
+                      placeholder="400 000 000" />
+                  </div>
                   {errors.phone && <p className="text-xs text-red-400 mt-1">{errors.phone}</p>}
                 </div>
                 <div className="pt-4">
