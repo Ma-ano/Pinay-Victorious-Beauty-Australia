@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { onSnapshot, doc, collection, getDocs, query, where } from "firebase/firestore";
+import { getDoc, doc, collection, getDocs, query, where } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { categories } from "@/data/categories";
 import { saveSettings, type SiteSettings, type FeaturedBrandConfig, type ReviewConfig } from "@/lib/settings-store";
@@ -36,7 +36,8 @@ export default function AdminSettingsPage() {
   const initialSnapshotRef = useRef(false);
 
   useEffect(() => {
-    const unsubSettings = onSnapshot(doc(db, "settings", "site"), (snap) => {
+    const fetchSettings = async () => {
+      const snap = await getDoc(doc(db, "settings", "site"));
       if (snap.exists()) {
         const data = snap.data();
         let brandsData: FeaturedBrandConfig[];
@@ -67,29 +68,29 @@ export default function AdminSettingsPage() {
         }
       }
       setLoading(false);
-    });
+    };
 
-    const unsubReviews = onSnapshot(collection(db, "reviews"), (snap) => {
+    const fetchReviews = async () => {
+      const snap = await getDocs(collection(db, "reviews"));
       const fetchedReviews = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as any);
       setAllReviews(fetchedReviews);
       const userIds = [...new Set(fetchedReviews.map((r: any) => r.userId).filter(Boolean))] as string[];
       if (userIds.length > 0) {
-        (async () => {
-          const map: Record<string, string> = {};
-          for (let i = 0; i < userIds.length; i += 10) {
-            const batch = userIds.slice(i, i + 10);
-            const snap = await getDocs(query(collection(db, "users"), where("__name__", "in", batch)));
-            snap.forEach((d) => {
-              const data = d.data();
-              if (data.photoURL) map[d.id] = data.photoURL;
-            });
-          }
-          setUserAvatars(map);
-        })();
+        const map: Record<string, string> = {};
+        for (let i = 0; i < userIds.length; i += 10) {
+          const batch = userIds.slice(i, i + 10);
+          const snap = await getDocs(query(collection(db, "users"), where("__name__", "in", batch)));
+          snap.forEach((d) => {
+            const data = d.data();
+            if (data.photoURL) map[d.id] = data.photoURL;
+          });
+        }
+        setUserAvatars(map);
       }
-    });
+    };
 
-    return () => { unsubSettings(); unsubReviews(); };
+    fetchSettings();
+    fetchReviews();
   }, []);
 
   const hasChanges = useMemo(() => {
@@ -439,7 +440,16 @@ export default function AdminSettingsPage() {
                       });
                       setReviews((prev) => {
                         if (checked) return prev.filter((r) => r._id !== review.id);
-                        return [...prev, { _id: review.id, name: review.author, rating: review.rating, text: review.content, title: review.isVerified ? "Verified Buyer" : undefined, productName: review.productName, photoURL: avatarUrl || undefined }];
+                        const entry: ReviewConfig = {
+                          _id: review.id,
+                          name: review.author,
+                          rating: review.rating,
+                          text: review.content,
+                        };
+                        if (review.isVerified) entry.title = "Verified Buyer";
+                        if (review.productName) entry.productName = review.productName;
+                        if (avatarUrl) entry.photoURL = avatarUrl;
+                        return [...prev, entry];
                       });
                     }}
                     className="mt-1 shrink-0 accent-accent"

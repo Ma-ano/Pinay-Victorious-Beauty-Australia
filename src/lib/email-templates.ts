@@ -27,7 +27,7 @@ function baseTemplate(content: string, baseUrl: string = site.url) {
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;">
           <tr>
             <td style="padding:40px 30px 20px;text-align:center;background:linear-gradient(135deg,${brandColor}15,#ffffff);">
-              <img src="${baseUrl}/images/PinayVictoriousLogo.jpg" alt="Pinay Victorious Beauty" style="width:176px;height:auto;border-radius:8px;">
+              <img src="${baseUrl}/images/PinayVictoriousLogo.png" width="150" alt="Pinay Victorious Beauty" />
             </td>
           </tr>
           <tr>
@@ -101,7 +101,7 @@ export function welcomeEmail(name: string, baseUrl?: string) {
 
 export function contactNotification({ name, email, message }: { name: string; email: string; message: string }, baseUrl?: string) {
   return baseTemplate(`
-    <h1 style="color:${textColor};font-size:24px;margin:0 0 12px;">New Contact Form Message</h1>
+    <h1 style="color:${textColor};font-size:24px;margin:0 0 12px;">Pinay Victorious Beauty Website - Contact Form</h1>
     <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px;color:${textColor};line-height:1.6;">
       <tr>
         <td style="padding:4px 0;font-weight:bold;width:80px;vertical-align:top;">Name:</td>

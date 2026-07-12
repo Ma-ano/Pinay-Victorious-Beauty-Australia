@@ -81,11 +81,6 @@ export default function AdminUsersPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // One-time backfill: sync emailVerified from Firebase Auth to Firestore
-  useEffect(() => {
-    fetch("/api/admin/sync-verification", { method: "POST" }).catch(() => {});
-  }, []);
-
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
     setPage(1);
@@ -319,7 +314,7 @@ export default function AdminUsersPage() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-6">
+        <div className="flex items-center justify-center gap-2 flex-wrap mt-6">
           <button
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page <= 1}

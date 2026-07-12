@@ -7,7 +7,7 @@ export const site = {
   phone: "+61 413 504 424",
   whatsapp: "+61 413 504 424",
   address: "Sydney, Australia",
-  url: process.env.SITE_URL || "https://pinayvictorious.com",
+  url: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://pinayvictorious.com.au",
   locale: "en-AU",
   keywords: ["beauty", "skincare", "cosmetics Australia", "Korean beauty", "Asian beauty", "wellness", "makeup", "K-beauty", "natural skincare", "Pinay Victorious"],
   social: {

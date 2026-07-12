@@ -48,7 +48,7 @@ export async function POST(request: Request) {
 
     await sendEmail({
       to: recipient,
-      subject: `New Contact Form Message from ${name}`,
+      subject: `Pinay Victorious Beauty Website - Contact Form Message from ${name}`,
       html: contactNotification({ name, email, message }, getBaseUrl(request)),
     });
 

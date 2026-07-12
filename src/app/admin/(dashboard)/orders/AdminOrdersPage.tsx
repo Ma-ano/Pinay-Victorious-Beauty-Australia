@@ -4,12 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import {
   collection,
   doc,
-  increment,
-  onSnapshot,
+  getDocs,
+  limit,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
-  updateDoc,
   type Timestamp,
 } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
@@ -23,12 +23,13 @@ import { formatPrice } from "@/lib/format";
 
 type OrderStatus = "processing" | "approved" | "completed" | "cancelled" | "rejected";
 
-type PaymentFilter = "all" | "cod" | "paypal" | "afterpay";
+type PaymentFilter = "all" | "card" | "paypal" | "afterpay";
 
 interface OrderItem {
   productId: string;
   name: string;
   price: number;
+  total?: number;
   quantity: number;
   variant?: { id: string; name: string } | null;
 }
@@ -65,6 +66,7 @@ interface FirestoreOrder {
   afterpayToken?: string;
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
+  orderNumber?: string;
 }
 
 const statuses: Array<OrderStatus | "all"> = ["all", "processing", "approved", "completed", "cancelled", "rejected"];
@@ -100,7 +102,7 @@ const statusColors: Record<string, string> = {
 
 const paymentColors: Record<string, string> = {
   paypal: "bg-blue-100 text-blue-700",
-  cod: "bg-orange-100 text-orange-700",
+  card: "bg-indigo-100 text-indigo-700",
   afterpay: "bg-teal-100 text-teal-700",
 };
 
@@ -123,35 +125,25 @@ function statusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
-function displayPaymentMethod(method: string): string {
-  if (method === "card") return "paypal";
-  if (method === "afterpay") return "afterpay";
-  return method || "unknown";
-}
-
 function paymentLabel(order: FirestoreOrder): string {
-  if (order.paymentMethod === "paypal" || order.paymentMethod === "card") {
-    return "PayPal";
-  }
-  if (order.paymentMethod === "afterpay") {
-    return "Afterpay";
-  }
-  return "COD";
+  if (order.paymentMethod === "paypal") return "PayPal Wallet";
+  if (order.paymentMethod === "card") return "Debit / Credit Card";
+  if (order.paymentMethod === "afterpay") return "Afterpay";
+  return order.paymentMethod || "Unknown";
 }
 
 function OrderDetailModal({
   order,
   onClose,
   onStatusChange,
-  onMarkPaid,
   updatingId,
 }: {
   order: FirestoreOrder;
   onClose: () => void;
   onStatusChange: (orderId: string, status: OrderStatus) => void;
-  onMarkPaid: (orderId: string) => void;
   updatingId: string | null;
 }) {
+  const [confirmComplete, setConfirmComplete] = useState(false);
   const allowedNext = getValidTransitions(displayStatus(order.status) as OrderStatus);
 
   return (
@@ -164,9 +156,14 @@ function OrderDetailModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-6 border-b border-card-border">
-          <h2 className="text-lg font-semibold text-foreground">
-            Order #{order.firestoreId.slice(-8)}
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold text-foreground">
+              Order #{order.orderNumber || order.firestoreId.slice(-8)}
+            </h2>
+            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[displayStatus(order.status)] || "bg-gray-100 text-gray-700"}`}>
+              {displayStatus(order.status)}
+            </span>
+          </div>
           <button
             onClick={onClose}
             className="text-foreground hover:text-foreground transition-colors"
@@ -186,27 +183,38 @@ function OrderDetailModal({
               <p><span className="font-medium text-foreground">Email:</span> {order.customerEmail}</p>
               <p><span className="font-medium text-foreground">Phone:</span> {order.customerPhone || "-"}</p>
               <p><span className="font-medium text-foreground">Payment:</span>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ml-1.5 ${paymentColors[displayPaymentMethod(order.paymentMethod)] || "bg-gray-100 text-gray-700"}`}>
-                  {paymentLabel(order)}
-                </span>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ml-1.5 ${paymentStatusColors[order.paymentStatus || "pending"] || "bg-gray-100 text-gray-700"}`}>
-                  {order.paymentStatus || "pending"}
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ml-1.5 ${paymentColors[order.paymentMethod] || "bg-gray-100 text-gray-700"}`}>
+                  {paymentLabel(order)} · {order.paymentStatus || "pending"}
                 </span>
               </p>
               {order.payerEmail && (
                 <p><span className="font-medium text-foreground">Payer Email:</span> {order.payerEmail}</p>
               )}
-              {order.paypalOrderId && (
-                <p><span className="font-medium text-foreground">PayPal Order ID:</span> {order.paypalOrderId}</p>
+              {order.fundingSource && (
+                <p><span className="font-medium text-foreground">Funding Source:</span> {order.fundingSource}</p>
               )}
-              {order.paypalCaptureId && (
-                <p><span className="font-medium text-foreground">Transaction ID:</span> {order.paypalCaptureId}</p>
+              {(order.paymentMethod === "paypal" || order.paymentMethod === "card") && (
+                <>
+                  {order.paypalOrderId && (
+                    <p><span className="font-medium text-foreground">PayPal Order ID:</span> {order.paypalOrderId}</p>
+                  )}
+                  {order.paypalCaptureId && (
+                    <p><span className="font-medium text-foreground">Transaction ID:</span> {order.paypalCaptureId}</p>
+                  )}
+                  {order.cardBrand && (
+                    <p><span className="font-medium text-foreground">Card Brand:</span> {order.cardBrand}</p>
+                  )}
+                </>
               )}
-              {order.afterpayOrderId && (
-                <p><span className="font-medium text-foreground">Afterpay Order ID:</span> {order.afterpayOrderId}</p>
-              )}
-              {order.afterpayToken && (
-                <p><span className="font-medium text-foreground">Afterpay Token:</span> {order.afterpayToken}</p>
+              {order.paymentMethod === "afterpay" && (
+                <>
+                  {order.afterpayOrderId && (
+                    <p><span className="font-medium text-foreground">Afterpay Order ID:</span> {order.afterpayOrderId}</p>
+                  )}
+                  {order.afterpayToken && (
+                    <p><span className="font-medium text-foreground">Afterpay Token:</span> {order.afterpayToken}</p>
+                  )}
+                </>
               )}
             </div>
           </section>
@@ -233,13 +241,23 @@ function OrderDetailModal({
                     )}
                     <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                   </div>
-                  <span className="text-foreground font-medium">{formatPrice(Number(item.price || 0) * Number(item.quantity || 0))}</span>
+                  <span className="text-foreground font-medium">{formatPrice(item.total ?? (item.price * item.quantity))}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-3 pt-3 border-t border-card-border flex justify-between text-sm font-semibold text-foreground">
+            <div className="mt-1 flex justify-between text-sm text-foreground">
+              <span>Subtotal</span>
+              <span>{formatPrice(order.subtotal ?? 0)}</span>
+            </div>
+            {order.discount && order.discount > 0 && (
+              <div className="mt-1 flex justify-between text-sm text-foreground">
+                <span>Discount{order.discountCode ? ` (${order.discountCode})` : ""}</span>
+                <span className="text-green-600">-{formatPrice(order.discount)}</span>
+              </div>
+            )}
+            <div className="mt-1 pt-2 border-t border-card-border flex justify-between text-sm font-semibold text-foreground">
               <span>Total</span>
-              <span>{formatPrice(Number(order.subtotal || 0))}</span>
+              <span>{formatPrice(order.total ?? order.subtotal ?? 0)}</span>
             </div>
           </section>
 
@@ -256,7 +274,13 @@ function OrderDetailModal({
                   key={status}
                   type="button"
                   disabled={updatingId === order.firestoreId}
-                  onClick={() => onStatusChange(order.firestoreId, status)}
+                  onClick={() => {
+                    if (status === "completed") {
+                      setConfirmComplete(true);
+                    } else {
+                      onStatusChange(order.firestoreId, status);
+                    }
+                  }}
                   className={`px-3 py-2 rounded-xl text-xs font-semibold capitalize border transition-all disabled:opacity-50 ${
                     displayStatus(order.status) === status
                       ? "bg-accent text-white border-accent"
@@ -268,22 +292,37 @@ function OrderDetailModal({
               ))}
             </div>
             )}
-            {allowedNext.length === 0 && order.paymentMethod !== "cod" && (
+            {allowedNext.length === 0 && (
               <p className="text-xs text-foreground/60">No further status changes available.</p>
-            )}
-            {order.paymentMethod === "cod" && order.paymentStatus !== "paid" && (
-              <button
-                type="button"
-                disabled={updatingId === order.firestoreId}
-                onClick={() => onMarkPaid(order.firestoreId)}
-                className="w-full px-3 py-2 rounded-xl text-xs font-semibold border border-green-300 bg-green-50 text-green-700 hover:bg-green-100 transition-all disabled:opacity-50"
-              >
-                {updatingId === order.firestoreId ? "Updating..." : "Mark as Paid"}
-              </button>
             )}
           </section>
         </div>
       </div>
+
+      {confirmComplete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmComplete(false)}>
+          <div className="bg-card rounded-2xl border border-card-border shadow-2xl max-w-sm w-full p-6 mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-semibold text-dark text-sm mb-2">Confirm Status Change</h3>
+            <p className="text-xs text-foreground mb-4">
+              Mark this order as completed? This will update product stock and sold counts.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { onStatusChange(order.firestoreId, "completed"); setConfirmComplete(false); }}
+                className="px-4 py-2 bg-accent text-white rounded-xl text-xs font-medium hover:bg-accent/80 transition-colors"
+              >
+                Yes, mark as completed
+              </button>
+              <button
+                onClick={() => setConfirmComplete(false)}
+                className="px-4 py-2 bg-primary/10 text-dark rounded-xl text-xs font-medium hover:bg-primary/20 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -297,23 +336,34 @@ export default function AdminOrdersPage() {
   const [modalOrder, setModalOrder] = useState<FirestoreOrder | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [loading, setLoading] = useState(true);
+
+  async function fetchOrders() {
+    setLoading(true);
+    try {
+      const snapshot = await getDocs(query(collection(db, "orders"), orderBy("createdAt", "desc"), limit(50)));
+      const nextOrders = snapshot.docs.map((docSnap) => ({
+        firestoreId: docSnap.id,
+        ...docSnap.data(),
+      })) as FirestoreOrder[];
+      setOrders(nextOrders);
+      setError("");
+    } catch {
+      setError("Unable to load orders. Check Firestore rules and admin claims.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    const ordersQuery = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-    return onSnapshot(
-      ordersQuery,
-      (snapshot) => {
-        const nextOrders = snapshot.docs.map((docSnap) => ({
-          firestoreId: docSnap.id,
-          ...docSnap.data(),
-        })) as FirestoreOrder[];
-        setOrders(nextOrders);
-        setError("");
-      },
-      () => {
-        setError("Unable to load orders. Check Firestore rules and admin claims.");
-      }
-    );
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    const onFocus = () => fetchOrders();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, []);
 
   useEffect(() => {
@@ -321,38 +371,53 @@ export default function AdminOrdersPage() {
       const updated = orders.find((o) => o.firestoreId === modalOrder.firestoreId);
       if (updated) {
         setModalOrder(updated);
+      } else {
+        setModalOrder(null);
       }
     }
   }, [orders]);
 
   const filtered = useMemo(() => {
     let result = orders;
-    if (paymentFilter !== "all") {
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
       result = result.filter((o) => {
-        if (paymentFilter === "paypal") {
-          return o.paymentMethod === "paypal" || o.paymentMethod === "card";
-        }
-        return o.paymentMethod === paymentFilter;
+        const searchable = [
+          o.customerName,
+          o.customerEmail,
+          o.customerPhone,
+          o.payerEmail,
+          o.firestoreId,
+          o.orderNumber,
+          o.shipping?.street,
+          o.shipping?.city,
+          o.shipping?.state,
+          o.shipping?.postcode,
+          o.shipping?.country,
+        ].join(" ").toLowerCase();
+        return searchable.includes(q);
       });
+    }
+    if (paymentFilter !== "all") {
+      result = result.filter((o) => o.paymentMethod === paymentFilter);
     }
     if (filter !== "all") {
       result = result.filter((o) => displayStatus(o.status) === filter);
     }
     return result;
-  }, [paymentFilter, filter, orders]);
+  }, [searchQuery, paymentFilter, filter, orders]);
 
   const paymentCounts = useMemo(() => {
-    const cod = orders.filter((o) => o.paymentMethod === "cod" || !o.paymentMethod).length;
-    const paypal = orders.filter((o) => o.paymentMethod === "paypal" || o.paymentMethod === "card").length;
+    const card = orders.filter((o) => o.paymentMethod === "card").length;
+    const paypal = orders.filter((o) => o.paymentMethod === "paypal").length;
     const afterpay = orders.filter((o) => o.paymentMethod === "afterpay").length;
-    return { cod, paypal, afterpay };
+    return { card, paypal, afterpay };
   }, [orders]);
 
   async function handleStatusChange(orderId: string, newStatus: OrderStatus) {
     setUpdatingId(orderId);
     try {
       const order = orders.find((o) => o.firestoreId === orderId);
-      const isCOD = order?.paymentMethod === "cod" || !order?.paymentMethod;
 
       if (newStatus === "rejected") {
         const token = await getIdToken();
@@ -371,45 +436,58 @@ export default function AdminOrdersPage() {
         return;
       }
 
-      const updates: Record<string, unknown> = {
+      const orderRef = doc(db, "orders", orderId);
+      const statusUpdates: Record<string, unknown> = {
         status: newStatus,
         updatedAt: serverTimestamp(),
       };
-      if (isCOD && newStatus === "completed") {
-        updates.paymentStatus = "paid";
+      if (newStatus === "completed") {
+        statusUpdates.paymentStatus = "paid";
       }
 
-      await updateDoc(doc(db, "orders", orderId), updates);
+      await runTransaction(db, async (transaction) => {
+        const orderSnap = await transaction.get(orderRef);
+        if (!orderSnap.exists) throw new Error("Order not found");
+        if (orderSnap.data()?.status === newStatus) return;
 
-      if (newStatus === "completed" && order?.items) {
-        await Promise.all(
-          order.items.map((item) =>
-            updateDoc(doc(db, "products", item.productId), {
-              sold: increment(item.quantity),
-            }),
-          ),
-        );
-      }
+        const productEntries: Array<{ ref: any; snap: any; qty: number; variantId?: string }> = [];
+        if (newStatus === "completed" && order?.items) {
+          for (const item of order.items) {
+            const productRef = doc(db, "products", item.productId);
+            const productSnap = await transaction.get(productRef);
+            if (productSnap.data()) {
+              productEntries.push({ ref: productRef as any, snap: productSnap as any, qty: item.quantity ?? 1, variantId: item.variant?.id });
+            }
+          }
+        }
+
+        transaction.update(orderRef, statusUpdates);
+
+        for (const { ref: productRef, snap, qty, variantId } of productEntries) {
+          const productData = snap.data()!;
+          const base: Record<string, unknown> = {
+            sold: (productData.sold ?? 0) + qty,
+          };
+
+          if (variantId && productData.variants) {
+            base.variants = productData.variants.map(
+              (v: { id: string; stock?: number }) =>
+                v.id === variantId
+                  ? { ...v, stock: Math.max(0, (v.stock ?? 0) - qty) }
+                  : v
+            );
+          } else if (!variantId) {
+            base.stock = Math.max(0, (productData.stock ?? 0) - qty);
+          }
+
+          transaction.update(productRef, base as any);
+        }
+      });
 
       showToast(`Order ${orderId.slice(-8)} marked ${newStatus}`, "success");
+      await fetchOrders();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to update order status";
-      showToast(msg, "error");
-    } finally {
-      setUpdatingId(null);
-    }
-  }
-
-  async function handleMarkPaid(orderId: string) {
-    setUpdatingId(orderId);
-    try {
-      await updateDoc(doc(db, "orders", orderId), {
-        paymentStatus: "paid",
-        updatedAt: serverTimestamp(),
-      });
-      showToast(`Order ${orderId.slice(-8)} marked as paid`, "success");
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to mark as paid";
       showToast(msg, "error");
     } finally {
       setUpdatingId(null);
@@ -423,14 +501,37 @@ export default function AdminOrdersPage() {
           <h1 className="text-2xl font-bold text-dark">Orders</h1>
           <p className="text-sm text-foreground mt-1">Review customer details and manage fulfillment status.</p>
         </div>
-        <p className="text-sm text-foreground">
-          {filtered.length} of {orders.length} orders
-          {paymentFilter !== "all" && ` (${paymentFilter})`}
-        </p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={fetchOrders}
+            disabled={loading}
+            className="text-xs px-3 py-1 rounded-full bg-card border border-card-border text-foreground hover:border-accent/50 transition-all disabled:opacity-50"
+          >
+            {loading ? "Loading..." : "Refresh"}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <input
+          type="text"
+          placeholder="Search by name, email, phone, address, or order ID..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="flex-1 min-w-[200px] max-w-sm px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-primary/10 text-dark hover:bg-primary/20 transition-colors"
+          >
+            Clear
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 mb-3">
-        {(["all", "cod", "paypal", "afterpay"] as PaymentFilter[]).map((pm) => (
+        {(["all", "card", "paypal", "afterpay"] as PaymentFilter[]).map((pm) => (
           <button
             key={pm}
             type="button"
@@ -441,7 +542,7 @@ export default function AdminOrdersPage() {
                 : "bg-card text-foreground border border-card-border hover:border-accent/50"
             }`}
           >
-            {pm === "all" ? "All" : pm === "cod" ? `COD (${paymentCounts.cod})` : pm === "paypal" ? `PayPal (${paymentCounts.paypal})` : `Afterpay (${paymentCounts.afterpay})`}
+            {pm === "all" ? "All" : pm === "card" ? `Debit / Credit (${paymentCounts.card})` : pm === "paypal" ? `PayPal (${paymentCounts.paypal})` : `Afterpay (${paymentCounts.afterpay})`}
           </button>
         ))}
       </div>
@@ -497,15 +598,15 @@ export default function AdminOrdersPage() {
                   className="hover:bg-primary/5 cursor-pointer"
                   onClick={() => setModalOrder(order)}
                 >
-                  <td className="px-4 py-3 font-medium text-dark">#{order.firestoreId.slice(-8)}</td>
+                  <td className="px-4 py-3 font-medium text-dark font-mono text-xs">#{order.orderNumber || order.firestoreId.slice(-8)}</td>
                   <td className="px-4 py-3 text-foreground">
                     <div className="font-medium text-dark">{order.customerName}</div>
                     <div className="text-xs">{order.customerEmail}</div>
                   </td>
                   <td className="px-4 py-3 text-foreground hidden sm:table-cell">{order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}</td>
-                  <td className="px-4 py-3 text-dark font-medium">{formatPrice(Number(order.subtotal || 0))}</td>
+                  <td className="px-4 py-3 text-dark font-medium">{formatPrice(order.total ?? order.subtotal ?? 0)}</td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${paymentColors[displayPaymentMethod(order.paymentMethod)] || "bg-gray-100 text-gray-700"}`}>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${paymentColors[order.paymentMethod] || "bg-gray-100 text-gray-700"}`}>
                       {paymentLabel(order)}
                     </span>
                   </td>
@@ -532,7 +633,7 @@ export default function AdminOrdersPage() {
           order={modalOrder}
           onClose={() => setModalOrder(null)}
           onStatusChange={handleStatusChange}
-          onMarkPaid={handleMarkPaid}
+
           updatingId={updatingId}
         />
       )}

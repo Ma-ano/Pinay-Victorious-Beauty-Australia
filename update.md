@@ -1,90 +1,101 @@
-# What's New — Realtime Admin, Cost-Optimized Products & Verified Status Fix
+# Technical Notes
 
----
+## AdminUsersPage — API + Polling (Reverted)
 
-# Previous Updates
+The users page was initially rewritten to use Firestore `onSnapshot` with cursor pagination, but was reverted back to the original API-based polling pattern. The API route fetches users from Firebase Auth + Firestore and returns paginated results.
 
----
+**Current architecture:**
+- `fetch('/api/admin/users?search=...&role=...&status=...&page=...')` fetches paginated users
+- `setInterval` polls every 10s with `fetchUsersRef` pattern to prevent stale closures
+- `ListResponse` interface for API response typing
+- Manual `fetchUsers()` calls after mutations (role change, status toggle, delete)
+- `useCallback` wraps `fetchUsers` with `[search, roleFilter, statusFilter, page]` dependencies
 
-## ✨ Realtime Admin Dashboard (No More Polling)
+## Verified Status — Firestore Sync
 
-The admin users page now updates in real-time — no more waiting 10 seconds for changes to appear. When you update a role, toggle a user's status, or delete a user, the table updates instantly.
+`emailVerified` was previously only stored in Firebase Auth, not in Firestore docs. Three changes fix this:
 
-### How it works
+1. **`register/route.ts`** — New users get `emailVerified: false` written to their Firestore doc at signup
+2. **`verify-otp/route.ts`** — After OTP verification, writes `emailVerified: true` to Firestore: `db.collection("users").doc(user.uid).update({ emailVerified: true })`
+3. **`sync-verification/route.ts`** — POST endpoint that paginates through all Firebase Auth users (1000 at a time via `listUsers` with `pageToken`), batch-updates each Firestore doc with the real `emailVerified` value from Auth
+4. **`AdminUsersPage.tsx`** — Calls `POST /api/admin/sync-verification` once on mount (silent, `.catch(() => {})`)
 
-| Mode | What it does | Cost |
-|------|-------------|------|
-| **Browsing** (no filters) | `onSnapshot` with cursor pagination — 20 users per page, real-time | 20 reads per page |
-| **Filtering** (role/status) | `getDocs` with Firestore `where` — fetches matching users only | 1 read per matching user |
-| **Search** | `getDocs` full collection, client-side filter by email/name | 1 read per user (one-time) |
+## AdminProductsPage — Cost-Optimized Fetching
 
-An amber banner appears when filters are active — real-time resumes when you clear all filters.
+Replaced `subscribeProducts` (onSnapshot with 200 limit) with direct Firestore `getDocs`:
 
-### Action buttons styling
+**Data sources:**
+- `products`: table display data — fetched via `getDocs` with `limit(15)` + cursor pagination (no filters) or `getDocs` all matching + client-side post-filter (filters active)
+- `allProducts`: bundle form data — fetched once via `getAllProducts()` on mount, independent of table pagination
 
-Edit, Delete, Confirm, Cancel, Enable/Disable, Previous, Next, and page number buttons across both `/admin/products` and `/admin/users` now use **bubble border styling** (`rounded-full` with colored borders and hover backgrounds).
+**Query modes:**
+- No filters: `getDocs` with `orderBy("createdAt")`, `limit(15)`, `startAfter(cursor)` — 15 reads per page. Total count from `getCountFromServer`
+- Search/filters active: `getDocs` with optional `where("category")` / `where("type")` + client-side filter for brand, price range, availability, images, variants. `hasFilters` boolean gates the mode
 
----
+**Pagination:**
+- `pageCursors` ref: `Map<number, DocumentSnapshot | null>` stores the last doc of each page
+- `displayTotal` computed: `hasFilters ? ceil(products.length / pageSize) : ceil(total / pageSize)`
+- `displayProducts` computed: `hasFilters ? products.slice(...) : products`
 
-## 💰 Products Page — Cost-Optimized Data Fetching
+## Verify Email Redirect — Full Page Reload
 
-The admin products page now reads only **15 documents** per page instead of 200+.
+`router.push("/")` was replaced with `window.location.href = "/"` on all three redirects:
+1. Unauthenticated users → `/login`
+2. Already verified users → `/`
+3. Post-verification → `/` after 1.5s timeout
 
-| Mode | Reads | How |
-|------|-------|-----|
-| **Browsing** (no filters) | **15 reads** | `getDocs` with `limit(15)` + cursor pagination |
-| **Search/filters** | 1 read per product | `getDocs` all matching, client-side post-filter |
-| **Bundle form** | One-time fetch | Separate `allProducts` state for the bundle picker |
+This forces a full page reload, re-initializing Firebase Auth so the verify email banner in the navbar correctly disappears.
 
-No more `onSnapshot` recurring costs — only one-time reads per page load.
+Removed unused `useRouter` import and `router` dependency from `handleVerify` useCallback.
 
----
+## Build Error Fix — `Set<unknown>` Type
 
-## ✅ Verified Status Now Works Correctly
+**Error:** `Set<unknown>` not assignable to `Set<string>` in `AdminSettingsPage.tsx:63`
 
-**The problem:** After switching to direct Firestore queries, all users showed as "Unverified" because `emailVerified` was only stored in Firebase Auth — not in Firestore docs.
+**Root cause:** `.filter(Boolean)` after `.map()` strips the generic type to `unknown[]`, making `new Set(...)` return `Set<unknown>`.
 
-**The fix:**
-1. **Register** — New users get `emailVerified: false` written to Firestore at signup
-2. **Verify email** — The OTP verify route now also writes `emailVerified: true` to the Firestore user doc
-3. **Backfill API** — `POST /api/admin/sync-verification` syncs every user's `emailVerified` from Firebase Auth to Firestore
-4. **Auto-sync** — The admin users page calls this API once on mount to fix all existing users
+**Fix:** Added explicit generic: `new Set<string>(...)`
 
----
+```typescript
+// Before
+const savedIds = new Set((data.reviews || []).map((r: any) => r._id).filter(Boolean));
+// After
+const savedIds = new Set<string>((data.reviews || []).map((r: any) => r._id).filter(Boolean));
+```
 
-## 🔁 Verify Email Redirect Fixed
+## Bubble Button Styling
 
-**The problem:** After verifying, the page showed "Verified! Redirecting you to the homepage..." but the redirect never happened — it relied on the Firebase Auth listener which didn't always fire.
+Action buttons on both `/admin/products` and `/admin/users` use consistent styling:
 
-**The fix:** Added a `setTimeout` on the local `verified` state that guarantees redirect after 1.5 seconds, independent of Firebase listener propagation.
+| Button | Classes |
+|--------|---------|
+| Edit | `px-2.5 py-1 text-xs font-medium rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors` |
+| Delete | `px-2.5 py-1 text-xs font-medium rounded-full border border-red-300 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors` |
+| Confirm | `px-2.5 py-1 text-xs font-medium rounded-full border border-red-400 text-red-500 hover:bg-red-50 ...` |
+| Cancel | `px-2.5 py-1 text-xs font-medium rounded-full border border-primary/20 text-foreground hover:bg-primary/10 transition-colors` |
+| Enable/Disable | `px-2.5 py-1 text-xs font-medium rounded-full border border-accent/30 text-accent hover:bg-accent/10 ...` |
+| Prev/Next (users) | `px-3 py-1.5 rounded-full border border-card-border ...` |
+| Page number | `w-8 h-8 rounded-full text-sm font-medium transition-all ...` |
+| Prev/Next (products) | `px-3 py-1.5 text-sm rounded-full border border-primary/20 ...` |
 
----
+Product count moved to the left side of Previous/Next buttons in a centered `gap-6` row.
 
-## 📋 For Developers
+## Vercel Environment Variables Sync
 
-### Key files changed
+All 24 env vars from `.env` have been uploaded to Vercel **Production** and **Preview (testing branch)**:
+- Old vars deleted first (from production, preview, development)
+- New vars uploaded fresh from `.env` contents
+- `FIREBASE_ADMIN_PRIVATE_KEY` handled with `\n`→actual newline conversion
+- Preview vars scoped to `testing` branch
+
+## Key Files
 
 ```
-M src/app/admin/(dashboard)/products/AdminProductsPage.tsx  — cursor pagination, cost-optimized, bubble buttons
-M src/app/admin/(dashboard)/users/AdminUsersPage.tsx        — onSnapshot, cursor pagination, Auto-sync, bubble buttons
-M src/app/api/auth/verify-otp/route.ts                      — writes emailVerified to Firestore
-M src/app/api/auth/register/route.ts                        — adds emailVerified: false to Firestore doc
+M src/app/admin/(dashboard)/products/AdminProductsPage.tsx  — getDocs cursor pagination, cost-optimized, bubble buttons
+M src/app/admin/(dashboard)/users/AdminUsersPage.tsx        — API + polling (reverted), bubble buttons, auto-sync
+M src/app/admin/(dashboard)/settings/AdminSettingsPage.tsx  — Set<string> build fix
+M src/app/api/auth/register/route.ts                        — emailVerified: false in Firestore doc
+M src/app/api/auth/verify-otp/route.ts                      — writes emailVerified: true to Firestore
 A src/app/api/admin/sync-verification/route.ts              — backfills emailVerified from Auth to Firestore
-M src/app/verify-email/VerifyEmailPage.tsx                   — guaranteed redirect after verification
+M src/app/verify-email/VerifyEmailPage.tsx                   — window.location.href redirect, full page reload
 ```
-
-### Read cost comparison (Products page)
-
-| Before | After |
-|--------|-------|
-| `onSnapshot` with 200 docs → recurring reads on reconnect | `getDocs` with `limit(15)` → 15 reads per page load |
-| 500 page loads × 200 = 100k reads | 500 page loads × 15 = 7.5k reads |
-| Ongoing subscription cost | One-time read per page load |
-
-### Read cost comparison (Users page)
-
-| Before | After |
-|--------|-------|
-| `setInterval` polling every 10s → reads all users each time | `onSnapshot` → reads current page (20) + changes only |
-| `listUsers(1000)` API cap | No cap — Firestore cursor pagination |
-| API route merging Auth + Firestore data | Direct Firestore reads only |

@@ -32,7 +32,7 @@ export default function AdminLayoutContent({
     <ProtectedRoute requireAdmin>
       <div className="flex min-h-[80vh]">
         <AdminSidebar />
-        <div className="flex-1 p-6 md:p-10">{children}</div>
+        <div className="flex-1 p-6 md:p-10 md:pt-10 pt-16">{children}</div>
       </div>
     </ProtectedRoute>
   );

@@ -11,6 +11,7 @@ import BackToTop from "@/components/BackToTop";
 import CookieConsent from "@/components/CookieConsent";
 import WhatsAppBubble from "@/components/WhatsAppBubble";
 import MotionProvider from "@/components/MotionProvider";
+import PayPalProvider from "@/components/PayPalProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/data/site";
 import { preconnect } from "react-dom";
@@ -63,6 +64,8 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const theme = cookieStore.get("theme")?.value || "light";
   preconnect("https://firebasestorage.googleapis.com");
+  preconnect("https://www.paypal.com");
+  preconnect("https://www.paypalobjects.com");
 
   return (
     <html lang="en" className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
@@ -71,6 +74,7 @@ export default async function RootLayout({
         <AuthProvider>
         <CartProvider>
           <ToastProvider>
+            <PayPalProvider>
             <IdleTimeoutProvider>
             <Navbar />
             <main className="flex-1">{children}</main>
@@ -80,6 +84,7 @@ export default async function RootLayout({
             <WhatsAppBubble />
             <SpeedInsights />
             </IdleTimeoutProvider>
+            </PayPalProvider>
           </ToastProvider>
         </CartProvider>
         </AuthProvider>

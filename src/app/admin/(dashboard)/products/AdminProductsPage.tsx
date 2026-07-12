@@ -106,7 +106,7 @@ export default function AdminProductsPage() {
   const { showToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
   const [filterType, setFilterType] = useState("");
   const [filterBrand, setFilterBrand] = useState("");
@@ -126,12 +126,13 @@ export default function AdminProductsPage() {
   const [bundleSearch, setBundleSearch] = useState("");
   const [page, setPage] = useState(1);
   const pageSize = 15;
-  const [realTimePaused, setRealTimePaused] = useState(false);
+
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [total, setTotal] = useState(0);
 
   const pageCursors = useRef<Map<number, DocumentSnapshot | null>>(new Map());
   const fetchCountId = useRef(0);
+  const isTransitioning = useRef(false);
 
   const bundleAutoSum = useMemo(() => {
     if (form.bundleItems.length === 0) return 0;
@@ -158,7 +159,7 @@ export default function AdminProductsPage() {
     getAllProducts().then(setAllProducts);
   }, []);
 
-  const hasFilters = !!(search || filterCategory || filterType || filterBrand ||
+  const hasFilters = !!(searchQuery || filterCategory || filterType || filterBrand ||
     filterAvailability !== "all" || filterMinPrice || filterMaxPrice ||
     filterHasImages !== "all" || filterHasVariants !== "all");
 
@@ -166,8 +167,10 @@ export default function AdminProductsPage() {
   useEffect(() => {
     if (hasFilters) return;
 
-    setRealTimePaused(false);
-    setLoading(true);
+    if (!isTransitioning.current) {
+      setLoading(true);
+    }
+    isTransitioning.current = false;
 
     const db = getDb();
     const countId = ++fetchCountId.current;
@@ -193,80 +196,39 @@ export default function AdminProductsPage() {
       setLoading(false);
     });
 
-    getCountFromServer(collection(db, "products")).then((snap) => {
+    getCountFromServer(query(collection(db, "products"), where("createdAt", ">=", new Date(0)))).then((snap) => {
       if (countId === fetchCountId.current) {
         setTotal(snap.data().count);
       }
     }).catch(() => {});
   }, [page, hasFilters, showToast]);
 
-  // Search/filter mode: getDocs all products, client-side filter + paginate
+  // Search/filter mode: all client-side filtering on allProducts (no Firestore call)
   useEffect(() => {
     if (!hasFilters) return;
-
-    setRealTimePaused(true);
-    setLoading(true);
-
-    let cancelled = false;
-
-    (async () => {
-      try {
-        const db = getDb();
-        const constraints: Parameters<typeof query>[1][] = [];
-        if (filterCategory) constraints.push(where("category", "==", filterCategory));
-        if (filterType) constraints.push(where("type", "==", filterType));
-
-        const q = constraints.length > 0
-          ? query(collection(db, "products"), ...constraints)
-          : collection(db, "products");
-
-        const snapshot = await getDocs(q);
-        if (cancelled) return;
-
-        let results = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Product));
-
-        const qs = search.toLowerCase();
-        results = results.filter((p) => {
-          if (search) {
-            const variantNames = (p.variants || []).map((v) => v.name.toLowerCase()).join(" ");
-            const searchable = [p.name, p.category, p.subcategory || "", p.type, p.brand || "", variantNames, p.id].join(" ").toLowerCase();
-            if (!searchable.includes(qs)) return false;
-          }
-          if (filterBrand && !(p.brand || "").toLowerCase().includes(filterBrand.toLowerCase())) return false;
-          if (filterAvailability !== "all") {
-            const hasStock = p.variants && p.variants.length > 0
-              ? p.variants.some((v) => v.inStock)
-              : (p.stock ?? 0) > 0;
-            if (filterAvailability === "in-stock" && !hasStock) return false;
-            if (filterAvailability === "out-of-stock" && hasStock) return false;
-          }
-          if (filterMinPrice && p.price < parseFloat(filterMinPrice)) return false;
-          if (filterMaxPrice && p.price > parseFloat(filterMaxPrice)) return false;
-          if (filterHasImages === "yes" && (!p.images || p.images.length === 0)) return false;
-          if (filterHasImages === "no" && p.images && p.images.length > 0) return false;
-          if (filterHasVariants === "yes" && (!p.variants || p.variants.length === 0)) return false;
-          if (filterHasVariants === "no" && p.variants && p.variants.length > 0) return false;
-          return true;
-        });
-
-        setProducts(results);
-        setTotal(results.length);
-      } catch {
-        if (!cancelled) showToast("Failed to load products", "error");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => { cancelled = true; };
-  }, [page, search, filterCategory, filterType, filterBrand, filterAvailability,
-      filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants, hasFilters, showToast]);
+    setLoading(false);
+  }, [hasFilters]);
 
   // Reset page when filters change
+  // Reset page when entering filter/search mode
   useEffect(() => {
-    setPage(1);
-    pageCursors.current.clear();
-  }, [search, filterCategory, filterType, filterBrand, filterAvailability,
+    if (hasFilters) {
+      setPage(1);
+      pageCursors.current.clear();
+    } else {
+      isTransitioning.current = true;
+    }
+  }, [hasFilters]);
+
+  // Reset page when category/type changes
+  useEffect(() => {
+    if (hasFilters) setPage(1);
+  }, [filterCategory, filterType]);
+
+  // Clear cursors when filter fields change
+  useEffect(() => {
+    if (!hasFilters) pageCursors.current.clear();
+  }, [filterCategory, filterType, filterBrand, filterAvailability,
       filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
   useEffect(() => {
@@ -302,12 +264,41 @@ export default function AdminProductsPage() {
     return count;
   }, [filterCategory, filterType, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
+  const filteredProducts = useMemo(() => {
+    if (!hasFilters) return [];
+    let results = allProducts;
+    const qs = searchQuery.toLowerCase();
+    results = results.filter((p) => {
+      if (searchQuery) {
+        const variantNames = (p.variants || []).map((v) => v.name.toLowerCase()).join(" ");
+        const searchable = [p.name, p.category, p.subcategory || "", p.type, p.brand || "", variantNames, p.id].join(" ").toLowerCase();
+        if (!searchable.includes(qs)) return false;
+      }
+      if (filterBrand && !(p.brand || "").toLowerCase().includes(filterBrand.toLowerCase())) return false;
+      if (filterAvailability !== "all") {
+        const hasStock = p.variants && p.variants.length > 0
+          ? p.variants.some((v) => v.inStock)
+          : (p.stock ?? 0) > 0;
+        if (filterAvailability === "in-stock" && !hasStock) return false;
+        if (filterAvailability === "out-of-stock" && hasStock) return false;
+      }
+      if (filterMinPrice && p.price < parseFloat(filterMinPrice)) return false;
+      if (filterMaxPrice && p.price > parseFloat(filterMaxPrice)) return false;
+      if (filterHasImages === "yes" && (!p.images || p.images.length === 0)) return false;
+      if (filterHasImages === "no" && p.images && p.images.length > 0) return false;
+      if (filterHasVariants === "yes" && (!p.variants || p.variants.length === 0)) return false;
+      if (filterHasVariants === "no" && p.variants && p.variants.length > 0) return false;
+      return true;
+    });
+    return results;
+  }, [allProducts, searchQuery, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
+
   const displayTotal = hasFilters
-    ? Math.max(1, Math.ceil(products.length / pageSize))
-    : Math.max(1, Math.ceil(total / pageSize));
+    ? Math.ceil(filteredProducts.length / pageSize)
+    : Math.ceil(total / pageSize);
 
   const displayProducts = hasFilters
-    ? products.slice((page - 1) * pageSize, page * pageSize)
+    ? filteredProducts.slice((page - 1) * pageSize, page * pageSize)
     : products;
 
   const categoryOptions = useMemo(() => {
@@ -553,6 +544,7 @@ export default function AdminProductsPage() {
       }
       await deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));
+      setAllProducts((prev) => prev.filter((p) => p.id !== id));
       showToast("Product deleted", "success");
       setDeleteConfirm(null);
     } catch (err) {
@@ -576,7 +568,7 @@ export default function AdminProductsPage() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-dark">Products</h1>
-          <p className="text-sm text-foreground mt-1">{total} total products</p>
+          <p className="text-sm text-foreground mt-1">{hasFilters ? filteredProducts.length : total} total products</p>
         </div>
         <button
           onClick={startAdd}
@@ -1010,10 +1002,18 @@ export default function AdminProductsPage() {
         <input
           type="text"
           placeholder="Search by name, category, brand, variant..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
           className="flex-1 min-w-[200px] max-w-sm px-4 py-2.5 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
         />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="px-4 py-2.5 rounded-xl text-sm font-medium bg-primary/10 text-dark hover:bg-primary/20 transition-colors"
+          >
+            Clear
+          </button>
+        )}
         <button
           onClick={() => setShowFilters(!showFilters)}
           className={`px-4 py-2.5 rounded-xl text-sm font-medium border transition-colors ${
@@ -1106,15 +1106,6 @@ export default function AdminProductsPage() {
         </div>
       )}
 
-      {realTimePaused && (
-        <div className="flex items-center gap-2 mb-4 px-4 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 text-sm text-amber-700 dark:text-amber-400">
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          Filters or search active — loading all matching products.
-        </div>
-      )}
-
       <div className="bg-card rounded-2xl border border-card-border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-primary/10">
@@ -1137,7 +1128,7 @@ export default function AdminProductsPage() {
             {displayProducts.length === 0 ? (
               <tr>
                 <td colSpan={12} className="px-4 py-12 text-center text-foreground">
-                  {search || activeFilterCount > 0 ? "No products match your search or filters." : 'No products yet. Click "+ Add Product" to get started.'}
+                  {searchQuery || activeFilterCount > 0 ? "No products match your search or filters." : 'No products yet. Click "+ Add Product" to get started.'}
                 </td>
               </tr>
             ) : (
@@ -1240,9 +1231,9 @@ export default function AdminProductsPage() {
             )}
           </tbody>
         </table>
-        {displayTotal > 1 && (
-          <div className="flex items-center justify-center gap-6 mt-4 px-1">
-            <p className="text-sm text-foreground whitespace-nowrap">{total} products</p>
+        {displayTotal > 1 && products.length > 0 && (
+          <div className="flex items-center justify-center gap-6 mt-4 px-1 flex-wrap">
+            <p className="text-sm text-foreground whitespace-nowrap">{total} product{total !== 1 ? 's' : ''}</p>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}

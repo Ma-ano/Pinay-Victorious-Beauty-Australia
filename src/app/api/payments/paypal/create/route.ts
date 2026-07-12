@@ -5,13 +5,13 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const { items, total, shipping } = await request.json();
+    const { items, total, discount, shipping } = await request.json();
 
     if (!items?.length || total == null) {
       return NextResponse.json({ error: "Items and total are required" }, { status: 400 });
     }
 
-    const paypalOrder = await createPayPalOrder(items, total, shipping);
+    const paypalOrder = await createPayPalOrder(items, total, shipping, discount);
 
     if (!paypalOrder?.id) {
       return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });

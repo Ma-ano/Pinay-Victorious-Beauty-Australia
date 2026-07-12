@@ -126,7 +126,7 @@ export default function PayPalButtonGroup({ createOrder, onApprove, onError, onC
   if (!isReady) {
     return (
       <div className="flex items-center justify-center py-6">
-        <p className="text-sm text-foreground">Loading PayPal...</p>
+        <div className="w-full max-w-sm h-12 rounded-xl bg-primary/5 animate-pulse" />
       </div>
     );
   }

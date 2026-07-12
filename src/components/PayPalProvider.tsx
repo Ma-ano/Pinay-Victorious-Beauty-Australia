@@ -20,6 +20,12 @@ export default function PayPalProvider({ children }: { children: ReactNode }) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (typeof window !== "undefined" && (window as any).paypal) {
+      setLoaded(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (loaded) {
       let attempts = 0;
       const id = setInterval(() => {

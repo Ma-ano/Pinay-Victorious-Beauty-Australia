@@ -18,7 +18,8 @@ async function TrendingWrapper({ products }: { products: Product[] }) {
 }
 
 async function BestSellingWrapper({ products }: { products: Product[] }) {
-  return <BestSellingSection products={products} />;
+  const reviewStats = await fetchAllReviewStats();
+  return <BestSellingSection products={products} reviewStats={reviewStats} />;
 }
 
 export default async function Page() {

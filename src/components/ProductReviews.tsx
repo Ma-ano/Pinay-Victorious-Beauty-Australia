@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { collection, onSnapshot, query, where, type Timestamp } from "firebase/firestore";
+import { collection, getDocs, limit, orderBy, query, where, type Timestamp } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 
 const _fb = getDb();
@@ -9,7 +9,7 @@ if (!_fb) throw new Error("Firestore not initialized");
 const db = _fb;
 import StarDisplay from "@/components/StarDisplay";
 import { roundRating } from "@/lib/review-utils";
-import { getReviewsByProductId, type Review } from "@/data/reviews";
+import type { Review } from "@/data/reviews";
 
 interface ProductReviewsProps {
   productId: string;
@@ -68,18 +68,22 @@ export default function ProductReviews({ productId, productName }: ProductReview
   const [visibleCount, setVisibleCount] = useState(10);
 
   useEffect(() => {
-    const reviewsQuery = query(collection(db, "reviews"), where("productId", "==", productId));
-    return onSnapshot(reviewsQuery, (snapshot) => {
+    const fetchReviews = async () => {
+      const reviewsQuery = query(
+        collection(db, "reviews"),
+        where("productId", "==", productId),
+        orderBy("createdAt", "desc"),
+        limit(20),
+      );
+      const snapshot = await getDocs(reviewsQuery);
       setPersistedReviews(
         snapshot.docs.map((docSnap) => mapFirestoreReview(docSnap.id, docSnap.data() as FirestoreReview))
       );
-    });
+    };
+    fetchReviews();
   }, [productId]);
 
-  const reviews = useMemo(() => [
-    ...persistedReviews,
-    ...getReviewsByProductId(productId),
-  ], [persistedReviews, productId]);
+  const reviews = persistedReviews;
 
   const handleSortChange = (value: string) => {
     setSortBy(value);

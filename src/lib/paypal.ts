@@ -84,6 +84,7 @@ export async function createPayPalOrder(
   items: PayPalOrderItem[],
   total: number,
   shipping?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+  discount?: number,
 ) {
   const token = await getAccessToken();
 
@@ -118,6 +119,22 @@ export async function createPayPalOrder(
       },
     ],
   };
+
+  if (discount && discount > 0) {
+    (body.purchase_units as Record<string, unknown>[])[0] = {
+      ...(body.purchase_units as Record<string, unknown>[])[0] as Record<string, unknown>,
+      amount: {
+        ...((body.purchase_units as Record<string, unknown>[])[0] as Record<string, unknown>).amount as Record<string, unknown>,
+        breakdown: {
+          ...(((body.purchase_units as Record<string, unknown>[])[0] as Record<string, unknown>).amount as Record<string, unknown>).breakdown as Record<string, unknown>,
+          discount: {
+            currency_code: "AUD",
+            value: discount.toFixed(2),
+          },
+        },
+      },
+    };
+  }
 
   if (shippingObj) {
     (body.purchase_units as Record<string, unknown>[])[0].shipping = shippingObj;

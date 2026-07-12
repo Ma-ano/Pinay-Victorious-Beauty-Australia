@@ -49,7 +49,7 @@ export default function CustomerNavbar() {
   const router = useRouter();
   const { showToast } = useToast();
   const { items, removeItem, updateQuantity, totalItems, totalPrice } = useCart();
-  const { user, isAuthenticated, needsVerification, logout, isAdmin } = useAuth();
+  const { user, isAuthenticated, needsVerification, logout, isAdmin, loading } = useAuth();
 
   const ticking = useRef(false);
   useEffect(() => {
@@ -361,7 +361,9 @@ export default function CustomerNavbar() {
                       </span>
                     )}
                   </button>
-                  {user ? (
+                  {loading ? (
+                    <div className="w-24 h-9 rounded-xl bg-primary/10 animate-pulse" />
+                  ) : user ? (
                     <div className="flex items-center gap-0.5">
                       {isAuthenticated && (
                         <Link
@@ -460,7 +462,12 @@ export default function CustomerNavbar() {
                 <MobileNavLink href="/about" label="About" pathname={pathname} onClose={() => setMobileOpen(false)} />
                 <MobileNavLink href="/contact" label="Contact" pathname={pathname} onClose={() => setMobileOpen(false)} />
                 <div className="border-t border-primary/10 pt-2 mt-2">
-                  {isAuthenticated ? (
+                  {loading ? (
+                    <div className="flex flex-col gap-2 px-3">
+                      <div className="h-10 rounded-lg bg-primary/10 animate-pulse" />
+                      <div className="h-10 rounded-lg bg-primary/10 animate-pulse" />
+                    </div>
+                  ) : isAuthenticated ? (
                     <>
                       <MobileNavLink href="/wishlist" label="Wishlist" pathname={pathname} onClose={() => setMobileOpen(false)} />
                       <MobileNavLink href="/orders" label="My Orders" pathname={pathname} onClose={() => setMobileOpen(false)} />
@@ -635,7 +642,16 @@ export default function CustomerNavbar() {
                     Add {formatPrice(freeShippingThreshold - totalPrice)} more for free shipping
                   </p>
                 )}
-                <p className="text-xs text-center text-foreground">Cash on Delivery</p>
+                <div className="flex items-center justify-center gap-3 pt-1">
+                  <span className="text-[10px] text-foreground/50">We accept</span>
+                  <svg className="h-4 w-auto text-foreground/50" viewBox="0 0 24 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                    <rect x="1" y="1" width="22" height="14" rx="2" />
+                    <path d="M1 6h22" />
+                  </svg>
+                  <img src="/images/paypal-logo.png" alt="PayPal" className="h-4 w-auto opacity-50" />
+                  <img src="/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Black.png" alt="Afterpay" className="h-4 w-auto opacity-50 dark:hidden" />
+                  <img src="/images/Afterpay_Brand_Elements_Secondary_Logo_RGB_Bondi_Mint.png" alt="Afterpay" className="h-4 w-auto opacity-50 hidden dark:block" />
+                </div>
               </div>
             )}
           </div>

@@ -84,7 +84,6 @@ export default function CheckoutPage() {
   const { showToast } = useToast();
   const router = useRouter();
 
-  const [addressDraft] = useState<Address | null>(null);
   const [addressError, setAddressError] = useState("");
   const [saving, setSaving] = useState(false);
   const [placed, setPlaced] = useState(false);
@@ -96,14 +95,12 @@ export default function CheckoutPage() {
   const [paypalError, setPaypalError] = useState("");
   const [afterpayLoading, setAfterpayLoading] = useState(false);
   const mountedRef = useRef(true);
-  const [cardName, setCardName] = useState("");
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
 
   useEffect(() => {
-    getSettings().then((s) => setFreeShippingThreshold(s.freeShippingThreshold ?? 120));
+    getSettings().then((s) => {
+      if (mountedRef.current) setFreeShippingThreshold(s.freeShippingThreshold ?? 120);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -112,7 +109,9 @@ export default function CheckoutPage() {
   }, []);
 
   useEffect(() => {
-    getAllPromotions().then(setAllPromotions).catch(() => {});
+    getAllPromotions().then((p) => {
+      if (mountedRef.current) setAllPromotions(p);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -183,19 +182,6 @@ export default function CheckoutPage() {
     return true;
   }
 
-  function formatCardNumber(value: string) {
-    const digits = value.replace(/\D/g, "").slice(0, 16);
-    return digits.replace(/(\d{4})(?=\d)/g, "$1 ");
-  }
-
-  function formatExpiry(value: string) {
-    const digits = value.replace(/\D/g, "").slice(0, 4);
-    if (digits.length >= 3) {
-      return digits.slice(0, 2) + " / " + digits.slice(2);
-    }
-    return digits;
-  }
-
   const shippingAddress: Address = {
     street: checkoutAddress.street.trim(),
     suburb: checkoutAddress.suburb?.trim() || "",
@@ -205,16 +191,24 @@ export default function CheckoutPage() {
     country: checkoutAddress.country.trim(),
   };
 
+function generateOrderNumber(): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let result = "ORD-";
+  for (let i = 0; i < 8; i++) result += chars.charAt(Math.random() * chars.length | 0);
+  return result;
+}
+
   async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string, cardBrand?: string | null, payerEmail?: string, overridePaymentMethod?: string) {
     const orderData: Record<string, unknown> = {
       userId: currentUser.uid,
       customerName: currentUser.name,
       customerEmail: currentUser.email,
       customerPhone: currentUser.phone || "",
-      items: items.map((i) => ({
+        items: items.map((i) => ({
         productId: i.product.id,
         name: i.product.name,
         price: i.variant?.price ?? i.product.price,
+        total: (i.variant?.price ?? i.product.price) * i.quantity,
         quantity: i.quantity,
         variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
       })),
@@ -226,6 +220,7 @@ export default function CheckoutPage() {
       total: finalTotal,
       status: "processing",
       createdAt: serverTimestamp(),
+      orderNumber: generateOrderNumber(),
     };
 
     if (orderId) {
@@ -251,52 +246,6 @@ export default function CheckoutPage() {
     await setDoc(orderRef, orderData);
   }
 
-  async function handleCardPay() {
-    if (!validateAddress()) return;
-    setAfterpayLoading(true);
-    try {
-      const res = await fetch("/api/payments/afterpay/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          customerName: currentUser.name,
-          customerPhone: currentUser.phone || "",
-          email: currentUser.email,
-          items: items.map((i) => ({
-            productId: i.product.id,
-            name: i.product.name,
-            price: i.variant?.price ?? i.product.price,
-            quantity: i.quantity,
-            unitAmount: i.variant?.price ?? i.product.price,
-            variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
-          })),
-          subtotal: totalPrice,
-          total: finalTotal,
-          discount,
-          discountCode: appliedPromo?.code || null,
-          shipping: {
-            name: `${currentUser.name}`,
-            line1: shippingAddress.street,
-            city: shippingAddress.city,
-            state: shippingAddress.state,
-            postcode: shippingAddress.postcode,
-            country: shippingAddress.country,
-            phoneNumber: currentUser.phone || "",
-          },
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to create checkout");
-      if (!data.checkoutUrl) throw new Error("Missing checkout URL");
-      window.location.href = data.checkoutUrl;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "Payment error";
-      showToast(msg, "error");
-    } finally {
-      if (mountedRef.current) setAfterpayLoading(false);
-    }
-  }
-
   async function handlePayPalCreateOrder() {
     if (!validateAddress()) throw new Error("Please fill in all shipping address fields");
     setPaypalError("");
@@ -311,6 +260,7 @@ export default function CheckoutPage() {
             unitAmount: i.variant?.price ?? i.product.price,
           })),
           total: finalTotal,
+          discount,
           shipping: shippingAddress,
           customerEmail: currentUser?.email,
         }),
@@ -327,7 +277,7 @@ export default function CheckoutPage() {
     }
   }
 
-  async function handlePayPalApprove(data: Record<string, unknown>) {
+  async function captureAndCreateOrder(data: Record<string, unknown>, methodOverride: string) {
     setSaving(true);
     try {
       const res = await fetch("/api/payments/paypal/capture", {
@@ -349,7 +299,7 @@ export default function CheckoutPage() {
         result.fundingSource,
         result.cardBrand as string | null | undefined,
         result.payerEmail as string | undefined,
-        "paypal",
+        methodOverride,
       );
       if (!mountedRef.current) return;
       clearCart();
@@ -362,6 +312,9 @@ export default function CheckoutPage() {
       if (mountedRef.current) setSaving(false);
     }
   }
+
+  const handleCardApprove = (data: Record<string, unknown>) => captureAndCreateOrder(data, "card");
+  const handlePayPalApprove = (data: Record<string, unknown>) => captureAndCreateOrder(data, "paypal");
 
   function handlePayPalCancel() {
     if (!mountedRef.current) return;
@@ -419,14 +372,7 @@ export default function CheckoutPage() {
     }
   }
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("afterpay") === "cancelled") {
-      showToast("Afterpay payment was cancelled", "info");
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, "", cleanUrl);
-    }
-  }, []);
+
 
   if (loading) {
     return <CheckoutFormSkeleton />;
@@ -553,103 +499,31 @@ export default function CheckoutPage() {
             </div>
 
             {paymentMethod === "card" && (
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Card Number</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <rect x="1" y="4" width="22" height="16" rx="2" />
-                        <path d="M1 10h22" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
-                      placeholder="1234 5678 9012 3456"
-                      maxLength={19}
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
+              <div className="text-center py-6">
+                <p className="text-sm text-foreground/70 mb-6 max-w-xs mx-auto">
+                  Fast and secure payments with your card, powered by PayPal.
+                  🔒 For your security, please make sure your PayPal shipping address matches the delivery address you entered on this website.
+
+                </p>
+                {paypalClientId ? (
+                  <>
+                    <PayPalButtonGroup
+                      createOrder={handlePayPalCreateOrder}
+                      onApprove={handleCardApprove}
+                      onCancel={handlePayPalCancel}
+                      onError={handlePayPalError}
+                      disabled={saving}
+                      isReady={paypalReady}
+                      amount={finalTotal}
+                      fundingSources={["card"]}
                     />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-foreground mb-1.5">Cardholder Name</label>
-                  <div className="relative">
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                        <path d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
-                      </svg>
-                    </div>
-                    <input
-                      type="text"
-                      value={cardName}
-                      onChange={(e) => setCardName(e.target.value)}
-                      placeholder="John Doe"
-                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1.5">Expiry</label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <rect x="3" y="4" width="18" height="18" rx="2" />
-                          <path d="M16 2v4M8 2v4M3 10h18" />
-                        </svg>
-                      </div>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(formatExpiry(e.target.value))}
-                        placeholder="MM / YY"
-                        maxLength={7}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1.5">CVV</label>
-                    <div className="relative">
-                      <div className="absolute left-3 top-1/2 -translate-y-1/2 text-foreground/40">
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <rect x="3" y="7" width="18" height="12" rx="2" />
-                          <circle cx="12" cy="13" r="2" />
-                          <path d="M18 7V5a2 2 0 00-2-2H8a2 2 0 00-2 2v2" />
-                        </svg>
-                      </div>
-                      <input
-                        type="text"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                        placeholder="123"
-                        maxLength={4}
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-primary/20 bg-background text-dark text-sm focus:outline-none focus:border-accent focus:ring-2 focus:ring-accent/20 transition-all"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleCardPay}
-                  disabled={afterpayLoading}
-                  className="w-full bg-accent text-white py-3.5 rounded-xl font-semibold hover:bg-accent/85 transition-all text-sm disabled:opacity-50 shadow-sm active:scale-[0.98]"
-                >
-                  {afterpayLoading ? "Redirecting to Afterpay..." : `Pay $${finalTotal.toFixed(2)}`}
-                </button>
-
-                <div className="flex items-center justify-center gap-2 text-xs text-foreground/60">
-                  <svg className="w-4 h-4 text-accent/60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-                    <rect x="3" y="11" width="18" height="10" rx="2" />
-                    <path d="M7 11V7a5 5 0 0110 0v4" />
-                  </svg>
-                  <span>Secured by <span className="font-medium text-accent/80">Afterpay</span>. Your payment is safely processed on their site.</span>
-                </div>
+                    {paypalError && (
+                      <p className="text-red-500 text-xs mt-2 text-center">{paypalError}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm text-red-500">Card payments are not configured.</p>
+                )}
               </div>
             )}
 

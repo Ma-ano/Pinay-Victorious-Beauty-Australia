@@ -219,59 +219,9 @@ export async function getProductReviews(productId: string): Promise<{ avgRating:
   }
 }
 
-export async function getProductSoldCount(productId: string): Promise<number> {
-  try {
-    const q = query(
-      collection(getDb(), "orders"),
-      where("status", "in", ["completed"])
-    );
-    const snap = await getDocs(q);
-    let count = 0;
-    snap.docs.forEach((docSnap) => {
-      const data = docSnap.data();
-      if (data.items) {
-        data.items.forEach((item: { productId: string; quantity: number }) => {
-          if (item.productId === productId) {
-            count += item.quantity || 0;
-          }
-        });
-      }
-    });
-    return count;
-  } catch {
-    return 0;
-  }
-}
-
-async function enrichProductWithStats(product: Product): Promise<Product & { avgRating: number; reviewCount: number; soldCount: number }> {
-  const [reviews, sold] = await Promise.all([
-    getProductReviews(product.id),
-    getProductSoldCount(product.id),
-  ]);
-  return { ...product, avgRating: reviews.avgRating, reviewCount: reviews.reviewCount, soldCount: sold };
-}
-
 export async function getSaleProducts(): Promise<Product[]> {
   const all = await getAllProducts();
   return all.filter((p) => p.isSale);
-}
-
-export async function getTrendingProducts(): Promise<Product[]> {
-  const all = await getAllProducts();
-  const enriched = await Promise.all(all.map(enrichProductWithStats));
-  return enriched.sort((a, b) => {
-    if (b.avgRating !== a.avgRating) return b.avgRating - a.avgRating;
-    return a.id.localeCompare(b.id);
-  });
-}
-
-export async function getBestSellingProducts(): Promise<Product[]> {
-  const all = await getAllProducts();
-  const enriched = await Promise.all(all.map(enrichProductWithStats));
-  return enriched.sort((a, b) => {
-    if (b.soldCount !== a.soldCount) return b.soldCount - a.soldCount;
-    return a.id.localeCompare(b.id);
-  });
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {

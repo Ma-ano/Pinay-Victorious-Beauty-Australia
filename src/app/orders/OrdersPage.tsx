@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import {
   collection,
   doc,
-  onSnapshot,
+  getDocs,
+  limit,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -60,6 +62,7 @@ interface CustomerOrder {
   cardBrand?: string;
   discount?: number;
   discountCode?: string | null;
+  orderNumber?: string;
   createdAt?: Timestamp;
 }
 
@@ -108,13 +111,10 @@ function formatDate(ts?: Timestamp): string {
 }
 
 function paymentLabel(order: CustomerOrder): string {
-  if (order.paymentMethod === "paypal" || order.paymentMethod === "card") {
-    return "PayPal";
-  }
-  if (order.paymentMethod === "afterpay") {
-    return "Afterpay";
-  }
-  return "COD";
+  if (order.paymentMethod === "paypal") return "PayPal";
+  if (order.paymentMethod === "card") return "Debit / Credit";
+  if (order.paymentMethod === "afterpay") return "Afterpay";
+  return "Unknown";
 }
 
 function reviewDocId(orderId: string, productId: string) {
@@ -180,7 +180,7 @@ export default function OrdersPage() {
     getProductInfoMap().then((info) => {
       setProductSlugById(info.slug);
       setProductImageById(info.image);
-    });
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -191,42 +191,52 @@ export default function OrdersPage() {
     }
   }, [isAuthenticated, loading, needsVerification, router]);
 
-  useEffect(() => {
+  async function fetchOrders() {
     if (!user) return;
+    setOrdersLoading(true);
+    try {
+      const snapshot = await getDocs(query(collection(db, "orders"), where("userId", "==", user.uid)));
+      const nextOrders = snapshot.docs
+        .map((docSnap) => ({
+          firestoreId: docSnap.id,
+          ...docSnap.data(),
+        })) as CustomerOrder[];
+      nextOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+      setOrders(nextOrders);
+      setError("");
+    } catch {
+      setError("Unable to load your orders right now.");
+    } finally {
+      setOrdersLoading(false);
+    }
+  }
 
-    const ordersQuery = query(collection(db, "orders"), where("userId", "==", user.uid));
-    return onSnapshot(
-      ordersQuery,
-      (snapshot) => {
-        const nextOrders = snapshot.docs
-          .map((docSnap) => ({
-            firestoreId: docSnap.id,
-            ...docSnap.data(),
-          })) as CustomerOrder[];
-        nextOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
-        setOrders(nextOrders);
-        setOrdersLoading(false);
-        setError("");
-      },
-      () => {
-        setError("Unable to load your orders right now.");
-        setOrdersLoading(false);
-      }
-    );
-  }, [user]);
-
-  useEffect(() => {
+  async function fetchReviewedKeys() {
     if (!user) return;
-
-    const reviewsQuery = query(collection(db, "reviews"), where("userId", "==", user.uid));
-    return onSnapshot(reviewsQuery, (snapshot) => {
+    try {
+      const snapshot = await getDocs(query(collection(db, "reviews"), where("userId", "==", user.uid), limit(50)));
       const nextKeys = new Set<string>();
       snapshot.docs.forEach((docSnap) => {
         const review = docSnap.data() as CustomerReview;
         nextKeys.add(reviewDocId(review.orderId, review.productId));
       });
       setReviewedKeys(nextKeys);
-    });
+    } catch {
+      console.error("Failed to fetch reviews");
+    }
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    fetchOrders();
+    fetchReviewedKeys();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const onFocus = () => { fetchOrders(); fetchReviewedKeys(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
   }, [user]);
 
   const activeReview = (() => {
@@ -252,6 +262,14 @@ export default function OrdersPage() {
     if (!user || !activeReview || !activeReviewKey) return;
     if (rating < 1 || rating > 5) {
       showToast("Choose a rating", "info");
+      return;
+    }
+    if (!content.trim()) {
+      showToast("Please write a review", "info");
+      return;
+    }
+    if (content.trim().length > 1000) {
+      showToast("Review must be under 1000 characters", "info");
       return;
     }
 
@@ -282,6 +300,7 @@ export default function OrdersPage() {
   }
 
   async function handleCancel(orderId: string) {
+    if (!user) return;
     try {
       await updateDoc(doc(db, "orders", orderId), {
         status: "cancelled",
@@ -320,9 +339,18 @@ export default function OrdersPage() {
           <h1 className="text-2xl md:text-3xl font-bold text-dark">My Orders</h1>
           <p className="text-sm text-foreground mt-1">Track your orders and review delivered items.</p>
         </div>
-        <Link href="/shop" className="text-sm font-medium text-accent hover:text-accent/80">
-          Continue shopping
-        </Link>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchOrders}
+            disabled={ordersLoading}
+            className="text-xs px-3 py-1.5 rounded-full bg-card border border-card-border text-foreground hover:border-accent/50 transition-all disabled:opacity-50"
+          >
+            {ordersLoading ? "Loading..." : "Refresh"}
+          </button>
+          <Link href="/shop" className="text-sm font-medium text-accent hover:text-accent/80">
+            Continue shopping
+          </Link>
+        </div>
       </div>
 
       {error && (
@@ -351,8 +379,11 @@ export default function OrdersPage() {
               <article key={order.firestoreId} className="bg-card border border-card-border rounded-2xl overflow-hidden">
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-5 py-4 bg-primary/10">
                   <div>
-                    <p className="text-sm font-semibold text-dark">Order #{order.firestoreId.slice(-8)}</p>
+                    <p className="text-sm font-semibold text-dark">Order #{order.orderNumber || order.firestoreId.slice(-8)}</p>
                     <p className="text-xs text-foreground">{formatDate(order.createdAt)} / {paymentLabel(order)}
+                      {order.paymentMethod === "card" && order.cardBrand && (
+                        <> — {order.cardBrand}{order.fundingSource ? ` (${order.fundingSource})` : ""}</>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -384,8 +415,8 @@ export default function OrdersPage() {
                     <span className={`text-xs font-semibold px-2.5 py-1 rounded-full capitalize ${statusColors[displayStatus(order.status)] || "bg-gray-100 text-gray-700"}`}>
                       {displayStatus(order.status)}
                     </span>
-                    {Number(order.total || order.subtotal || 0) > 0 && (
-                      <span className="text-sm font-bold text-accent">{formatPrice(Number(order.total || order.subtotal || 0))}</span>
+                    {(order.total ?? order.subtotal ?? 0) > 0 && (
+                      <span className="text-sm font-bold text-accent">{formatPrice(order.total ?? order.subtotal ?? 0)}</span>
                     )}
                   </div>
                 </div>

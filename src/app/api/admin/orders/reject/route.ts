@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
-import { refundPayPalOrder } from "@/lib/paypal";
 
 export const dynamic = "force-dynamic";
 
@@ -33,17 +32,6 @@ export async function POST(request: Request) {
     const orderSnap = await getAdminDb().collection("orders").doc(orderId).get();
     if (!orderSnap.exists) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
-    }
-
-    const orderData = orderSnap.data()!;
-
-    if ((orderData.status === "paid" || orderData.paymentStatus === "paid") && orderData.paypalCaptureId) {
-      try {
-        await refundPayPalOrder(orderData.paypalCaptureId);
-      } catch {
-        console.error("PayPal refund error");
-        return NextResponse.json({ error: "Order rejected but refund failed" }, { status: 500 });
-      }
     }
 
     await getAdminDb().collection("orders").doc(orderId).update({

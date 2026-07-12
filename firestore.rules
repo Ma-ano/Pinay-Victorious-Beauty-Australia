@@ -67,7 +67,10 @@ service cloud.firestore {
            request.resource.data.stock >= 0)) &&
         (!("discount" in request.resource.data) ||
           (request.resource.data.discount is number &&
-           request.resource.data.discount >= 0));
+           request.resource.data.discount >= 0)) &&
+        (!("sold" in request.resource.data) ||
+          (request.resource.data.sold is number &&
+           request.resource.data.sold >= 0));
       allow delete: if request.auth != null &&
         request.auth.token.isAdmin == true;
     }
