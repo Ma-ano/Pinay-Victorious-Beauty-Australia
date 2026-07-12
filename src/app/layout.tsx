@@ -49,6 +49,9 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, "max-video-preview": -1, "max-image-preview": "large", "max-snippet": -1 },
   },
+  verification: {
+    google: "_BGOrV8oBRRoUUIeEpxPXuMF1j_fDsi9pxZtF8BfmxE",
+  },
   icons: {
     icon: "/images/TitleBarLogo.png",
     shortcut: "/images/TitleBarLogo.png",
