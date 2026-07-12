@@ -70,8 +70,22 @@ export default async function RootLayout({
   preconnect("https://www.paypal.com");
   preconnect("https://www.paypalobjects.com");
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "Pinay Victorious Beauty",
+    url: "https://www.pinayvictoriousbeauty.com.au",
+    logo: "https://www.pinayvictoriousbeauty.com.au/logo.png",
+  };
+
   return (
     <html lang="en" className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col">
         <MotionProvider>
         <AuthProvider>
