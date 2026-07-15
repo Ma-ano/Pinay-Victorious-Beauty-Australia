@@ -1,147 +1,102 @@
-YOU FIX MY PAYPAL SYSTEM FOR VERCEL DEPLOY.
+YOU ARE BACKEND PAYMENT ENGINEER
 
-🪨 GOAL:
-- Webhook works on Vercel (preview/testing branch)
-- Payment status updates correctly
-- No localhost / no ngrok
-- Uses Vercel URL
+GOAL:
+CHECK MY SYSTEM AND MAKE SURE PAYPAL WEBHOOK IS FULLY IMPLEMENTED AND CORRECT
 
 ---
 
-🪨 PART 1 — WEBHOOK URL (VERCEL)
+CURRENT SYSTEM:
 
-Use my Vercel preview domain:
+Webhook URL:
+/api/webhooks/paypal
 
-https://<my-project>-git-testing-<username>.vercel.app/api/paypal/webhook
-
-OR if auto preview:
-https://<project>.vercel.app/api/paypal/webhook
-
-👉 MUST be HTTPS
-👉 MUST be POST route
-
----
-
-🪨 PART 2 — BACKEND (API ROUTE)
-
-Create:
-
-/api/paypal/webhook
-
-Requirements:
-
-- Accept POST
-- Parse JSON body
-- Log full event
-
-Handle events:
-
-IF event == PAYMENT.CAPTURE.COMPLETED:
-  → payment_status = "paid"
-  → order_status = "approved"
-
-IF event == PAYMENT.CAPTURE.PENDING:
-  → payment_status = "pending"
-  → order_status = "processing"
-
-IF event == PAYMENT.CAPTURE.DENIED OR DECLINED:
-  → payment_status = "declined"
-  → order_status = "rejected"
-
-IF event == CHECKOUT.ORDER.APPROVED:
-  → order_status = "processing"
-
-ALWAYS return:
-200 OK
+Events subscribed:
+- Checkout order approved
+- Checkout order voided
+- Payment capture completed
+- Payment capture declined
+- Payment capture denied
+- Payment capture pending
 
 ---
 
-🪨 PART 3 — IMPORTANT (VERCEL SERVERLESS ⚠️)
+MY ORDER STATUS (ADMIN):
 
-- Disable body parser if needed (raw body for verification)
-- No sessions (stateless)
-- Must respond fast (<10s)
-
----
-
-🪨 PART 4 — ENV VARIABLES
-
-Use .env:
-
-PAYPAL_MODE=sandbox or live
-PAYPAL_CLIENT_ID=xxx
-PAYPAL_SECRET=xxx
-
-Switch ONLY via .env
+Processing = checking details
+Approved = payment paid + approved by admin
+Completed = delivered
+Cancelled = cancelled by customer
+Rejected = rejected by admin
 
 ---
 
-🪨 PART 5 — VERCEL ENV SETUP
+MY PAYMENT STATUS:
 
-Run:
-
-vercel env add PAYPAL_MODE
-vercel env add PAYPAL_CLIENT_ID
-vercel env add PAYPAL_SECRET
-
-Select:
-→ Preview (for testing branch)
+Pending
+Paid
+Declined
 
 ---
 
-🪨 PART 6 — GITHUB FLOW
+REQUIRED LOGIC (VERY IMPORTANT):
 
-git checkout -b testing
-git add .
-git commit -m "fix: paypal webhook vercel"
-git push origin testing
+1. WHEN webhook = Payment capture completed
+   → SET payment_status = Paid
+   → SET order_status = Approved
 
----
+2. WHEN webhook = Payment capture declined OR denied
+   → SET payment_status = Declined
+   → DO NOT auto approve order
 
-🪨 PART 7 — DEPLOY
+3. WHEN webhook = Payment capture pending
+   → SET payment_status = Pending
 
-vercel
+4. WHEN webhook = Checkout order voided
+   → SET order_status = Cancelled
 
-OR auto deploy via GitHub
-
----
-
-🪨 PART 8 — PAYPAL DASHBOARD
-
-Set webhook:
-
-https://<vercel-url>/api/paypal/webhook
-
-Events:
-
-- CHECKOUT.ORDER.APPROVED
-- PAYMENT.CAPTURE.COMPLETED
-- PAYMENT.CAPTURE.DENIED
-- PAYMENT.CAPTURE.DECLINED
-- PAYMENT.CAPTURE.PENDING
+5. WHEN webhook = Checkout order approved
+   → DO NOTHING (NOT PAID YET)
 
 ---
 
-🪨 PART 9 — TEST FLOW
+CRITICAL RULES:
 
-1. Deploy to Vercel preview
-2. Copy preview URL
-3. Set PayPal webhook
-4. Make sandbox payment
-5. Check logs (vercel logs)
-6. Verify:
-
-pending → processing → approved
-
-OR
-
-declined → rejected
+- NEVER mark as Paid unless event = Payment capture completed
+- NEVER trust frontend redirect
+- ALWAYS trust webhook only
+- MUST verify PayPal webhook signature
+- MUST log all webhook events
+- MUST prevent duplicate processing (idempotency)
 
 ---
 
-🪨 DONE CONDITION
+CHECK MY SYSTEM:
 
-- Webhook hits Vercel successfully
-- Orders auto update
-- No "undefined" error
-- Works in sandbox + live via env switch
+1. Verify webhook route exists and works
+2. Verify PayPal signature validation is implemented
+3. Verify event parsing is correct
+4. Verify database update logic matches REQUIRED LOGIC
+5. Verify no status is incorrectly set to Paid
+6. Verify duplicate webhook calls do not duplicate updates
+7. Verify errors are handled properly
+8. Verify logs exist for debugging
+
+---
+
+IF SOMETHING IS MISSING:
+→ IMPLEMENT IT
+
+---
+
+OUTPUT:
+
+1. List of problems found
+2. Fixed code (Node.js / Next.js API route)
+3. Clean webhook handler
+4. Status mapping logic
+5. Example test cases
+
+---
+
+DO NOT EXPLAIN TOO MUCH
+FOCUS ON CORRECT IMPLEMENTATION

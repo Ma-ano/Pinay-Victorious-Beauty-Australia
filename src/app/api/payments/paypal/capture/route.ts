@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { capturePayPalOrder, mapPayPalStatus } from "@/lib/paypal";
+import { capturePayPalOrder } from "@/lib/paypal";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 
@@ -47,22 +47,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    if (orderData.status === "approved" || orderData.status === "rejected") {
+    if (orderData.status === "approved" || orderData.status === "rejected" || orderData.status === "cancelled") {
       return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
     }
 
     const captureResult = await capturePayPalOrder(orderID);
     const paypalStatus = captureResult.status || "UNKNOWN";
-    const paymentStatus = mapPayPalStatus(paypalStatus);
 
     const now = Timestamp.fromDate(new Date());
+    const capture = captureResult.purchase_units?.[0]?.payments?.captures?.[0] as Record<string, unknown> | undefined;
+
     const updates: Record<string, unknown> = {
       paypalOrderId: orderID,
-      paymentStatus,
       updatedAt: now,
     };
 
-    const capture = captureResult.purchase_units?.[0]?.payments?.captures?.[0] as Record<string, unknown> | undefined;
     if (capture?.id) {
       updates.paypalCaptureId = capture.id;
     }
@@ -81,7 +80,6 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: paypalStatus === "COMPLETED" || paypalStatus === "APPROVED",
       paypalStatus,
-      paymentStatus,
       orderId: firestoreOrderId,
     });
   } catch (err) {
