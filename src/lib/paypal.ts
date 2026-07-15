@@ -2,8 +2,12 @@ import { normalizeState } from "@/data/address-config";
 
 function getApiBase(): string {
   if (process.env.PAYPAL_API_BASE_URL) return process.env.PAYPAL_API_BASE_URL;
-  if (process.env.PAYPAL_USE_SANDBOX === "true") return "https://api-m.sandbox.paypal.com";
-  return "https://api-m.paypal.com";
+  const env = process.env.PAYPAL_ENV || (process.env.PAYPAL_USE_SANDBOX === "true" ? "sandbox" : "live");
+  return env === "sandbox" ? "https://api-m.sandbox.paypal.com" : "https://api-m.paypal.com";
+}
+
+export function getPayPalEnv(): string {
+  return process.env.PAYPAL_ENV || (process.env.PAYPAL_USE_SANDBOX === "true" ? "sandbox" : "live");
 }
 
 const API_BASE = getApiBase();
@@ -85,6 +89,7 @@ export async function createPayPalOrder(
   total: number,
   shipping?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
   discount?: number,
+  customId?: string,
 ) {
   const token = await getAccessToken();
 
@@ -138,6 +143,10 @@ export async function createPayPalOrder(
 
   if (shippingObj) {
     (body.purchase_units as Record<string, unknown>[])[0].shipping = shippingObj;
+  }
+
+  if (customId) {
+    (body.purchase_units as Record<string, unknown>[])[0].custom_id = customId;
   }
 
   const res = await fetch(`${API_BASE}/v2/checkout/orders`, {
@@ -237,4 +246,53 @@ export async function sendPayPalTracking(
     const text = await res.text();
     console.error(`PayPal tracking failed (${res.status}): ${text}`);
   }
+}
+
+interface WebhookHeaders {
+  "PAYPAL-AUTH-ALGO": string;
+  "PAYPAL-CERT-URL": string;
+  "PAYPAL-TRANSMISSION-ID": string;
+  "PAYPAL-TRANSMISSION-SIG": string;
+  "PAYPAL-TRANSMISSION-TIME": string;
+}
+
+export async function verifyPayPalWebhookSignature(
+  headers: WebhookHeaders,
+  body: string,
+  webhookId: string,
+): Promise<boolean> {
+  const token = await getAccessToken();
+  const verificationBody = {
+    auth_algo: headers["PAYPAL-AUTH-ALGO"],
+    cert_url: headers["PAYPAL-CERT-URL"],
+    transmission_id: headers["PAYPAL-TRANSMISSION-ID"],
+    transmission_sig: headers["PAYPAL-TRANSMISSION-SIG"],
+    transmission_time: headers["PAYPAL-TRANSMISSION-TIME"],
+    webhook_id: webhookId,
+    webhook_event: JSON.parse(body),
+  };
+
+  const res = await fetch(`${API_BASE}/v1/notifications/verify-webhook-signature`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(verificationBody),
+  });
+
+  if (!res.ok) {
+    console.error("PayPal webhook verification failed", await res.text());
+    return false;
+  }
+
+  const data = await res.json();
+  return data.verification_status === "SUCCESS";
+}
+
+export function mapPayPalStatus(paypalStatus: string): string {
+  const upper = paypalStatus.toUpperCase();
+  if (["COMPLETED", "APPROVED"].includes(upper)) return "paid";
+  if (["FAILED", "DENIED", "DECLINED", "VOIDED", "EXPIRED"].includes(upper)) return "declined";
+  return "pending";
 }

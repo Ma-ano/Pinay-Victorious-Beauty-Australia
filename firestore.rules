@@ -19,8 +19,14 @@ service cloud.firestore {
         // Customer cancels own pending/paid/approved order
         (request.auth.uid == resource.data.userId &&
          request.resource.data.status == "cancelled" &&
-         resource.data.status in ["pending", "paid", "approved"]);
+         resource.data.status in ["pending", "paid", "approved", "processing"]);
       allow delete: if false;
+    }
+
+    // Pending Afterpay orders - API routes only (admin SDK bypasses rules)
+    match /pending_afterpay/{token} {
+      allow read, write: if request.auth != null &&
+        request.auth.token.isAdmin == true;
     }
 
     // Reviews - public read, customers create one verified review per delivered/received order item

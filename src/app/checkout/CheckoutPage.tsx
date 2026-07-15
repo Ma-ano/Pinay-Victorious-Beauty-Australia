@@ -95,6 +95,7 @@ export default function CheckoutPage() {
   const [paypalError, setPaypalError] = useState("");
   const [afterpayLoading, setAfterpayLoading] = useState(false);
   const mountedRef = useRef(true);
+  const firestoreOrderIdRef = useRef<string | null>(null);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
 
   useEffect(() => {
@@ -119,6 +120,20 @@ export default function CheckoutPage() {
       router.push("/login?redirect=checkout");
     }
   }, [loading, isAuthenticated, router]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const orderToken = params.get("orderToken");
+    const orderId = params.get("orderId");
+    if (params.get("afterpay") === "cancelled" && orderToken) {
+      fetch("/api/payments/afterpay/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderToken, orderId }),
+      }).catch(() => {});
+      showToast("Payment cancelled", "info");
+    }
+  }, []);
 
   const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
   const { ready: paypalReady } = usePayPalReady();
@@ -198,7 +213,7 @@ function generateOrderNumber(): string {
   return result;
 }
 
-  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string, cardBrand?: string | null, payerEmail?: string, overridePaymentMethod?: string) {
+  async function createFirestoreOrder(orderId?: string, paymentStatus?: string, captureId?: string, fundingSource?: string, cardBrand?: string | null, payerEmail?: string, overridePaymentMethod?: string, orderStatus?: string) {
     const orderData: Record<string, unknown> = {
       userId: currentUser.uid,
       customerName: currentUser.name,
@@ -218,7 +233,7 @@ function generateOrderNumber(): string {
       discount,
       discountCode: appliedPromo?.code || null,
       total: finalTotal,
-      status: "processing",
+      status: orderStatus || "processing",
       createdAt: serverTimestamp(),
       orderNumber: generateOrderNumber(),
     };
@@ -254,20 +269,36 @@ function generateOrderNumber(): string {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          customerName: currentUser.name,
+          customerPhone: currentUser.phone || "",
+          email: currentUser.email,
           items: items.map((i) => ({
+            productId: i.product.id,
             name: i.product.name,
+            price: i.variant?.price ?? i.product.price,
             quantity: i.quantity,
             unitAmount: i.variant?.price ?? i.product.price,
+            variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
           })),
+          subtotal: totalPrice,
           total: finalTotal,
           discount,
-          shipping: shippingAddress,
-          customerEmail: currentUser?.email,
+          discountCode: appliedPromo?.code || null,
+          shipping: {
+            name: `${currentUser.name}`,
+            line1: shippingAddress.street,
+            city: shippingAddress.city,
+            state: shippingAddress.state,
+            postcode: shippingAddress.postcode,
+            country: shippingAddress.country,
+            phoneNumber: currentUser.phone || "",
+          },
         }),
       });
       const responseData = await res.json();
       if (!res.ok) throw new Error(responseData.error || "Failed to create PayPal order");
       if (!responseData.id) throw new Error("PayPal order ID missing from response");
+      firestoreOrderIdRef.current = responseData.firestoreId;
       return responseData.id as string;
     } catch (err) {
       const msg = err instanceof Error ? err.message : "PayPal error";
@@ -279,29 +310,25 @@ function generateOrderNumber(): string {
 
   async function captureAndCreateOrder(data: Record<string, unknown>, methodOverride: string) {
     setSaving(true);
+    const firestoreId = firestoreOrderIdRef.current;
+    if (!firestoreId) {
+      showToast("Order reference not found", "error");
+      if (mountedRef.current) setSaving(false);
+      return;
+    }
     try {
       const res = await fetch("/api/payments/paypal/capture", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderID: data.orderID }),
+        body: JSON.stringify({ orderID: data.orderID, firestoreOrderId: firestoreId }),
       });
       const result = await res.json();
       if (!res.ok || !result.success) {
-        throw new Error(result.error || "Payment capture failed");
+        throw new Error(result.error || "Payment declined");
       }
 
       if (!mountedRef.current) return;
 
-      await createFirestoreOrder(
-        data.orderID as string,
-        "paid",
-        result.captureId,
-        result.fundingSource,
-        result.cardBrand as string | null | undefined,
-        result.payerEmail as string | undefined,
-        methodOverride,
-      );
-      if (!mountedRef.current) return;
       clearCart();
       setPlaced(true);
       showToast("Payment successful! Order placed.", "success");

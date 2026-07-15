@@ -33,47 +33,11 @@ export async function POST(request: Request) {
     if (!orderSnap.exists) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
-    const orderData = orderSnap.data()!;
-    const isPayPal = orderData.paymentMethod === "paypal" || orderData.paymentMethod === "card" || orderData.paymentMethod === "afterpay";
 
-    const updates: Record<string, unknown> = {
+    await getAdminDb().collection("orders").doc(orderId).update({
+      status: "approved",
       updatedAt: new Date().toISOString(),
-    };
-    if (!isPayPal) {
-      const db = getAdminDb();
-      const orderRef = db.collection("orders").doc(orderId);
-
-      // Atomically update order status + product sold/stock
-      await db.runTransaction(async (transaction) => {
-        const snap = await transaction.get(orderRef);
-        if (!snap.exists) throw new Error("Order not found");
-        const current = snap.data()!;
-        if (current.status === "completed") {
-          // Idempotency guard — already completed
-          return;
-        }
-        transaction.update(orderRef, {
-          status: "completed",
-          paymentStatus: "paid",
-          updatedAt: new Date().toISOString(),
-        });
-
-        const items = current.items ?? [];
-        for (const item of items) {
-          const productRef = db.collection("products").doc(item.productId);
-          const productSnap = await transaction.get(productRef);
-          if (!productSnap.exists) continue;
-          const productData = productSnap.data()!;
-          const qty = item.quantity ?? 1;
-          transaction.update(productRef, {
-            sold: (productData.sold ?? 0) + qty,
-            stock: Math.max(0, (productData.stock ?? 0) - qty),
-          });
-        }
-      });
-    } else {
-      await getAdminDb().collection("orders").doc(orderId).update(updates);
-    }
+    });
 
     return NextResponse.json({ success: true });
   } catch {

@@ -108,13 +108,17 @@ const paymentColors: Record<string, string> = {
 
 const paymentStatusColors: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
+  approved: "bg-green-100 text-green-700",
   pending: "bg-yellow-100 text-yellow-700",
   failed: "bg-red-100 text-red-700",
+  cancelled: "bg-red-100 text-red-700",
+  declined: "bg-red-100 text-red-700",
 };
 
-function formatDate(ts?: Timestamp): string {
+function formatDate(ts?: Timestamp | string): string {
   if (!ts) return "-";
-  return ts.toDate().toLocaleDateString("en-AU", {
+  const date = typeof ts === "string" ? new Date(ts) : ts.toDate();
+  return date.toLocaleDateString("en-AU", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -275,7 +279,7 @@ function OrderDetailModal({
                   type="button"
                   disabled={updatingId === order.firestoreId}
                   onClick={() => {
-                    if (status === "completed") {
+                    if (status === "approved") {
                       setConfirmComplete(true);
                     } else {
                       onStatusChange(order.firestoreId, status);
@@ -302,16 +306,16 @@ function OrderDetailModal({
       {confirmComplete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setConfirmComplete(false)}>
           <div className="bg-card rounded-2xl border border-card-border shadow-2xl max-w-sm w-full p-6 mx-4" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-semibold text-dark text-sm mb-2">Confirm Status Change</h3>
+            <h3 className="font-semibold text-dark text-sm mb-2">Confirm Approval</h3>
             <p className="text-xs text-foreground mb-4">
-              Mark this order as completed? This will update product stock and sold counts.
+              Approve this order? This will reduce product stock and update sold counts.
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => { onStatusChange(order.firestoreId, "completed"); setConfirmComplete(false); }}
+                onClick={() => { onStatusChange(order.firestoreId, "approved"); setConfirmComplete(false); }}
                 className="px-4 py-2 bg-accent text-white rounded-xl text-xs font-medium hover:bg-accent/80 transition-colors"
               >
-                Yes, mark as completed
+                Yes, approve order
               </button>
               <button
                 onClick={() => setConfirmComplete(false)}
@@ -441,9 +445,6 @@ export default function AdminOrdersPage() {
         status: newStatus,
         updatedAt: serverTimestamp(),
       };
-      if (newStatus === "completed") {
-        statusUpdates.paymentStatus = "paid";
-      }
 
       await runTransaction(db, async (transaction) => {
         const orderSnap = await transaction.get(orderRef);
@@ -451,7 +452,7 @@ export default function AdminOrdersPage() {
         if (orderSnap.data()?.status === newStatus) return;
 
         const productEntries: Array<{ ref: any; snap: any; qty: number; variantId?: string }> = [];
-        if (newStatus === "completed" && order?.items) {
+        if (newStatus === "approved" && order?.items) {
           for (const item of order.items) {
             const productRef = doc(db, "products", item.productId);
             const productSnap = await transaction.get(productRef);

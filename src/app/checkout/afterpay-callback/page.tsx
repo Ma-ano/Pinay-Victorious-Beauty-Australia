@@ -14,10 +14,12 @@ export default function AfterpayCallbackPage() {
   const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
-    const orderToken = searchParams.get("orderToken");
-    if (!orderToken) {
+    const orderToken = searchParams.get("orderToken") || searchParams.get("token");
+    const orderId = searchParams.get("orderId");
+
+    if (!orderToken || !orderId) {
       setStatus("error");
-      setErrorMsg("Missing order token");
+      setErrorMsg("Missing order parameters");
       return;
     }
 
@@ -28,12 +30,12 @@ export default function AfterpayCallbackPage() {
         const res = await fetch("/api/payments/afterpay/capture", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderToken }),
+          body: JSON.stringify({ orderId, orderToken }),
         });
         const data = await res.json();
         if (cancelled) return;
         if (!res.ok || !data.success) {
-          throw new Error(data.error || "Payment capture failed");
+          throw new Error(data.error || "Payment confirmation failed");
         }
         setCookie(CART_COOKIE, "", 0);
         setStatus("success");
