@@ -52,7 +52,29 @@ export async function POST(request: Request) {
     }
 
     if (eventType === "CHECKOUT.ORDER.VOIDED") {
-      console.log("CHECKOUT.ORDER.VOIDED — no action needed, admin handles cancellation");
+      const paypalOrderId = (resource?.id as string) || "";
+      if (!paypalOrderId) {
+        console.log("CHECKOUT.ORDER.VOIDED — no order ID");
+        return NextResponse.json({ received: true });
+      }
+      const db = getAdminDb();
+      const snap = await db.collection("orders").where("paypalOrderId", "==", paypalOrderId).limit(1).get();
+      if (snap.empty) {
+        console.log(`CHECKOUT.ORDER.VOIDED — order not found for ${paypalOrderId}`);
+        return NextResponse.json({ received: true });
+      }
+      const doc = snap.docs[0];
+      const existingIds = doc.data()?.webhookEventIds as string[] | undefined;
+      if (existingIds?.includes(eventId)) {
+        console.log(`CHECKOUT.ORDER.VOIDED — duplicate event ${eventId} skipped`);
+        return NextResponse.json({ received: true });
+      }
+      await doc.ref.update({
+        status: "cancelled",
+        updatedAt: new Date().toISOString(),
+        webhookEventIds: FieldValue.arrayUnion(eventId),
+      });
+      console.log(`CHECKOUT.ORDER.VOIDED — order ${paypalOrderId} cancelled`);
       return NextResponse.json({ received: true });
     }
 
@@ -113,11 +135,11 @@ export async function POST(request: Request) {
     }
 
     const updates: Record<string, unknown> = {
-      paymentStatus,
       updatedAt: new Date().toISOString(),
       webhookEventIds: FieldValue.arrayUnion(eventId),
     };
 
+    if (paymentStatus) updates.paymentStatus = paymentStatus;
     if (captureId) updates.paypalCaptureId = captureId;
 
     await orderDoc.ref.update(updates);
