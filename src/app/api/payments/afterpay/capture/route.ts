@@ -65,7 +65,6 @@ export async function POST(request: Request) {
     if (captureResult.status === "APPROVED") {
       await orderRef.update({
         paymentStatus: "paid",
-        status: "approved",
         afterpayToken: orderToken,
         afterpayOrderId: captureResult.id || orderToken,
         updatedAt: now,
