@@ -101,9 +101,10 @@ async function getProductInfoMap(): Promise<{ slug: Map<string, string>; image: 
   }
 }
 
-function formatDate(ts?: Timestamp): string {
+function formatDate(ts?: Timestamp | string): string {
   if (!ts) return "Processing";
-  return ts.toDate().toLocaleDateString("en-AU", {
+  const date = typeof ts === "string" ? new Date(ts) : ts.toDate();
+  return date.toLocaleDateString("en-AU", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -201,7 +202,11 @@ export default function OrdersPage() {
           firestoreId: docSnap.id,
           ...docSnap.data(),
         })) as CustomerOrder[];
-      nextOrders.sort((a, b) => (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0));
+      nextOrders.sort((a, b) => {
+  const aTime = a.createdAt ? (typeof a.createdAt === "string" ? new Date(a.createdAt).getTime() : a.createdAt.toMillis()) : 0;
+  const bTime = b.createdAt ? (typeof b.createdAt === "string" ? new Date(b.createdAt).getTime() : b.createdAt.toMillis()) : 0;
+  return bTime - aTime;
+});
       setOrders(nextOrders);
       setError("");
     } catch {

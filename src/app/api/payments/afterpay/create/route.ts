@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createAfterpayCheckout, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,47 @@ export async function POST(request: Request) {
     }
 
     const origin = request.headers.get("origin") || process.env.SITE_URL || "";
+    const now = Timestamp.fromDate(new Date());
+
+    const orderRef = getAdminDb().collection("orders").doc();
+    const orderData = {
+      userId: decoded.uid,
+      customerName: customerName || "",
+      customerEmail: email,
+      customerPhone: customerPhone || "",
+      items: items.map(
+        (i: {
+          productId?: string;
+          name: string;
+          price: number;
+          quantity: number;
+          variant?: { id: string; name: string } | null;
+        }) => ({
+          productId: i.productId || "",
+          name: i.name,
+          price: i.price,
+          quantity: i.quantity,
+          variant: i.variant || null,
+        })
+      ),
+      shipping: {
+        street: shipping.line1 || "",
+        city: shipping.city || "",
+        state: shipping.state || "",
+        postcode: shipping.postcode || "",
+        country: shipping.country || "Australia",
+      },
+      paymentMethod: "afterpay",
+      subtotal: subtotal ?? total,
+      discount: discount ?? 0,
+      discountCode: discountCode || null,
+      total,
+      status: "processing",
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await getAdminDb().collection("orders").doc(orderRef.id).set(orderData);
 
     const afterpayItems = items.map(
       (i: { name: string; quantity: number; unitAmount: number }) => ({
@@ -144,12 +186,15 @@ export async function POST(request: Request) {
         country: shipping.country || "Australia",
         phoneNumber: shipping.phoneNumber || customerPhone || "",
       },
-      redirectConfirmUrl: `${origin}/checkout/afterpay-callback`,
-      redirectCancelUrl: `${origin}/checkout?afterpay=cancelled`,
+      redirectConfirmUrl: `${origin}/checkout/afterpay-callback?orderId=${orderRef.id}`,
+      redirectCancelUrl: `${origin}/checkout?afterpay=cancelled&orderId=${orderRef.id}`,
       email,
+      customerName,
+      merchantReference: orderRef.id,
     });
 
     const pendingData = {
+      orderId: orderRef.id,
       userId: decoded.uid,
       customerName: customerName || "",
       customerEmail: email,
@@ -191,9 +236,10 @@ export async function POST(request: Request) {
       .doc(result.token)
       .set(pendingData);
 
-    return NextResponse.json({ token: result.token, checkoutUrl: result.checkoutUrl });
-  } catch {
-    console.error("Failed to create Afterpay checkout");
-    return NextResponse.json({ error: "Payment setup failed" }, { status: 500 });
+    return NextResponse.json({ token: result.token, checkoutUrl: result.redirectCheckoutUrl, orderId: orderRef.id });
+  } catch (err) {
+    console.error("Failed to create Afterpay checkout:", err);
+    const message = err instanceof Error ? err.message : "Payment setup failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

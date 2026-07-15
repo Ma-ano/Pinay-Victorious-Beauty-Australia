@@ -38,19 +38,21 @@ interface CreateCheckoutParams {
   redirectConfirmUrl: string;
   redirectCancelUrl: string;
   email: string;
+  customerName: string;
+  merchantReference?: string;
 }
 
 export interface AfterpayCheckoutResponse {
   token: string;
-  checkoutUrl: string;
-  expiresAt: string;
+  redirectCheckoutUrl: string;
+  expires: string;
 }
 
 interface AfterpayCaptureResponse {
   id: string;
   status: string;
-  totalAmount: AfterpayAmount;
-  paymentLog?: Record<string, unknown>[];
+  originalAmount: AfterpayAmount;
+  paymentState?: string;
 }
 
 interface AfterpayRefundResponse {
@@ -92,16 +94,22 @@ async function fetchWithRetry(url: string, options: RequestInit, retries = 2): P
 export async function createAfterpayCheckout(
   params: CreateCheckoutParams
 ): Promise<AfterpayCheckoutResponse> {
+  const names = (params.customerName || "").split(" ");
+  const givenNames = names[0] || "Customer";
+  const surname = names.slice(1).join(" ") || "Name";
+
   const body = {
+    mode: "STANDARD",
     amount: { amount: params.total, currency: "AUD" },
     items: params.items,
-    consumer: { givenNames: "", surname: "", email: params.email },
+    consumer: { givenNames, surname, email: params.email },
     shipping: params.shipping,
     billing: params.shipping,
     merchant: {
       redirectConfirmUrl: params.redirectConfirmUrl,
       redirectCancelUrl: params.redirectCancelUrl,
     },
+    merchantReference: params.merchantReference,
   };
 
   const res = await fetchWithRetry(`${API_BASE}/checkouts`, {
@@ -116,7 +124,7 @@ export async function createAfterpayCheckout(
   if (!res.ok) {
     const err = await res.text();
     console.error(`Afterpay create checkout failed: ${err}`);
-    throw new Error("Afterpay checkout creation failed");
+    throw new Error(`Afterpay checkout creation failed: ${err}`);
   }
 
   return res.json();
@@ -125,18 +133,19 @@ export async function createAfterpayCheckout(
 export async function captureAfterpayPayment(
   token: string
 ): Promise<AfterpayCaptureResponse> {
-  const res = await fetchWithRetry(`${API_BASE}/checkouts/${token}/capture`, {
+  const res = await fetchWithRetry(`${API_BASE}/payments/capture`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Basic ${getAuthToken()}`,
     },
+    body: JSON.stringify({ token }),
   });
 
   if (!res.ok) {
     const err = await res.text();
     console.error(`Afterpay capture failed: ${err}`);
-    throw new Error("Afterpay capture failed");
+    throw new Error(`Afterpay capture failed: ${err}`);
   }
 
   return res.json();
@@ -164,6 +173,31 @@ export async function refundAfterpayPayment(
     const err = await res.text();
     console.error(`Afterpay refund failed: ${err}`);
     throw new Error("Afterpay refund failed");
+  }
+
+  return res.json();
+}
+
+interface AfterpayCheckoutStatusResponse {
+  token: string;
+  status: string;
+  merchantReference?: string;
+}
+
+export async function getAfterpayCheckoutStatus(
+  token: string
+): Promise<AfterpayCheckoutStatusResponse> {
+  const res = await fetchWithRetry(`${API_BASE}/checkouts/${token}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Basic ${getAuthToken()}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error(`Afterpay checkout status check failed: ${err}`);
+    throw new Error("Afterpay checkout verification failed");
   }
 
   return res.json();

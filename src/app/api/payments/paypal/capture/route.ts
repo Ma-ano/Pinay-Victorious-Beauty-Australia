@@ -1,38 +1,88 @@
 import { NextResponse } from "next/server";
-import { capturePayPalOrder } from "@/lib/paypal";
+import { capturePayPalOrder, mapPayPalStatus } from "@/lib/paypal";
+import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
+function getSessionCookie(request: Request): string | null {
+  const cookieHeader = request.headers.get("cookie") || "";
+  const match = cookieHeader.match(/(?:^|;\s*)__session=([^;]+)/);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export async function POST(request: Request) {
   try {
-    const { orderID } = await request.json();
+    const { orderID, firestoreOrderId } = await request.json();
 
     if (!orderID) {
       return NextResponse.json({ error: "Order ID is required" }, { status: 400 });
     }
 
-    const captureData = await capturePayPalOrder(orderID as string);
-
-    if (captureData.status === "COMPLETED") {
-      const ps = captureData.payment_source as Record<string, unknown> | undefined;
-      const hasCard = !!ps?.card;
-      const hasPayPal = !!ps?.paypal;
-      const fundingSource = hasPayPal ? "paypal" : hasCard ? "card" : "unknown";
-      const cardBrand = hasCard ? ((ps!.card as Record<string, unknown>)?.brand as string | null ?? null) : null;
-      const payerEmail = (captureData.payer as Record<string, unknown> | undefined)?.email_address as string | undefined;
-
-      return NextResponse.json({
-        success: true,
-        captureId: (captureData.purchase_units?.[0]?.payments?.captures?.[0] as Record<string, unknown>)?.id as string | undefined,
-        fundingSource,
-        cardBrand,
-        payerEmail,
-      });
+    if (!firestoreOrderId) {
+      return NextResponse.json({ error: "firestoreOrderId is required" }, { status: 400 });
     }
 
+    const session = getSessionCookie(request);
+    if (!session) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
+    let decoded;
+    try {
+      decoded = await getAdminAuth().verifySessionCookie(session);
+    } catch {
+      return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
+    }
+
+    const orderRef = getAdminDb().collection("orders").doc(firestoreOrderId);
+    const orderSnap = await orderRef.get();
+
+    if (!orderSnap.exists) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    const orderData = orderSnap.data()!;
+    if (orderData.userId !== decoded.uid) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    if (orderData.status === "approved" || orderData.status === "rejected") {
+      return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
+    }
+
+    const captureResult = await capturePayPalOrder(orderID);
+    const paypalStatus = captureResult.status || "UNKNOWN";
+    const paymentStatus = mapPayPalStatus(paypalStatus);
+
+    const now = Timestamp.fromDate(new Date());
+    const updates: Record<string, unknown> = {
+      paypalOrderId: orderID,
+      paymentStatus,
+      updatedAt: now,
+    };
+
+    const capture = captureResult.purchase_units?.[0]?.payments?.captures?.[0] as Record<string, unknown> | undefined;
+    if (capture?.id) {
+      updates.paypalCaptureId = capture.id;
+    }
+
+    if (paypalStatus === "COMPLETED") {
+      const ps = captureResult.payment_source as Record<string, unknown> | undefined;
+      updates.fundingSource = ps?.paypal ? "paypal" : ps?.card ? "card" : "unknown";
+      if (ps?.card) {
+        updates.cardBrand = (ps.card as Record<string, unknown>)?.brand || null;
+      }
+      updates.payerEmail = (captureResult.payer as Record<string, unknown> | undefined)?.email_address || null;
+    }
+
+    await orderRef.update(updates);
+
     return NextResponse.json({
-      success: false,
-      status: captureData.status,
+      success: paypalStatus === "COMPLETED" || paypalStatus === "APPROVED",
+      paypalStatus,
+      paymentStatus,
+      orderId: firestoreOrderId,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Payment capture failed";
