@@ -34,13 +34,13 @@ export async function POST(request: Request) {
 
     const now = Timestamp.fromDate(new Date());
 
-    const paypalOrder = await createPayPalOrder(items, total, shipping, discount);
+    const orderRef = getAdminDb().collection("orders").doc();
+    const paypalOrder = await createPayPalOrder(items, total, shipping, discount, orderRef.id);
 
     if (!paypalOrder?.id) {
       return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
     }
 
-    const orderRef = getAdminDb().collection("orders").doc();
     const orderData: Record<string, unknown> = {
       userId: decoded.uid,
       customerName: customerName || "",

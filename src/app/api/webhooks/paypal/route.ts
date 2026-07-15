@@ -46,7 +46,7 @@ export async function POST(request: Request) {
 
     console.log(`PayPal webhook received: ${eventType} (id: ${eventId})`);
 
-    let paypalOrderId = "";
+    let orderLookup: { customId?: string; paypalOrderId?: string } = {};
     let paymentStatus: string | null = null;
     let orderStatus: string | null = null;
     let captureId: string | null = null;
@@ -57,48 +57,51 @@ export async function POST(request: Request) {
     }
 
     if (eventType === "CHECKOUT.ORDER.VOIDED") {
-      paypalOrderId = (resource?.id as string) || "";
+      orderLookup = { paypalOrderId: (resource?.id as string) || "" };
       orderStatus = "cancelled";
     }
 
     if (eventType === "PAYMENT.CAPTURE.COMPLETED") {
       const customId = resource?.custom_id as string | undefined;
-      const relatedIds = (resource?.supplementary_data as Record<string, unknown> | undefined)
-        ?.related_ids as Record<string, unknown> | undefined;
-      paypalOrderId = customId || (relatedIds?.order_id as string) || "";
+      orderLookup = { customId: customId || undefined, paypalOrderId: (resource?.supplementary_data as Record<string, unknown> | undefined)?.related_ids as string | undefined };
       paymentStatus = "paid";
       orderStatus = "approved";
       captureId = (resource?.id as string) || null;
     }
 
     if (eventType === "PAYMENT.CAPTURE.DENIED" || eventType === "PAYMENT.CAPTURE.DECLINED" || eventType === "PAYMENT.CAPTURE.FAILED") {
-      paypalOrderId = (resource?.custom_id as string) || "";
+      orderLookup = { customId: (resource?.custom_id as string) || undefined };
       paymentStatus = "declined";
     }
 
     if (eventType === "PAYMENT.CAPTURE.PENDING") {
-      paypalOrderId = (resource?.custom_id as string) || "";
+      orderLookup = { customId: (resource?.custom_id as string) || undefined };
       paymentStatus = "pending";
     }
 
-    if (!paypalOrderId) {
-      console.error(`PayPal webhook: no order ID for event ${eventType}`);
-      return NextResponse.json({ received: true });
-    }
-
     const db = getAdminDb();
-    const ordersSnap = await db
-      .collection("orders")
-      .where("paypalOrderId", "==", paypalOrderId)
-      .limit(1)
-      .get();
 
-    if (ordersSnap.empty) {
-      console.error(`PayPal webhook: order not found for ${paypalOrderId}`);
-      return NextResponse.json({ received: true });
+    async function findOrder() {
+      if (orderLookup.customId) {
+        const snap = await db.collection("orders").doc(orderLookup.customId).get();
+        if (snap.exists) return { exists: true, data: () => snap.data(), ref: snap.ref };
+      }
+      if (orderLookup.paypalOrderId) {
+        const snap = await db.collection("orders").where("paypalOrderId", "==", orderLookup.paypalOrderId).limit(1).get();
+        if (!snap.empty) {
+          const d = snap.docs[0];
+          return { exists: true, data: () => d.data(), ref: d.ref };
+        }
+      }
+      return null;
     }
 
-    const orderDoc = ordersSnap.docs[0];
+    const orderDoc = await findOrder();
+
+    if (!orderDoc) {
+      console.error(`PayPal webhook: order not found for ${JSON.stringify(orderLookup)}`);
+      return NextResponse.json({ received: true });
+    }
 
     const existingEventIds = orderDoc.data()?.webhookEventIds as string[] | undefined;
     if (existingEventIds?.includes(eventId)) {
@@ -118,7 +121,7 @@ export async function POST(request: Request) {
     if (orderStatus === "approved") {
       const orderData = orderDoc.data();
       if (orderData?.status === "approved") {
-        console.log(`PayPal webhook: order ${paypalOrderId} already approved, skipping stock reduction`);
+        console.log(`PayPal webhook: order already approved, skipping stock reduction`);
       } else {
       const items = orderData?.items as Array<{ productId: string; quantity: number; variant?: { id: string } | null }> | undefined;
       if (items?.length) {
@@ -150,7 +153,7 @@ export async function POST(request: Request) {
     await orderDoc.ref.update(updates);
 
     console.log(
-      `PayPal webhook: order ${paypalOrderId} → ${paymentStatus ? `paymentStatus: ${paymentStatus}` : ""}${orderStatus ? `, status: ${orderStatus}` : ""}`
+      `PayPal webhook: order → ${paymentStatus ? `paymentStatus: ${paymentStatus}` : ""}${orderStatus ? `, status: ${orderStatus}` : ""}`
     );
 
     return NextResponse.json({ received: true });

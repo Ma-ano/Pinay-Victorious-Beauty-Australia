@@ -89,6 +89,7 @@ export async function createPayPalOrder(
   total: number,
   shipping?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
   discount?: number,
+  customId?: string,
 ) {
   const token = await getAccessToken();
 
@@ -142,6 +143,10 @@ export async function createPayPalOrder(
 
   if (shippingObj) {
     (body.purchase_units as Record<string, unknown>[])[0].shipping = shippingObj;
+  }
+
+  if (customId) {
+    (body.purchase_units as Record<string, unknown>[])[0].custom_id = customId;
   }
 
   const res = await fetch(`${API_BASE}/v2/checkout/orders`, {
