@@ -15,6 +15,7 @@ interface ImagePlaceholderProps {
   height?: number;
   quality?: number;
   unoptimized?: boolean;
+  variants?: Record<string, string>;
 }
 
 const fallbackConfig: Record<
@@ -92,6 +93,7 @@ export default function ImagePlaceholder({
   height,
   quality,
   unoptimized,
+  variants,
 }: ImagePlaceholderProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -114,10 +116,47 @@ export default function ImagePlaceholder({
   const showImage = imgSrc && !errored;
   const showFallback = !imgSrc || errored;
   const useExplicit = width !== undefined && height !== undefined;
+  const hasVariants = variants && Object.keys(variants).length > 0;
+  const sortedVariantSizes = hasVariants
+    ? Object.keys(variants!).map(Number).sort((a, b) => a - b)
+    : [];
+  const srcset = hasVariants
+    ? sortedVariantSizes.map((s) => `${variants![String(s)]} ${s}w`).join(", ")
+    : "";
+  const variantSrc = hasVariants
+    ? variants![String(sortedVariantSizes[sortedVariantSizes.length - 1])] || imgSrc
+    : imgSrc;
 
   return (
     <div className={`relative overflow-hidden ${aspectRatio} ${className}`}>
-      {showImage && (
+      {showImage && hasVariants ? (
+        <>
+          <div
+            className={`absolute inset-0 transition-opacity duration-200 ${
+              loaded ? "opacity-0" : "opacity-100"
+            }`}
+            style={{
+              background: `linear-gradient(135deg, ${config.accent}22, ${config.accent}11)`,
+            }}
+          />
+          <img
+            ref={imgRef}
+            src={variantSrc}
+            srcSet={srcset}
+            sizes={`(max-width: 768px) 100vw, ${width || 800}px`}
+            alt={name || category}
+            width={width || 800}
+            height={height || 800}
+            onLoad={() => setLoaded(true)}
+            onError={() => setErrored(true)}
+            loading={loading ?? (preload ? "eager" : "lazy")}
+            fetchPriority={preload ? "high" : "auto"}
+            className={`w-full h-full object-cover transition-opacity duration-200 ${
+              loaded ? "opacity-100" : "opacity-0"
+            }`}
+          />
+        </>
+      ) : showImage ? (
         <>
           <div
             className={`absolute inset-0 transition-opacity duration-200 ${
@@ -145,7 +184,7 @@ export default function ImagePlaceholder({
             unoptimized={unoptimized}
           />
         </>
-      )}
+      ) : null}
 
       {showFallback && (
         <div className="absolute inset-0">

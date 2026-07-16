@@ -1,6 +1,7 @@
 export interface ProductImage {
   url: string;
   name: string;
+  variants?: Record<string, string>;
 }
 
 export interface ProductVariant {

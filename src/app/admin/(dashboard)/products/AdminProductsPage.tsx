@@ -5,7 +5,7 @@ import { productTypes } from "@/data/productTypes";
 import { categories } from "@/data/categories";
 import type { Product, ProductImage } from "@/data/products";
 import { saveProduct, deleteProduct, getAllProducts } from "@/lib/product-store";
-import { uploadImage, deleteImage } from "@/lib/storage";
+import { uploadOptimizedImage, deleteImage, deleteImageWithVariants } from "@/lib/storage";
 import { useToast } from "@/components/Toast";
 import { formatPrice } from "@/lib/format";
 import SearchableSelect from "@/components/SearchableSelect";
@@ -400,11 +400,10 @@ export default function AdminProductsPage() {
     }
     setUploadingImage(index);
     try {
-      const path = `products/${Date.now()}_${file.name}`;
-      const url = await uploadImage(file, path);
+      const { url, variants } = await uploadOptimizedImage(file, form.slug || file.name);
       setForm((prev) => {
         const images = [...prev.images];
-        images[index] = { ...images[index], url };
+        images[index] = { ...images[index], url, variants: Object.keys(variants).length > 0 ? variants : undefined };
         return { ...prev, images };
       });
     } catch {
@@ -540,7 +539,7 @@ export default function AdminProductsPage() {
     try {
       const product = allProducts.find((p) => p.id === id);
       if (product?.images) {
-        await Promise.allSettled(product.images.map((img) => deleteImage(img.url)));
+        await Promise.allSettled(product.images.map((img) => deleteImageWithVariants(img.url, img.variants)));
       }
       await deleteProduct(id);
       setProducts((prev) => prev.filter((p) => p.id !== id));

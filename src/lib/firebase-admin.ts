@@ -1,6 +1,7 @@
 import { initializeApp, getApps, cert } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
 
 export class FirebaseAdminNotConfigured extends Error {
   missing: string[];
@@ -62,6 +63,10 @@ export function getAdminAuth() {
 
 export function getAdminDb() {
   return getFirestore(getAdminApp());
+}
+
+export function getAdminBucket() {
+  return getStorage(getAdminApp()).bucket();
 }
 
 export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
