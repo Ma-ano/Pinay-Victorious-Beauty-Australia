@@ -69,6 +69,7 @@ export async function POST(request: Request) {
     if (paypalStatus === "COMPLETED") {
       const ps = captureResult.payment_source as Record<string, unknown> | undefined;
       updates.fundingSource = ps?.paypal ? "paypal" : ps?.card ? "card" : "unknown";
+      updates.paymentStatus = "paid";
       if (ps?.card) {
         updates.cardBrand = (ps.card as Record<string, unknown>)?.brand || null;
       }

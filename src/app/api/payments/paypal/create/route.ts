@@ -25,7 +25,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
     }
 
-    const { items, total, subtotal, discount, discountCode, shipping, email, customerName, customerPhone } =
+    const { items, total, subtotal, discount, discountCode, shipping, email, customerName, customerPhone, shippingMethod, shippingCost, paymentMethod } =
       await request.json();
 
     if (!items?.length || total == null) {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     const now = Timestamp.fromDate(new Date());
 
     const orderRef = getAdminDb().collection("orders").doc();
-    const paypalOrder = await createPayPalOrder(items, total, shipping, discount, orderRef.id);
+    const paypalOrder = await createPayPalOrder(items, total, shipping, discount, orderRef.id, shippingCost);
 
     if (!paypalOrder?.id) {
       return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
@@ -60,12 +60,14 @@ export async function POST(request: Request) {
         postcode: shipping?.postcode || "",
         country: shipping?.country || "Australia",
       },
-      paymentMethod: "paypal",
+      paymentMethod: paymentMethod || "paypal",
       paymentStatus: "pending",
       paypalOrderId: paypalOrder.id,
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
       discountCode: discountCode || null,
+      shippingMethod: shippingMethod || "standard",
+      shippingCost: shippingCost ?? 0,
       total,
       status: "processing",
       createdAt: now,

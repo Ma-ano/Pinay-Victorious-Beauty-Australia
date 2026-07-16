@@ -115,8 +115,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid or expired session" }, { status: 401 });
     }
 
-    const { items, total, subtotal, discount = 0, discountCode = null, shipping, email, customerName, customerPhone } =
-      await request.json() as { items: ItemInput[]; total: number; subtotal: number; discount: number; discountCode: string | null; shipping: ShippingInput; email: string; customerName: string; customerPhone: string };
+    const { items, total, subtotal, discount = 0, discountCode = null, shipping, email, customerName, customerPhone, shippingMethod, shippingCost } =
+      await request.json() as { items: ItemInput[]; total: number; subtotal: number; discount: number; discountCode: string | null; shipping: ShippingInput; email: string; customerName: string; customerPhone: string; shippingMethod?: string; shippingCost?: number };
 
     const validationError = validateInput({ items, total, subtotal, discount, discountCode, shipping, email, customerName, customerPhone });
     if (validationError) {
@@ -125,6 +125,7 @@ export async function POST(request: Request) {
 
     const origin = request.headers.get("origin") || process.env.SITE_URL || "";
     const now = Timestamp.fromDate(new Date());
+    const expireAt = Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
     const orderRef = getAdminDb().collection("orders").doc();
     const orderData = {
@@ -158,10 +159,13 @@ export async function POST(request: Request) {
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
       discountCode: discountCode || null,
+      shippingMethod: shippingMethod || "standard",
+      shippingCost: shippingCost ?? 0,
       total,
       status: "processing",
       createdAt: now,
       updatedAt: now,
+      expireAt,
     };
 
     await getAdminDb().collection("orders").doc(orderRef.id).set(orderData);
@@ -226,9 +230,12 @@ export async function POST(request: Request) {
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
       discountCode: discountCode || null,
+      shippingMethod: shippingMethod || "standard",
+      shippingCost: shippingCost ?? 0,
       total,
       status: "pending_payment",
       createdAt: new Date().toISOString(),
+      expireAt: expireAt.toDate().toISOString(),
     };
 
     await getAdminDb()

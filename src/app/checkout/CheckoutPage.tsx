@@ -97,6 +97,7 @@ export default function CheckoutPage() {
   const mountedRef = useRef(true);
   const firestoreOrderIdRef = useRef<string | null>(null);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
+  const [shippingMethod, setShippingMethod] = useState<"standard" | "express">("standard");
 
   useEffect(() => {
     getSettings().then((s) => {
@@ -142,6 +143,11 @@ export default function CheckoutPage() {
 
   const discount = appliedPromo ? calculateDiscount(appliedPromo, totalPrice) : 0;
   const finalTotal = Math.max(0, totalPrice - discount);
+
+  const shippingCost = finalTotal >= freeShippingThreshold
+    ? (shippingMethod === "express" ? 5 : 0)
+    : (shippingMethod === "express" ? 15.20 : 10.70);
+  const orderTotal = finalTotal + shippingCost;
 
   function handleApplyCode() {
     setPromoError("");
@@ -232,7 +238,9 @@ function generateOrderNumber(): string {
       subtotal: totalPrice,
       discount,
       discountCode: appliedPromo?.code || null,
-      total: finalTotal,
+      shippingMethod,
+      shippingCost,
+      total: orderTotal,
       status: orderStatus || "processing",
       createdAt: serverTimestamp(),
       orderNumber: generateOrderNumber(),
@@ -275,15 +283,18 @@ function generateOrderNumber(): string {
           items: items.map((i) => ({
             productId: i.product.id,
             name: i.product.name,
-            price: i.variant?.price ?? i.product.price,
+            price: i.variant?.price ?? i.product.salePrice ?? i.product.price,
             quantity: i.quantity,
-            unitAmount: i.variant?.price ?? i.product.price,
+            unitAmount: i.variant?.price ?? i.product.salePrice ?? i.product.price,
             variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
           })),
           subtotal: totalPrice,
-          total: finalTotal,
+          total: orderTotal,
+          shippingCost: shippingCost,
+          shippingMethod,
           discount,
           discountCode: appliedPromo?.code || null,
+          paymentMethod,
           shipping: {
             name: `${currentUser.name}`,
             line1: shippingAddress.street,
@@ -343,8 +354,19 @@ function generateOrderNumber(): string {
   const handleCardApprove = (data: Record<string, unknown>) => captureAndCreateOrder(data, "card");
   const handlePayPalApprove = (data: Record<string, unknown>) => captureAndCreateOrder(data, "paypal");
 
-  function handlePayPalCancel() {
+  async function handlePayPalCancel() {
     if (!mountedRef.current) return;
+    const firestoreId = firestoreOrderIdRef.current;
+    if (firestoreId) {
+      try {
+        await fetch("/api/payments/paypal/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firestoreOrderId: firestoreId }),
+        });
+      } catch {
+      }
+    }
     showToast("Payment cancelled", "info");
   }
 
@@ -367,13 +389,15 @@ function generateOrderNumber(): string {
           items: items.map((i) => ({
             productId: i.product.id,
             name: i.product.name,
-            price: i.variant?.price ?? i.product.price,
+            price: i.variant?.price ?? i.product.salePrice ?? i.product.price,
             quantity: i.quantity,
-            unitAmount: i.variant?.price ?? i.product.price,
+            unitAmount: i.variant?.price ?? i.product.salePrice ?? i.product.price,
             variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
           })),
           subtotal: totalPrice,
-          total: finalTotal,
+          total: orderTotal,
+          shippingCost: shippingCost,
+          shippingMethod,
           discount,
           discountCode: appliedPromo?.code || null,
           shipping: {
@@ -541,7 +565,7 @@ function generateOrderNumber(): string {
                       onError={handlePayPalError}
                       disabled={saving}
                       isReady={paypalReady}
-                      amount={finalTotal}
+                      amount={orderTotal}
                       fundingSources={["card"]}
                     />
                     {paypalError && (
@@ -581,7 +605,7 @@ function generateOrderNumber(): string {
                       onError={handlePayPalError}
                       disabled={saving}
                       isReady={paypalReady}
-                      amount={finalTotal}
+                      amount={orderTotal}
                       fundingSources={["paypal"]}
                     />
                     {paypalError && (
@@ -651,30 +675,78 @@ function generateOrderNumber(): string {
               {promoError && <p className="text-red-500 text-xs">{promoError}</p>}
             </div>
 
-            <div className="border-t border-primary/10 pt-4 space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-foreground/70">Subtotal</span>
-                <span className="text-dark">{formatPrice(totalPrice)}</span>
-              </div>
-              {discount > 0 && (
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-green-600 dark:text-green-400">Discount{appliedPromo?.code ? ` (${appliedPromo.code})` : ""}</span>
-                  <span className="text-green-600 dark:text-green-400">-{formatPrice(discount)}</span>
+            <div className="border-t border-primary/10 pt-4 space-y-3">
+              <div>
+                <h3 className="text-xs font-semibold text-dark mb-2">Shipping Method</h3>
+                <div className="space-y-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShippingMethod("standard")}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs border transition-all ${
+                      shippingMethod === "standard"
+                        ? "border-accent bg-accent/5 text-dark"
+                        : "border-primary/10 bg-background text-foreground/70 hover:border-accent/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                        shippingMethod === "standard" ? "border-accent" : "border-foreground/30"
+                      }`}>
+                        {shippingMethod === "standard" && <div className="w-2 h-2 rounded-full bg-accent" />}
+                      </div>
+                      <span className="font-medium">Standard</span>
+                      <span className="text-foreground/60">2–8 business days</span>
+                    </div>
+                    <span className="font-medium">
+                      {finalTotal >= freeShippingThreshold ? "FREE" : formatPrice(10.70)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShippingMethod("express")}
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs border transition-all ${
+                      shippingMethod === "express"
+                        ? "border-accent bg-accent/5 text-dark"
+                        : "border-primary/10 bg-background text-foreground/70 hover:border-accent/30"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center ${
+                        shippingMethod === "express" ? "border-accent" : "border-foreground/30"
+                      }`}>
+                        {shippingMethod === "express" && <div className="w-2 h-2 rounded-full bg-accent" />}
+                      </div>
+                      <span className="font-medium">Express</span>
+                      <span className="text-foreground/60">1–4 business days</span>
+                    </div>
+                    <span className="font-medium">
+                      {finalTotal >= freeShippingThreshold ? formatPrice(5) : formatPrice(15.20)}
+                    </span>
+                  </button>
                 </div>
-              )}
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-foreground/70">Shipping</span>
-                {totalPrice >= freeShippingThreshold ? (
-                  <span className="text-green-600 dark:text-green-400 font-medium">Free ✓</span>
-                ) : (
-                  <span className="text-foreground/60">
-                    Add {formatPrice(freeShippingThreshold - totalPrice)} more for free
-                  </span>
-                )}
               </div>
-              <div className="flex items-center justify-between pt-3 border-t border-primary/10">
-                <span className="text-base font-semibold text-dark">Total</span>
-                <span className="text-xl font-bold text-accent">{formatPrice(finalTotal)}</span>
+
+              <div className="border-t border-primary/10 pt-3 space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-foreground/70">Subtotal</span>
+                  <span className="text-dark">{formatPrice(totalPrice)}</span>
+                </div>
+                {discount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-green-600 dark:text-green-400">Discount{appliedPromo?.code ? ` (${appliedPromo.code})` : ""}</span>
+                    <span className="text-green-600 dark:text-green-400">-{formatPrice(discount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-foreground/70">Shipping</span>
+                  <span className={`font-medium ${shippingCost === 0 ? "text-green-600 dark:text-green-400" : "text-dark"}`}>
+                    {shippingCost === 0 ? "Free ✓" : formatPrice(shippingCost)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-primary/10">
+                  <span className="text-base font-semibold text-dark">Total</span>
+                  <span className="text-xl font-bold text-accent">{formatPrice(orderTotal)}</span>
+                </div>
               </div>
             </div>
           </div>

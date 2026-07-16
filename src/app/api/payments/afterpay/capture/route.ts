@@ -53,6 +53,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, existing: true, orderId });
     }
 
+    if (orderData.expireAt && orderData.expireAt.toDate() < new Date()) {
+      await orderRef.update({
+        paymentStatus: "expired",
+        status: "cancelled",
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      return NextResponse.json({ error: "Payment session expired" }, { status: 400 });
+    }
+
     if (!orderToken) {
       return NextResponse.json({ error: "orderToken is required" }, { status: 400 });
     }

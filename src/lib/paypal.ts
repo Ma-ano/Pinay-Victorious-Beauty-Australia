@@ -53,11 +53,11 @@ function normalizeCountry(raw: string): string {
 }
 
 function buildShipping(
-  raw?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+  raw?: { street?: string; line1?: string; suburb?: string; city: string; state: string; postcode: string; country: string },
 ): Record<string, unknown> | undefined {
   if (!raw) return undefined;
 
-  const street = raw.street?.trim();
+  const street = (raw.street || raw.line1)?.trim();
   const suburb = raw.suburb?.trim();
   const city = raw.city?.trim();
   const state = raw.state?.trim();
@@ -87,17 +87,54 @@ function buildShipping(
 export async function createPayPalOrder(
   items: PayPalOrderItem[],
   total: number,
-  shipping?: { street: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+  shipping?: { street?: string; line1?: string; suburb?: string; city: string; state: string; postcode: string; country: string },
   discount?: number,
   customId?: string,
+  shippingAmount?: number,
 ) {
   const token = await getAccessToken();
 
-  const computedTotal = items.reduce((sum, i) => sum + i.unitAmount * i.quantity, 0);
-  const finalTotal = total > 0 ? total : computedTotal;
-  const itemTotal = computedTotal > 0 ? computedTotal : finalTotal;
-
   const shippingObj = buildShipping(shipping);
+
+  const computedItemTotal = items.reduce((sum, i) => sum + i.unitAmount * i.quantity, 0);
+  const rawItemTotal = computedItemTotal > 0 ? computedItemTotal : (total > 0 ? total : 0);
+  const rawShipping = shippingAmount && shippingAmount > 0 ? shippingAmount : 0;
+  const rawDiscount = discount && discount > 0 ? discount : 0;
+
+  const itemTotal = parseFloat(rawItemTotal.toFixed(2));
+  const shippingCost = parseFloat(rawShipping.toFixed(2));
+  const discountVal = parseFloat(rawDiscount.toFixed(2));
+
+  const totalVal = itemTotal + shippingCost - discountVal;
+
+  const breakdown: Record<string, unknown> = {
+    item_total: {
+      currency_code: "AUD",
+      value: itemTotal.toFixed(2),
+    },
+  };
+
+  if (shippingCost > 0) {
+    breakdown.shipping = {
+      currency_code: "AUD",
+      value: shippingCost.toFixed(2),
+    };
+  }
+
+  if (discountVal > 0) {
+    breakdown.discount = {
+      currency_code: "AUD",
+      value: discountVal.toFixed(2),
+    };
+  }
+
+  console.log({
+    itemTotal: itemTotal.toFixed(2),
+    shipping: shippingCost.toFixed(2),
+    discount: discountVal.toFixed(2),
+    total: totalVal.toFixed(2),
+    computed: itemTotal + shippingCost - discountVal,
+  });
 
   const body: Record<string, unknown> = {
     intent: "CAPTURE",
@@ -105,13 +142,8 @@ export async function createPayPalOrder(
       {
         amount: {
           currency_code: "AUD",
-          value: finalTotal.toFixed(2),
-          breakdown: {
-            item_total: {
-              currency_code: "AUD",
-              value: itemTotal.toFixed(2),
-            },
-          },
+          value: totalVal.toFixed(2),
+          breakdown,
         },
         items: items.map((item) => ({
           name: item.name,
@@ -120,26 +152,11 @@ export async function createPayPalOrder(
             currency_code: "AUD",
             value: item.unitAmount.toFixed(2),
           },
+          category: "PHYSICAL_GOODS",
         })),
       },
     ],
   };
-
-  if (discount && discount > 0) {
-    (body.purchase_units as Record<string, unknown>[])[0] = {
-      ...(body.purchase_units as Record<string, unknown>[])[0] as Record<string, unknown>,
-      amount: {
-        ...((body.purchase_units as Record<string, unknown>[])[0] as Record<string, unknown>).amount as Record<string, unknown>,
-        breakdown: {
-          ...(((body.purchase_units as Record<string, unknown>[])[0] as Record<string, unknown>).amount as Record<string, unknown>).breakdown as Record<string, unknown>,
-          discount: {
-            currency_code: "AUD",
-            value: discount.toFixed(2),
-          },
-        },
-      },
-    };
-  }
 
   if (shippingObj) {
     (body.purchase_units as Record<string, unknown>[])[0].shipping = shippingObj;
