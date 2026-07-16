@@ -69,8 +69,8 @@ function slugify(text: string): string {
     .trim();
 }
 
-export async function getAllProducts(max?: number): Promise<Product[]> {
-  const constraints = max ? [limit(max)] : [];
+export async function getAllProducts(max: number = 200): Promise<Product[]> {
+  const constraints = [limit(max)];
   const snapshot = await getDocs(query(collection(getDb(), "products"), ...constraints));
   const result = snapshot.docs.map((docSnap) => {
     const data = docSnap.data() as Product;
@@ -118,15 +118,25 @@ export async function getProductById(id: string): Promise<Product | null> {
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
-  const all = await getAllProducts();
-  return all.find((p) => p.slug === slug) || null;
+  const q = query(collection(getDb(), "products"), where("slug", "==", slug), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { ...snap.docs[0].data(), id: snap.docs[0].id } as Product;
 }
 
 export async function getProductsByIds(ids: string[]): Promise<Product[]> {
   if (ids.length === 0) return [];
-  const all = await getAllProducts();
-  const map = new Map(all.map((p) => [p.id, p]));
-  return ids.map((id) => map.get(id)).filter(Boolean) as Product[];
+  const db = getDb();
+  const results: Product[] = [];
+  for (let i = 0; i < ids.length; i += 10) {
+    const batch = ids.slice(i, i + 10);
+    const q = query(collection(db, "products"), where("__name__", "in", batch));
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+      results.push({ ...d.data(), id: d.id } as Product);
+    }
+  }
+  return results;
 }
 
 export async function saveProduct(
@@ -163,7 +173,7 @@ export async function deleteProduct(id: string): Promise<void> {
 
 export async function getAllReviews(): Promise<{ id: string; author: string; rating: number; content: string; isVerified: boolean; productName?: string; userId?: string; createdAt?: Date }[]> {
   try {
-    const snap = await getDocs(collection(getDb(), "reviews"));
+    const snap = await getDocs(query(collection(getDb(), "reviews"), limit(1000)));
     return snap.docs.map((d) => {
       const data = d.data();
       return {
@@ -184,7 +194,7 @@ export async function getAllReviews(): Promise<{ id: string; author: string; rat
 
 export async function getAllReviewStats(): Promise<Record<string, { avgRating: number; reviewCount: number }>> {
   try {
-    const snap = await getDocs(collection(getDb(), "reviews"));
+    const snap = await getDocs(query(collection(getDb(), "reviews"), limit(1000)));
     const acc: Record<string, { total: number; count: number }> = {};
     snap.docs.forEach((d) => {
       const data = d.data();
@@ -206,7 +216,7 @@ export async function getAllReviewStats(): Promise<Record<string, { avgRating: n
 
 export async function getProductReviews(productId: string): Promise<{ avgRating: number; reviewCount: number }> {
   try {
-    const q = query(collection(getDb(), "reviews"), where("productId", "==", productId));
+    const q = query(collection(getDb(), "reviews"), where("productId", "==", productId), limit(100));
     const snap = await getDocs(q);
     if (snap.empty) return { avgRating: 0, reviewCount: 0 };
     let total = 0;
@@ -220,16 +230,19 @@ export async function getProductReviews(productId: string): Promise<{ avgRating:
 }
 
 export async function getSaleProducts(): Promise<Product[]> {
-  const all = await getAllProducts();
-  return all.filter((p) => p.isSale);
+  const q = query(collection(getDb(), "products"), where("isSale", "==", true), limit(200));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Product));
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {
-  const all = await getAllProducts();
-  return all.filter((p) => p.category === category);
+  const q = query(collection(getDb(), "products"), where("category", "==", category), limit(200));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Product));
 }
 
 export async function getProductsByBrand(brand: string): Promise<Product[]> {
-  const all = await getAllProducts();
-  return all.filter((p) => p.brand === brand);
+  const q = query(collection(getDb(), "products"), where("brand", "==", brand), limit(200));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Product));
 }

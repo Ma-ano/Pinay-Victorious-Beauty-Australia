@@ -196,7 +196,7 @@ export default function OrdersPage() {
     if (!user) return;
     setOrdersLoading(true);
     try {
-      const snapshot = await getDocs(query(collection(db, "orders"), where("userId", "==", user.uid)));
+      const snapshot = await getDocs(query(collection(db, "orders"), where("userId", "==", user.uid), limit(50)));
       const nextOrders = snapshot.docs
         .map((docSnap) => ({
           firestoreId: docSnap.id,

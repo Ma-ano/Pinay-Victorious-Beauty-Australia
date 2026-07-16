@@ -1,4 +1,4 @@
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, query, limit } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 
 const _fb = getDb();
@@ -13,7 +13,7 @@ export interface SiteStats {
 }
 
 async function getCompletedOrders() {
-  const ordersSnap = await getDocs(collection(db, "orders"));
+  const ordersSnap = await getDocs(query(collection(db, "orders"), limit(1000)));
   return ordersSnap.docs
     .map((d) => d.data())
     .filter((o) => o.status === "completed");
@@ -22,8 +22,8 @@ async function getCompletedOrders() {
 export async function getSiteStats(): Promise<SiteStats> {
   try {
     const [productsSnap, ordersSnap] = await Promise.allSettled([
-      getDocs(collection(db, "products")),
-      getDocs(collection(db, "orders")),
+      getDocs(query(collection(db, "products"), limit(200))),
+      getDocs(query(collection(db, "orders"), limit(1000))),
     ]);
 
     const completedOrders =

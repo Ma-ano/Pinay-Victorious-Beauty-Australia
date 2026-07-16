@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useMemo } from "react";
-import { getDoc, doc, collection, getDocs, query, where } from "firebase/firestore";
+import { getDoc, doc, collection, getDocs, query, where, limit } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { categories } from "@/data/categories";
 import { saveSettings, type SiteSettings, type FeaturedBrandConfig, type ReviewConfig } from "@/lib/settings-store";
@@ -71,7 +71,7 @@ export default function AdminSettingsPage() {
     };
 
     const fetchReviews = async () => {
-      const snap = await getDocs(collection(db, "reviews"));
+      const snap = await getDocs(query(collection(db, "reviews"), limit(1000)));
       const fetchedReviews = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as any);
       setAllReviews(fetchedReviews);
       const userIds = [...new Set(fetchedReviews.map((r: any) => r.userId).filter(Boolean))] as string[];

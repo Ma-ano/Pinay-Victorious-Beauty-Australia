@@ -13,6 +13,8 @@ import {
   deleteDoc,
   serverTimestamp,
   onSnapshot,
+  query,
+  limit,
 } from "firebase/firestore";
 
 export interface PromotionData {
@@ -29,12 +31,12 @@ export interface Promotion extends PromotionData {
 }
 
 export async function getAllPromotions(): Promise<Promotion[]> {
-  const snapshot = await getDocs(collection(db, "promotions"));
+  const snapshot = await getDocs(query(collection(db, "promotions"), limit(100)));
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Promotion));
 }
 
 export function subscribePromotions(callback: (promos: Promotion[]) => void): () => void {
-  return onSnapshot(collection(db, "promotions"), (snapshot) => {
+  return onSnapshot(query(collection(db, "promotions"), limit(100)), (snapshot) => {
     callback(snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as Promotion)));
   });
 }

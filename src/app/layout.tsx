@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { cookies } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -64,8 +63,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cookieStore = await cookies();
-  const theme = cookieStore.get("theme")?.value || "light";
   preconnect("https://firebasestorage.googleapis.com");
   preconnect("https://www.paypal.com");
   preconnect("https://www.paypalobjects.com");
@@ -79,7 +76,7 @@ export default async function RootLayout({
   };
 
   return (
-    <html lang="en" className={theme === "dark" ? "dark" : ""} suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           type="application/ld+json"

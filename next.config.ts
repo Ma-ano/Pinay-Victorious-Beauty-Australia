@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["firebase-admin"],
   productionBrowserSourceMaps: false,
   images: {
+    unoptimized: true,
     minimumCacheTTL: 60 * 60 * 24 * 30,
     qualities: [75, 85],
     remotePatterns: [
@@ -37,6 +38,26 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // Public content pages — cache at edge
+      {
+        source: "/(about|contact|privacy|terms)",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=604800" },
+        ],
+      },
+      {
+        source: "/",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400" },
+        ],
+      },
+      {
+        source: "/(shop|sale|category)/:path*",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=0, s-maxage=3600, stale-while-revalidate=86400" },
+        ],
+      },
+      // Security headers for everything
       {
         source: "/(.*)",
         headers: [

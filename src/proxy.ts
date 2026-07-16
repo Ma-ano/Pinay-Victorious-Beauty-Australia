@@ -55,7 +55,7 @@ export function proxy(request: NextRequest) {
     res.cookies.set("lastActivityAt", now.toString(), {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
-      sameSite: "strict",
+      sameSite: "lax",
     });
     return addSecurityHeaders(res);
   }
@@ -66,7 +66,7 @@ export function proxy(request: NextRequest) {
     res.cookies.set("lastActivityAt", now.toString(), {
       path: "/",
       maxAge: 60 * 60 * 24 * 7,
-      sameSite: "strict",
+      sameSite: "lax",
     });
     return addSecurityHeaders(res);
   }
@@ -77,7 +77,7 @@ export function proxy(request: NextRequest) {
     res.cookies.set("__session", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
       maxAge: 0,
     });
