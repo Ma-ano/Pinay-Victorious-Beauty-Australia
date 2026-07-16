@@ -43,7 +43,7 @@ export default function ProductCard({ product, preload }: { product: Product; pr
       >
         <div className="relative aspect-square overflow-hidden">
           <div className="w-full h-full transition-transform duration-700 group-hover:scale-110">
-            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.images?.[0]?.url || ""} preload={preload} />
+            <ImagePlaceholder category={product.category} name={product.name} imageUrl={product.images?.[0]?.url || ""} preload={preload} width={400} height={400} quality={75} />
           </div>
 
           {product.isSale && discount > 0 && (

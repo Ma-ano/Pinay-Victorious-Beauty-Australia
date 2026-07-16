@@ -127,9 +127,9 @@ export default function CustomerNavbar() {
                 width={160}
                 height={56}
                 className="h-full w-auto rounded-lg object-contain"
-                sizes="160px"
                 quality={75}
                 preload={true}
+                unoptimized
               />
             </Link>
                 <div className="hidden lg:flex items-center gap-0">
@@ -203,7 +203,7 @@ export default function CustomerNavbar() {
                                           category={product.category}
                                           name={product.name}
                                           imageUrl={product.images?.[0]?.url || ""}
-                                          className="w-8 h-8"
+                                          width={32} height={32} quality={75}
                                         />
                                       </div>
                                       <div className="flex-1 min-w-0">
@@ -383,7 +383,7 @@ export default function CustomerNavbar() {
                         title="My Profile"
                       >
                         {user.photoURL ? (
-                          <Image src={user.photoURL} alt={user.name} width={28} height={28} className="w-full h-full object-cover" />
+                          <Image src={user.photoURL} alt={user.name} width={28} height={28} className="w-full h-full object-cover" quality={75} unoptimized />
                         ) : (
                           user.name.charAt(0).toUpperCase()
                         )}
@@ -572,7 +572,7 @@ export default function CustomerNavbar() {
                 items.map((item) => (
                   <div key={item.key} className="flex gap-3">
                     <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 bg-primary/10">
-                      <ImagePlaceholder category={item.product.category} name={item.product.name} imageUrl={item.product.images?.[0]?.url || ""} />
+                      <ImagePlaceholder category={item.product.category} name={item.product.name} imageUrl={item.product.images?.[0]?.url || ""} width={64} height={64} quality={75} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-foreground">Product:</p>

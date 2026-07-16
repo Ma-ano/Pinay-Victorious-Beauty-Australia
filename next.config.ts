@@ -4,7 +4,8 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["firebase-admin"],
   productionBrowserSourceMaps: false,
   images: {
-    qualities: [75],
+    minimumCacheTTL: 60 * 60 * 24 * 30,
+    qualities: [75, 85],
     remotePatterns: [
       {
         protocol: "https",

@@ -189,7 +189,7 @@ export default function ProfilePage() {
             className="w-full h-full rounded-full bg-accent/20 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-accent transition-all"
           >
             {user.photoURL ? (
-              <Image src={user.photoURL} alt={user.name} width={80} height={80} className="w-full h-full object-cover" />
+              <Image src={user.photoURL} alt={user.name} width={80} height={80} className="w-full h-full object-cover" quality={75} unoptimized />
             ) : (
               <span className="text-xl font-bold text-accent">{user.name.charAt(0).toUpperCase()}</span>
             )}

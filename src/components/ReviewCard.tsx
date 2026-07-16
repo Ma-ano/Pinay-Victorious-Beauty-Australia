@@ -25,13 +25,15 @@ export default function ReviewCard({ review, className = "" }: Props) {
       <div className="mt-4 pt-4 border-t border-dashed border-accent/20">
         <div className="flex items-center gap-2">
           {review.photoURL ? (
-            <div className="relative w-7 h-7 shrink-0">
+            <div className="w-7 h-7 shrink-0 overflow-hidden rounded-full">
               <Image
                 src={review.photoURL}
                 alt=""
-                fill
-                sizes="28px"
-                className="rounded-full object-cover"
+                width={28}
+                height={28}
+                quality={75}
+                className="w-full h-full object-cover"
+                unoptimized
               />
             </div>
           ) : (

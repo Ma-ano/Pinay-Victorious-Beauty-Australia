@@ -11,6 +11,10 @@ interface ImagePlaceholderProps {
   aspectRatio?: string;
   preload?: boolean;
   loading?: "lazy" | "eager";
+  width?: number;
+  height?: number;
+  quality?: number;
+  unoptimized?: boolean;
 }
 
 const fallbackConfig: Record<
@@ -84,6 +88,10 @@ export default function ImagePlaceholder({
   aspectRatio = "aspect-square",
   preload,
   loading,
+  width,
+  height,
+  quality,
+  unoptimized,
 }: ImagePlaceholderProps) {
   const [loaded, setLoaded] = useState(false);
   const [errored, setErrored] = useState(false);
@@ -105,6 +113,7 @@ export default function ImagePlaceholder({
 
   const showImage = imgSrc && !errored;
   const showFallback = !imgSrc || errored;
+  const useExplicit = width !== undefined && height !== undefined;
 
   return (
     <div className={`relative overflow-hidden ${aspectRatio} ${className}`}>
@@ -122,17 +131,18 @@ export default function ImagePlaceholder({
             ref={imgRef}
             src={imgSrc}
             alt={name || category}
-            fill
+            {...(useExplicit ? { width, height } : { fill: true })}
             onLoad={() => setLoaded(true)}
             onError={() => setErrored(true)}
-            className={`object-cover transition-opacity duration-200 ${
+            className={`w-full h-full object-cover transition-opacity duration-200 ${
               loaded ? "opacity-100" : "opacity-0"
             }`}
-            sizes="(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 25vw"
-            quality={75}
+            sizes={useExplicit ? `${width}px` : "(max-width: 640px) 90vw, (max-width: 1024px) 50vw, 25vw"}
+            quality={quality ?? 75}
             preload={preload}
             loading={loading ?? (preload ? "eager" : undefined)}
             fetchPriority={preload ? "high" : "auto"}
+            unoptimized={unoptimized}
           />
         </>
       )}

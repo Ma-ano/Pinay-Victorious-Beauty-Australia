@@ -447,7 +447,7 @@ export default function OrdersPage() {
                       <div key={`${item.productId}-${index}`} className="px-5 py-4">
                         <div className="flex gap-3 items-start">
                           <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-primary/10">
-                            <ImagePlaceholder category="" name={item.name} imageUrl={productImageById.get(item.productId) || ""} />
+                            <ImagePlaceholder category="" name={item.name} imageUrl={productImageById.get(item.productId) || ""} width={48} height={48} quality={75} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-xs text-foreground">Product:</p>

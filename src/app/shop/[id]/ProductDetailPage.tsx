@@ -137,6 +137,7 @@ export default function ProductDetailPage({ product }: Props) {
               imageUrl={currentImage.url}
               key={selectedImage}
               preload={true}
+              width={800} height={800} quality={85}
             />
             {images.length > 1 && (
               <>
@@ -201,6 +202,7 @@ export default function ProductDetailPage({ product }: Props) {
                         category={product.category}
                         name={img.name || product.name}
                         imageUrl={img.url}
+                        width={100} height={100} quality={75}
                       />
                     </button>
                   );
@@ -310,7 +312,7 @@ export default function ProductDetailPage({ product }: Props) {
                     className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/60 transition-colors"
                   >
                     <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-primary/10">
-                      <ImagePlaceholder category={bp.category} name={bp.name} imageUrl={bp.images?.[0]?.url || ""} />
+                      <ImagePlaceholder category={bp.category} name={bp.name} imageUrl={bp.images?.[0]?.url || ""} width={40} height={40} unoptimized />
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-dark truncate">{bp.name}</p>

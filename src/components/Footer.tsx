@@ -15,8 +15,8 @@ export default function Footer() {
                   width={200}
                   height={70}
                   className="w-44 h-auto rounded-lg object-contain mb-3"
-                  sizes="200px"
                   quality={75}
+                  unoptimized
                 />
               </Link>
               <p className="text-sm text-foreground leading-relaxed max-w-xs">{site.description}</p>

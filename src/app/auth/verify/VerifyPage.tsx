@@ -47,10 +47,11 @@ export default function VerifyPage() {
           <Image
             src="/images/PinayVictoriousLogo.jpg"
             alt={site.name}
-            width={0}
-            height={0}
+            width={160}
+            height={56}
             className="h-14 w-auto mx-auto mb-6 rounded-lg object-contain"
-            sizes="160px"
+            quality={75}
+            unoptimized
           />
 
           {status === "loading" && (
