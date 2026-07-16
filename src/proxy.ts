@@ -38,6 +38,17 @@ function addSecurityHeaders(res: NextResponse): NextResponse {
 }
 
 export function proxy(request: NextRequest) {
+  if (process.env.MAINTENANCE_MODE === "true") {
+    if (request.nextUrl.pathname.startsWith("/maintenance")) {
+      const res = NextResponse.next();
+      res.headers.set("x-maintenance", "1");
+      return res;
+    }
+    if (request.cookies.get("admin")?.value !== "true") {
+      return NextResponse.rewrite(new URL("/maintenance", request.url));
+    }
+  }
+
   const sessionCookie = request.cookies.get("__session")?.value;
   const lastActivity = request.cookies.get("lastActivityAt")?.value;
 
@@ -93,6 +104,6 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images/|api/|login|register|admin/login).*)",
+    "/((?!_next/static|_next/image|favicon.ico|images/|api/|robots.txt|sitemap.xml|.*\\.svg|.*\\.png|.*\\.html).*)",
   ],
 };

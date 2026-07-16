@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -66,6 +67,17 @@ export default async function RootLayout({
   preconnect("https://firebasestorage.googleapis.com");
   preconnect("https://www.paypal.com");
   preconnect("https://www.paypalobjects.com");
+
+  const h = await headers();
+  if (h.get("x-maintenance") === "1") {
+    return (
+      <html lang="en">
+        <body className="min-h-screen flex flex-col" style={{ background: "var(--background)" }}>
+          {children}
+        </body>
+      </html>
+    );
+  }
 
   const jsonLd = {
     "@context": "https://schema.org",
