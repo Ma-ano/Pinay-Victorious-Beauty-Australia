@@ -36,7 +36,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
   const [loading, setLoading] = useState(!hasInitial);
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchParams.get("search") || "");
 
   const selectedCategory = searchParams.get("category") || "all";
   const selectedSubcategory = searchParams.get("subcategory") || "all";
@@ -185,7 +185,14 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
               type="text"
               placeholder="Search..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearch(val);
+                const params = new URLSearchParams(searchParams.toString());
+                if (val.trim()) params.set("search", val);
+                else params.delete("search");
+                router.replace(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
+              }}
               className="w-44 pl-9 pr-3 py-2 rounded-xl border border-card-border bg-card focus:outline-none focus:ring-2 focus:ring-accent/40 text-sm"
             />
           </div>

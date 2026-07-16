@@ -69,7 +69,7 @@ function slugify(text: string): string {
     .trim();
 }
 
-export async function getAllProducts(max: number = 200): Promise<Product[]> {
+export async function getAllProducts(max: number = 500): Promise<Product[]> {
   const constraints = [limit(max)];
   const snapshot = await getDocs(query(collection(getDb(), "products"), ...constraints));
   const result = snapshot.docs.map((docSnap) => {
@@ -230,19 +230,19 @@ export async function getProductReviews(productId: string): Promise<{ avgRating:
 }
 
 export async function getSaleProducts(): Promise<Product[]> {
-  const q = query(collection(getDb(), "products"), where("isSale", "==", true), limit(200));
+  const q = query(collection(getDb(), "products"), where("isSale", "==", true), limit(500));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Product));
 }
 
 export async function getProductsByCategory(category: string): Promise<Product[]> {
-  const q = query(collection(getDb(), "products"), where("category", "==", category), limit(200));
+  const q = query(collection(getDb(), "products"), where("category", "==", category), limit(500));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Product));
 }
 
 export async function getProductsByBrand(brand: string): Promise<Product[]> {
-  const q = query(collection(getDb(), "products"), where("brand", "==", brand), limit(200));
+  const q = query(collection(getDb(), "products"), where("brand", "==", brand), limit(500));
   const snap = await getDocs(q);
   return snap.docs.map((d) => ({ ...d.data(), id: d.id } as Product));
 }

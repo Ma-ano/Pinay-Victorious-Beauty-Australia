@@ -22,7 +22,7 @@ async function getCompletedOrders() {
 export async function getSiteStats(): Promise<SiteStats> {
   try {
     const [productsSnap, ordersSnap] = await Promise.allSettled([
-      getDocs(query(collection(db, "products"), limit(200))),
+      getDocs(query(collection(db, "products"), limit(500))),
       getDocs(query(collection(db, "orders"), limit(1000))),
     ]);
 

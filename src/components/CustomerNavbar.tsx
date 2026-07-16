@@ -31,6 +31,7 @@ export default function CustomerNavbar() {
   const [hidden, setHidden] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
+  const [productsLoaded, setProductsLoaded] = useState(false);
   const [freeShippingThreshold, setFreeShippingThreshold] = useState(120);
 
   useEffect(() => {
@@ -38,7 +39,10 @@ export default function CustomerNavbar() {
   }, []);
 
   useEffect(() => {
-    getAllProducts(20).then(setAllProducts);
+    getAllProducts(500).then((p) => {
+      setAllProducts(p);
+      setProductsLoaded(true);
+    });
   }, []);
   const [query, setQuery] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
@@ -88,7 +92,11 @@ export default function CustomerNavbar() {
     }
     const q = query.toLowerCase();
     return allProducts.filter(
-      p => p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q)
+      p =>
+        p.name.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
+        p.category.toLowerCase().includes(q) ||
+        (p.subcategory || "").toLowerCase().includes(q)
     ).slice(0, 6);
   }, [query, allProducts]);
 
@@ -189,7 +197,11 @@ export default function CustomerNavbar() {
 
                           {query.trim() && (
                             <div className="border-t border-primary/10">
-                              {results.length > 0 ? (
+                              {!productsLoaded ? (
+                                <div className="py-6 text-center text-sm text-foreground">
+                                  <div className="animate-pulse">Searching...</div>
+                                </div>
+                              ) : results.length > 0 ? (
                                 <div>
                                   {results.map((product) => (
                                     <Link
