@@ -1,7 +1,7 @@
 import { site } from "@/data/site";
 
 const shippingRates = [
-  { range: "Under $120 AUD", standard: "$10.70", express: "$15.20" },
+  { range: "Under $120 AUD", standard: "$11.70", express: "$15.20" },
   { range: "$120 AUD and above", standard: "FREE", express: "$5.00 AUD Express Upgrade" },
 ];
 

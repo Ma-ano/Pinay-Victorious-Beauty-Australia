@@ -146,7 +146,7 @@ export default function CheckoutPage() {
 
   const shippingCost = finalTotal >= freeShippingThreshold
     ? (shippingMethod === "express" ? 5 : 0)
-    : (shippingMethod === "express" ? 15.20 : 10.70);
+    : (shippingMethod === "express" ? 15.20 : 11.70);
   const orderTotal = finalTotal + shippingCost;
 
   function handleApplyCode() {
@@ -698,7 +698,7 @@ function generateOrderNumber(): string {
                       <span className="text-foreground/60">2–8 business days</span>
                     </div>
                     <span className="font-medium">
-                      {finalTotal >= freeShippingThreshold ? "FREE" : formatPrice(10.70)}
+                      {finalTotal >= freeShippingThreshold ? "FREE" : formatPrice(11.70)}
                     </span>
                   </button>
                   <button
