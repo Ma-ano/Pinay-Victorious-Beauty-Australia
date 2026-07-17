@@ -94,6 +94,18 @@ export async function POST(request: Request) {
     }
 
     if (paypalStatus === "COMPLETED") {
+      // Verify amount and currency match database
+      const capturedAmount = parseFloat((capture?.amount as Record<string, unknown> | undefined)?.value as string || "0");
+      const capturedCurrency = (capture?.amount as Record<string, unknown> | undefined)?.currency as string || "";
+      if (capturedCurrency !== "AUD") {
+        await orderRef.update({ paymentStatus: "declined", updatedAt: now });
+        return NextResponse.json({ error: "Currency mismatch" }, { status: 400 });
+      }
+      if (Math.abs(capturedAmount - (orderData.total || 0)) > 0.01) {
+        await orderRef.update({ paymentStatus: "declined", updatedAt: now });
+        return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
+      }
+
       const ps = captureResult.payment_source as Record<string, unknown> | undefined;
       updates.fundingSource = ps?.paypal ? "paypal" : ps?.card ? "card" : "unknown";
       updates.paymentStatus = "paid";

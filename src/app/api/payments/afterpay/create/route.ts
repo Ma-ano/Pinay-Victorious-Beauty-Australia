@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createAfterpayCheckout, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -128,7 +129,25 @@ export async function POST(request: Request) {
     const expireAt = Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
 
     const orderRef = getAdminDb().collection("orders").doc();
-    const orderData = {
+
+    // Cancel any existing pending Afterpay orders for this user to prevent duplicates
+    const existing = await getAdminDb().collection("orders")
+      .where("userId", "==", decoded.uid)
+      .where("paymentStatus", "==", "pending")
+      .where("paymentMethod", "==", "afterpay")
+      .get();
+    if (existing.size > 0) {
+      const batch = getAdminDb().batch();
+      existing.forEach(doc => batch.update(doc.ref, {
+        status: "cancelled",
+        paymentStatus: "cancelled",
+        updatedAt: now,
+      }));
+      await batch.commit();
+    }
+
+    // Write to Firestore BEFORE creating Afterpay checkout
+    const orderData: Record<string, unknown> = {
       userId: decoded.uid,
       customerName: customerName || "",
       customerEmail: email,
@@ -168,7 +187,7 @@ export async function POST(request: Request) {
       expireAt,
     };
 
-    await getAdminDb().collection("orders").doc(orderRef.id).set(orderData);
+    await orderRef.set(orderData);
 
     const afterpayItems = items.map(
       (i: { name: string; quantity: number; unitAmount: number }) => ({
@@ -177,6 +196,10 @@ export async function POST(request: Request) {
         price: { amount: String(i.unitAmount), currency: "AUD" },
       })
     );
+
+    // Deterministic idempotency key — same cart + user always produces same key
+    const idempotentPayload = `${decoded.uid}_${JSON.stringify(items)}_${total}_${shippingCost}_${discount}_afterpay`;
+    const idempotencyKey = crypto.createHash("sha256").update(idempotentPayload).digest("hex").slice(0, 32);
 
     const result = await createAfterpayCheckout({
       items: afterpayItems,
@@ -195,7 +218,13 @@ export async function POST(request: Request) {
       email,
       customerName,
       merchantReference: orderRef.id,
+      idempotencyKey,
     });
+
+    if (!result?.token) {
+      await orderRef.delete();
+      return NextResponse.json({ error: "Afterpay checkout creation returned no token" }, { status: 500 });
+    }
 
     const pendingData = {
       orderId: orderRef.id,

@@ -40,6 +40,7 @@ interface CreateCheckoutParams {
   email: string;
   customerName: string;
   merchantReference?: string;
+  idempotencyKey?: string;
 }
 
 export interface AfterpayCheckoutResponse {
@@ -117,6 +118,7 @@ export async function createAfterpayCheckout(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Basic ${getAuthToken()}`,
+      ...(params.idempotencyKey ? { "Idempotency-Key": params.idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
   });

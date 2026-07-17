@@ -66,12 +66,38 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "orderToken is required" }, { status: 400 });
     }
 
+    // Check if this Afterpay order ID was already captured in any order
+    if (orderData.afterpayOrderId) {
+      const alreadyCaptured = await getAdminDb().collection("orders")
+        .where("afterpayOrderId", "==", orderData.afterpayOrderId)
+        .where("paymentStatus", "==", "paid")
+        .get();
+      if (!alreadyCaptured.empty) {
+        return NextResponse.json({ success: true, existing: true, orderId: alreadyCaptured.docs[0].id });
+      }
+    }
+
+    // Set intermediate "capturing" status before calling Afterpay API
+    await orderRef.update({ paymentStatus: "capturing", updatedAt: Timestamp.fromDate(new Date()) });
+
     const captureResult = await captureAfterpayPayment(orderToken);
     console.log("AFTERPAY CAPTURE RESPONSE:", JSON.stringify(captureResult));
 
     const now = Timestamp.fromDate(new Date());
 
     if (captureResult.status === "APPROVED") {
+      // Verify amount matches database
+      const capturedAmount = parseFloat(captureResult.originalAmount?.amount || "0");
+      const capturedCurrency = captureResult.originalAmount?.currency || "";
+      if (capturedCurrency !== "AUD") {
+        await orderRef.update({ paymentStatus: "declined", afterpayToken: orderToken, updatedAt: now });
+        return NextResponse.json({ error: "Currency mismatch" }, { status: 400 });
+      }
+      if (Math.abs(capturedAmount - (orderData.total || 0)) > 0.01) {
+        await orderRef.update({ paymentStatus: "declined", afterpayToken: orderToken, updatedAt: now });
+        return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
+      }
+
       await orderRef.update({
         paymentStatus: "paid",
         afterpayToken: orderToken,
