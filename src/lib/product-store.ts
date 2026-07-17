@@ -18,6 +18,7 @@ import {
   limit,
   onSnapshot,
   FirestoreError,
+  Timestamp,
 } from "firebase/firestore";
 import type { Product, ProductImage, ProductVariant } from "@/data/products";
 import { roundRating } from "@/lib/review-utils";
@@ -49,14 +50,19 @@ export interface ProductFormData {
   metaKeywords?: string;
 }
 
-function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
-  const cleaned = { ...obj };
-  for (const key in cleaned) {
-    if (cleaned[key] === undefined) {
-      delete cleaned[key];
+function stripUndefined<T>(value: T): T {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) return value.map(stripUndefined) as T;
+  if (typeof value === "object" && !(value instanceof Date) && !(value instanceof Timestamp)) {
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v !== undefined) {
+        cleaned[k] = stripUndefined(v);
+      }
     }
+    return cleaned as T;
   }
-  return cleaned;
+  return value;
 }
 
 function slugify(text: string): string {
@@ -147,7 +153,7 @@ export async function saveProduct(
   const metaTitle = data.metaTitle || `Buy ${data.name} Philippines`;
   const metaDescription = data.metaDescription || data.description.slice(0, 160);
   const metaKeywords = data.metaKeywords || `${data.name}, buy online philippines, cheap ${data.name}`;
-  await setDoc(doc(getDb(), "products", productId), stripUndefined({
+  const cleaned = stripUndefined({
     ...data,
     slug,
     metaTitle,
@@ -155,7 +161,17 @@ export async function saveProduct(
     metaKeywords,
     createdAt: id ? undefined : serverTimestamp(),
     updatedAt: serverTimestamp(),
-  }));
+  });
+  console.log("[saveProduct] Payload keys/types:", Object.fromEntries(
+    Object.entries(cleaned).map(([k, v]) => [k, Array.isArray(v) ? `array[${v.length}]` : typeof v])
+  ));
+  const undefinedKeys = Object.entries(cleaned)
+    .filter(([, v]) => v === undefined)
+    .map(([k]) => k);
+  if (undefinedKeys.length > 0) {
+    console.warn("[saveProduct] Undefined fields after stripUndefined:", undefinedKeys, cleaned);
+  }
+  await setDoc(doc(getDb(), "products", productId), cleaned);
   return productId;
 }
 

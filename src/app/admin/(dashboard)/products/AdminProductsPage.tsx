@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
-import { productTypes } from "@/data/productTypes";
 import { categories } from "@/data/categories";
 import type { Product, ProductImage } from "@/data/products";
 import { saveProduct, deleteProduct, getAllProducts } from "@/lib/product-store";
@@ -106,7 +105,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("");
-  const [filterType, setFilterType] = useState("");
+  const [filterSubcategory, setFilterSubcategory] = useState("");
   const [filterBrand, setFilterBrand] = useState("");
   const [filterAvailability, setFilterAvailability] = useState<"all" | "in-stock" | "out-of-stock">("all");
   const [filterMinPrice, setFilterMinPrice] = useState("");
@@ -157,7 +156,7 @@ export default function AdminProductsPage() {
     getAllProducts().then(setAllProducts);
   }, []);
 
-  const hasFilters = !!(searchQuery || filterCategory || filterType || filterBrand ||
+  const hasFilters = !!(searchQuery || filterCategory || filterSubcategory || filterBrand ||
     filterAvailability !== "all" || filterMinPrice || filterMaxPrice ||
     filterHasImages !== "all" || filterHasVariants !== "all");
 
@@ -218,15 +217,15 @@ export default function AdminProductsPage() {
     }
   }, [hasFilters]);
 
-  // Reset page when category/type changes
+  // Reset page when filter changes
   useEffect(() => {
     if (hasFilters) setPage(1);
-  }, [filterCategory, filterType]);
+  }, [filterCategory, filterSubcategory]);
 
   // Clear cursors when filter fields change
   useEffect(() => {
     if (!hasFilters) pageCursors.current.clear();
-  }, [filterCategory, filterType, filterBrand, filterAvailability,
+  }, [filterCategory, filterSubcategory, filterBrand, filterAvailability,
       filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
   useEffect(() => {
@@ -253,14 +252,14 @@ export default function AdminProductsPage() {
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (filterCategory) count++;
-    if (filterType) count++;
+    if (filterSubcategory) count++;
     if (filterBrand) count++;
     if (filterAvailability !== "all") count++;
     if (filterMinPrice || filterMaxPrice) count++;
     if (filterHasImages !== "all") count++;
     if (filterHasVariants !== "all") count++;
     return count;
-  }, [filterCategory, filterType, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
+  }, [filterCategory, filterSubcategory, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
   const filteredProducts = useMemo(() => {
     if (!hasFilters) return [];
@@ -269,9 +268,11 @@ export default function AdminProductsPage() {
     results = results.filter((p) => {
       if (searchQuery) {
         const variantNames = (p.variants || []).map((v) => v.name.toLowerCase()).join(" ");
-        const searchable = [p.name, p.category, p.subcategory || "", p.type, p.brand || "", variantNames, p.id].join(" ").toLowerCase();
+        const searchable = [p.name, p.category, p.subcategory || "", p.brand || "", variantNames, p.id].join(" ").toLowerCase();
         if (!searchable.includes(qs)) return false;
       }
+      if (filterCategory && p.category !== filterCategory) return false;
+      if (filterSubcategory && p.subcategory !== filterSubcategory) return false;
       if (filterBrand && !(p.brand || "").toLowerCase().includes(filterBrand.toLowerCase())) return false;
       if (filterAvailability !== "all") {
         const hasStock = p.variants && p.variants.length > 0
@@ -289,7 +290,7 @@ export default function AdminProductsPage() {
       return true;
     });
     return results;
-  }, [allProducts, searchQuery, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
+  }, [allProducts, searchQuery, filterCategory, filterSubcategory, filterBrand, filterAvailability, filterMinPrice, filterMaxPrice, filterHasImages, filterHasVariants]);
 
   const displayTotal = hasFilters
     ? Math.ceil(filteredProducts.length / pageSize)
@@ -300,7 +301,7 @@ export default function AdminProductsPage() {
     : products;
 
   const categoryOptions = useMemo(() => {
-    const excluded = new Set(["best-sellers", "new-arrivals", "gift-sets", "sale"]);
+    const excluded = new Set(["best-sellers", "new-arrivals", "sale"]);
     const options: { value: string; label: string }[] = [];
     for (const cat of categories) {
       if (excluded.has(cat.slug)) continue;
@@ -322,6 +323,12 @@ export default function AdminProductsPage() {
     if (!cat) return [];
     return cat.subcategories.map((sub) => ({ value: sub.slug, label: sub.name }));
   }, [form.category]);
+
+  const subcategoryFilterOptions = useMemo(() => {
+    const cat = categories.find((c) => c.slug === filterCategory);
+    if (!cat) return [];
+    return cat.subcategories.map((sub) => ({ value: sub.slug, label: sub.name }));
+  }, [filterCategory]);
 
   const subcategoryLabelMap = useMemo(() => {
     const map: Record<string, string> = {};
@@ -509,9 +516,9 @@ export default function AdminProductsPage() {
           id: v.id,
           name: v.name.trim(),
           inStock: v.inStock,
-          stock: v.stock !== "" ? parseInt(v.stock) : undefined,
-          price: v.price !== "" ? parseFloat(v.price) : undefined,
-          originalPrice: v.originalPrice !== "" ? parseFloat(v.originalPrice) : undefined,
+          ...(v.stock !== "" && { stock: parseInt(v.stock) }),
+          ...(v.price !== "" && { price: parseFloat(v.price) }),
+          ...(v.originalPrice !== "" && { originalPrice: parseFloat(v.originalPrice) }),
         })),
         isSale: form.isSale,
         isNew: form.isNew,
@@ -524,6 +531,7 @@ export default function AdminProductsPage() {
       showToast(editingId ? "Product updated" : "Product created", "success");
       cancelForm();
     } catch (err) {
+      console.error("Failed to save product:", err);
       showToast("Failed to save product", "error");
     } finally {
       setSaving(false);
@@ -1009,7 +1017,7 @@ export default function AdminProductsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs text-foreground mb-1">Category</label>
-              <select value={filterCategory} onChange={(e) => setFilterCategory(e.target.value)}
+              <select value={filterCategory} onChange={(e) => { setFilterCategory(e.target.value); setFilterSubcategory(""); }}
                 className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
                 <option value="">All Categories</option>
                 {categoryOptions.map((opt) => (
@@ -1018,11 +1026,14 @@ export default function AdminProductsPage() {
               </select>
             </div>
             <div>
-              <label className="block text-xs text-foreground mb-1">Type</label>
-              <select value={filterType} onChange={(e) => setFilterType(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40">
-                <option value="">All Types</option>
-                {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
+              <label className="block text-xs text-foreground mb-1">Subcategory</label>
+              <select value={filterSubcategory} onChange={(e) => setFilterSubcategory(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40"
+                disabled={!filterCategory}>
+                <option value="">All Subcategories</option>
+                {subcategoryFilterOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -1076,7 +1087,7 @@ export default function AdminProductsPage() {
             </div>
           </div>
           {activeFilterCount > 0 && (
-            <button onClick={() => { setFilterCategory(""); setFilterType(""); setFilterBrand(""); setFilterAvailability("all"); setFilterMinPrice(""); setFilterMaxPrice(""); setFilterHasImages("all"); setFilterHasVariants("all"); }}
+            <button onClick={() => { setFilterCategory(""); setFilterSubcategory(""); setFilterBrand(""); setFilterAvailability("all"); setFilterMinPrice(""); setFilterMaxPrice(""); setFilterHasImages("all"); setFilterHasVariants("all"); }}
               className="text-xs text-accent hover:underline">
               Clear all filters
             </button>
@@ -1091,7 +1102,6 @@ export default function AdminProductsPage() {
               <th className="text-left px-4 py-3 font-medium text-dark">Name</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Category</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden sm:table-cell">Subcategory</th>
-              <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Type</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden lg:table-cell">Brand</th>
               <th className="text-left px-4 py-3 font-medium text-dark hidden md:table-cell">Form</th>
               <th className="text-left px-4 py-3 font-medium text-dark">Price</th>
@@ -1105,7 +1115,7 @@ export default function AdminProductsPage() {
           <tbody className="divide-y divide-primary/10">
             {displayProducts.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-4 py-12 text-center text-foreground">
+                <td colSpan={11} className="px-4 py-12 text-center text-foreground">
                   {searchQuery || activeFilterCount > 0 ? "No products match your search or filters." : 'No products yet. Click "+ Add Product" to get started.'}
                 </td>
               </tr>
@@ -1118,9 +1128,6 @@ export default function AdminProductsPage() {
                   </td>
                   <td className="px-4 py-3 text-foreground capitalize hidden sm:table-cell">
                     {p.subcategory ? (subcategoryLabelMap[p.subcategory] || p.subcategory) : "—"}
-                  </td>
-                  <td className="px-4 py-3 text-foreground capitalize hidden lg:table-cell">
-                    {p.type.replace("-", " ")}
                   </td>
                   <td className="px-4 py-3 text-foreground hidden lg:table-cell">{p.brand}</td>
                   <td className="px-4 py-3 hidden md:table-cell">
