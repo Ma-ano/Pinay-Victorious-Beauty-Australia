@@ -10,7 +10,7 @@ import ReviewSection from "@/components/ReviewSection";
 import VerifiedToast from "@/components/VerifiedToast";
 import { TrendingSkeleton, BestSellingSkeleton } from "@/components/Skeletons";
 
-export const revalidate = 60;
+export const revalidate = 3600;
 
 async function TrendingWrapper({ products }: { products: Product[] }) {
   const reviewStats = await fetchAllReviewStats();
