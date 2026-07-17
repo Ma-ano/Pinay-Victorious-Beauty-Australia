@@ -36,8 +36,8 @@ export default function AdminDashboardPage() {
         if (ordersSnap.status === "fulfilled") {
           ordersSnap.value.forEach((docSnap) => {
             const data = docSnap.data();
-            if (data.status === "completed" && data.subtotal) {
-              totalRevenue += Number(data.subtotal);
+            if (data.status === "completed" && data.total) {
+              totalRevenue += Number(data.total);
             }
           });
         }
