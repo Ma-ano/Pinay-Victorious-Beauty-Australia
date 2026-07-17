@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createPayPalOrder } from "@/lib/paypal";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
+import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -33,16 +34,27 @@ export async function POST(request: Request) {
     }
 
     const now = Timestamp.fromDate(new Date());
-
-    const orderRef = getAdminDb().collection("orders").doc();
-    const paypalOrder = await createPayPalOrder(items, total, shipping, discount, orderRef.id, shippingCost);
-
-    if (!paypalOrder?.id) {
-      return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
-    }
-
     const expireAt = Timestamp.fromDate(new Date(Date.now() + 30 * 60 * 1000));
 
+    const orderRef = getAdminDb().collection("orders").doc();
+
+    // Cancel any existing pending PayPal orders for this user to prevent duplicates
+    const existing = await getAdminDb().collection("orders")
+      .where("userId", "==", decoded.uid)
+      .where("paymentStatus", "==", "pending")
+      .where("paymentMethod", "==", "paypal")
+      .get();
+    if (existing.size > 0) {
+      const batch = getAdminDb().batch();
+      existing.forEach(doc => batch.update(doc.ref, {
+        status: "cancelled",
+        paymentStatus: "cancelled",
+        updatedAt: now,
+      }));
+      await batch.commit();
+    }
+
+    // Write to Firestore BEFORE creating PayPal order
     const orderData: Record<string, unknown> = {
       userId: decoded.uid,
       customerName: customerName || "",
@@ -64,7 +76,6 @@ export async function POST(request: Request) {
       },
       paymentMethod: paymentMethod || "paypal",
       paymentStatus: "pending",
-      paypalOrderId: paypalOrder.id,
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
       discountCode: discountCode || null,
@@ -77,7 +88,23 @@ export async function POST(request: Request) {
       updatedAt: now,
     };
 
-    await getAdminDb().collection("orders").doc(orderRef.id).set(orderData);
+    await orderRef.set(orderData);
+
+    // Create PayPal order with deterministic idempotency key
+    // Same user + same cart always produces the same key, preventing duplicate PayPal orders
+    const idempotentPayload = `${decoded.uid}_${JSON.stringify(items)}_${total}_${shippingCost}_${discount}`;
+    const idempotencyKey = `paypal_${crypto.createHash("sha256").update(idempotentPayload).digest("hex").slice(0, 32)}`;
+    const paypalOrder = await createPayPalOrder(
+      items, total, shipping, discount, orderRef.id, shippingCost, idempotencyKey
+    );
+
+    if (!paypalOrder?.id) {
+      await orderRef.delete();
+      return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
+    }
+
+    // Update Firestore with PayPal order ID
+    await orderRef.update({ paypalOrderId: paypalOrder.id });
 
     return NextResponse.json({ id: paypalOrder.id, firestoreId: orderRef.id });
   } catch (err) {

@@ -112,6 +112,7 @@ const paymentColors: Record<string, string> = {
 const paymentStatusColors: Record<string, string> = {
   paid: "bg-green-100 text-green-700",
   approved: "bg-green-100 text-green-700",
+  capturing: "bg-blue-100 text-blue-700",
   pending: "bg-yellow-100 text-yellow-700",
   failed: "bg-red-100 text-red-700",
   cancelled: "bg-red-100 text-red-700",
@@ -219,6 +220,7 @@ function OrderDetailModal({
                   {order.afterpayOrderId && (
                     <p><span className="font-medium text-foreground">Afterpay Order ID:</span> {order.afterpayOrderId}</p>
                   )}
+                  <p><span className="font-medium text-foreground">Merchant Reference:</span> {order.firestoreId}</p>
                   {order.afterpayToken && (
                     <p><span className="font-medium text-foreground">Afterpay Token:</span> {order.afterpayToken}</p>
                   )}
@@ -379,6 +381,31 @@ export default function AdminOrdersPage() {
     const onFocus = () => fetchOrders();
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      try {
+        const token = await getIdToken();
+        if (!token || cancelled) return;
+        const res = await fetch("/api/admin/orders/cleanup-afterpay", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.cleanedCount > 0) {
+            showToast(`${data.cleanedCount} expired Afterpay order(s) cancelled automatically`, "success");
+            fetchOrders();
+          }
+        }
+      } catch {
+        // cleanup is best-effort
+      }
+    }
+    run();
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {

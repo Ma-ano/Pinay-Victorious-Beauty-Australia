@@ -91,6 +91,7 @@ export async function createPayPalOrder(
   discount?: number,
   customId?: string,
   shippingAmount?: number,
+  idempotencyKey?: string,
 ) {
   const token = await getAccessToken();
 
@@ -171,6 +172,7 @@ export async function createPayPalOrder(
     headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`,
+      ...(idempotencyKey ? { "PayPal-Request-Id": idempotencyKey } : {}),
     },
     body: JSON.stringify(body),
   });

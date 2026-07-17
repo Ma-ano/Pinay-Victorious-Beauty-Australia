@@ -54,7 +54,11 @@ export async function POST(request: Request) {
       process.env.SITE_URL ||
       "https://pinayvictorious.com";
 
-    await createAndSendOtp(trimmedEmail, baseUrl);
+    try {
+      await createAndSendOtp(trimmedEmail, baseUrl);
+    } catch (otpError) {
+      console.error("Failed to send verification email (non-blocking):", otpError);
+    }
 
     return NextResponse.json({ success: true, uid: userRecord.uid });
   } catch (error) {

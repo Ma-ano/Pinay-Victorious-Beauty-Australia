@@ -64,6 +64,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
     }
 
+    // Check if this PayPal order ID was already captured in any order
+    const alreadyCaptured = await getAdminDb().collection("orders")
+      .where("paypalOrderId", "==", orderID)
+      .where("paymentStatus", "==", "paid")
+      .get();
+    if (!alreadyCaptured.empty) {
+      return NextResponse.json({ success: true, existing: true, orderId: alreadyCaptured.docs[0].id });
+    }
+
+    // Set intermediate "capturing" status before calling PayPal API.
+    // If the process crashes after capture but before Firestore update,
+    // the order stays as "capturing" — the webhook will reconcile it.
+    await orderRef.update({ paymentStatus: "capturing", updatedAt: Timestamp.fromDate(new Date()) });
+
     const captureResult = await capturePayPalOrder(orderID);
     const paypalStatus = captureResult.status || "UNKNOWN";
 

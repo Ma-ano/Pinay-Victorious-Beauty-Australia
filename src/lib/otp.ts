@@ -25,24 +25,28 @@ export async function createAndSendOtp(email: string, baseUrl?: string): Promise
     attempts: 0,
   });
 
-  await sendEmail({
-    to: email,
-    subject: "Your verification code — Pinay Victorious Beauty",
-    html: `
-      <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
-        <h1 style="color: #3A2E2A; font-size: 22px; margin: 0 0 12px;">Your verification code</h1>
-        <p style="color: #3A2E2A; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
-          Use the code below to verify your email address. It expires in 5 minutes.
-        </p>
-        <div style="background: #FAF6F3; border-radius: 12px; padding: 20px; text-align: center; margin: 0 0 24px;">
-          <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #B76E79; font-family: monospace;">${code}</span>
+  try {
+    await sendEmail({
+      to: email,
+      subject: "Your verification code — Pinay Victorious Beauty",
+      html: `
+        <div style="font-family: Georgia, 'Times New Roman', serif; max-width: 480px; margin: 0 auto; padding: 32px 24px;">
+          <h1 style="color: #3A2E2A; font-size: 22px; margin: 0 0 12px;">Your verification code</h1>
+          <p style="color: #3A2E2A; font-size: 15px; line-height: 1.6; margin: 0 0 24px;">
+            Use the code below to verify your email address. It expires in 5 minutes.
+          </p>
+          <div style="background: #FAF6F3; border-radius: 12px; padding: 20px; text-align: center; margin: 0 0 24px;">
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #B76E799; font-family: monospace;">${code}</span>
+          </div>
+          <p style="color: #3A2E2A80; font-size: 13px; line-height: 1.5; margin: 0;">
+            If you didn't request this code, you can safely ignore this email.
+          </p>
         </div>
-        <p style="color: #3A2E2A80; font-size: 13px; line-height: 1.5; margin: 0;">
-          If you didn't request this code, you can safely ignore this email.
-        </p>
-      </div>
-    `,
-  });
+      `,
+    });
+  } catch (emailError) {
+    console.error("Failed to send verification email (non-blocking):", emailError);
+  }
 }
 
 export async function verifyOtp(email: string, code: string): Promise<boolean> {
