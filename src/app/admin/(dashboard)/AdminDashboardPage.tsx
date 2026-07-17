@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { collection, getDocs, query, limit } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
 
@@ -23,9 +23,9 @@ export default function AdminDashboardPage() {
     async function fetchStats() {
       try {
         const [productsSnap, ordersSnap, usersSnap] = await Promise.allSettled([
-          getDocs(query(collection(db, "products"), limit(200))),
-          getDocs(query(collection(db, "orders"), limit(1000))),
-          getDocs(query(collection(db, "users"), limit(1000))),
+          getDocs(collection(db, "products")),
+          getDocs(collection(db, "orders")),
+          getDocs(collection(db, "users")),
         ]);
 
         const totalProducts = productsSnap.status === "fulfilled" ? productsSnap.value.size : 0;
