@@ -14,6 +14,7 @@ function hashCode(code: string): string {
 
 export async function createAndSendOtp(email: string, baseUrl?: string): Promise<void> {
   const code = generateCode();
+  console.log(`[OTP] Code for ${email}: ${code}`);
   const hash = hashCode(code);
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
@@ -36,7 +37,7 @@ export async function createAndSendOtp(email: string, baseUrl?: string): Promise
             Use the code below to verify your email address. It expires in 5 minutes.
           </p>
           <div style="background: #FAF6F3; border-radius: 12px; padding: 20px; text-align: center; margin: 0 0 24px;">
-            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #B76E799; font-family: monospace;">${code}</span>
+            <span style="font-size: 36px; font-weight: bold; letter-spacing: 8px; color: #B76E79; font-family: monospace;">${code}</span>
           </div>
           <p style="color: #3A2E2A80; font-size: 13px; line-height: 1.5; margin: 0;">
             If you didn't request this code, you can safely ignore this email.
