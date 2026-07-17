@@ -36,6 +36,7 @@ interface OrderItem {
 
 interface ShippingAddress {
   street: string;
+  suburb?: string;
   city: string;
   state: string;
   postcode: string;
@@ -55,6 +56,8 @@ interface FirestoreOrder {
   total: number;
   discount?: number;
   discountCode?: string | null;
+  shippingMethod?: string;
+  shippingCost?: number;
   paymentStatus?: string;
   paypalOrderId?: string;
   paypalCaptureId?: string;
@@ -227,6 +230,7 @@ function OrderDetailModal({
             <h3 className="text-sm font-semibold text-foreground mb-2">Shipping Address</h3>
             <div className="space-y-1 text-sm text-foreground">
               <p>{order.shipping?.street || "-"}</p>
+              {order.shipping?.suburb && <p>{order.shipping.suburb}</p>}
               <p>{order.shipping?.city || "-"}, {order.shipping?.state || "-"} {order.shipping?.postcode || ""}</p>
               <p>{order.shipping?.country || "-"}</p>
             </div>
@@ -257,6 +261,12 @@ function OrderDetailModal({
               <div className="mt-1 flex justify-between text-sm text-foreground">
                 <span>Discount{order.discountCode ? ` (${order.discountCode})` : ""}</span>
                 <span className="text-green-600">-{formatPrice(order.discount)}</span>
+              </div>
+            )}
+            {order.shippingMethod && (
+              <div className="mt-1 flex justify-between text-sm text-foreground">
+                <span>Shipping ({order.shippingMethod === "express" ? "Express" : "Standard"})</span>
+                <span>{order.shippingCost != null && order.shippingCost > 0 ? formatPrice(order.shippingCost) : "Free"}</span>
               </div>
             )}
             <div className="mt-1 pt-2 border-t border-card-border flex justify-between text-sm font-semibold text-foreground">
@@ -394,6 +404,7 @@ export default function AdminOrdersPage() {
           o.firestoreId,
           o.orderNumber,
           o.shipping?.street,
+          o.shipping?.suburb,
           o.shipping?.city,
           o.shipping?.state,
           o.shipping?.postcode,

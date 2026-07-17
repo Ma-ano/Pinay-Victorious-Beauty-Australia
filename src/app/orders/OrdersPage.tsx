@@ -40,6 +40,7 @@ interface OrderItem {
 
 interface ShippingAddress {
   street: string;
+  suburb?: string;
   city: string;
   state: string;
   postcode: string;
@@ -62,6 +63,8 @@ interface CustomerOrder {
   cardBrand?: string;
   discount?: number;
   discountCode?: string | null;
+  shippingMethod?: string;
+  shippingCost?: number;
   orderNumber?: string;
   createdAt?: Timestamp;
 }
@@ -390,6 +393,12 @@ export default function OrdersPage() {
                         <> — {order.cardBrand}{order.fundingSource ? ` (${order.fundingSource})` : ""}</>
                       )}
                     </p>
+                    {order.shippingMethod && (
+                      <p className="text-xs text-foreground/70 mt-0.5">
+                        Shipping: {order.shippingMethod === "express" ? "Express" : "Standard"}
+                        {order.shippingCost != null && ` (${order.shippingCost === 0 ? "Free" : formatPrice(order.shippingCost)})`}
+                      </p>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {canCancel && (

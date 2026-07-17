@@ -55,7 +55,6 @@ interface ProductForm {
   slug: string;
   category: string;
   subcategory: string;
-  type: string;
   brand: string;
   price: string;
   originalPrice: string;
@@ -80,7 +79,6 @@ function emptyForm(): ProductForm {
     slug: "",
     category: "",
     subcategory: "",
-    type: "",
     brand: "",
     price: "",
     originalPrice: "",
@@ -345,7 +343,6 @@ export default function AdminProductsPage() {
       slug: product.slug,
       category: product.category,
       subcategory: product.subcategory || "",
-      type: product.type,
       brand: product.brand,
       price: product.price.toString(),
       originalPrice: product.originalPrice ? product.originalPrice.toString() : "",
@@ -450,7 +447,6 @@ export default function AdminProductsPage() {
     const name = stripHtml(form.name.trim());
     if (!name) { showToast("Product name is required", "error"); return; }
     if (!form.isBundle && !form.category) { showToast("Category is required", "error"); return; }
-    if (!form.isBundle && !form.type) { showToast("Type is required", "error"); return; }
 
     if (!form.isBundle) {
       const price = parseFloat(form.price);
@@ -501,7 +497,6 @@ export default function AdminProductsPage() {
         slug,
         category: isBundle ? "gift-sets" : form.category,
         subcategory: isBundle ? undefined : (form.subcategory || undefined),
-        type: form.type,
         brand: form.brand,
         price: isBundle ? (finalBundlePrice || 0) : effectivePrice,
         originalPrice: form.originalPrice ? parseFloat(form.originalPrice) : undefined,
@@ -649,23 +644,7 @@ export default function AdminProductsPage() {
                       <p className="text-[11px] text-foreground/70 mt-1">Not applicable for bundle sets</p>
                     )}
                   </div>
-                  <div className={form.isBundle ? "opacity-40 pointer-events-none" : ""}>
-                    <label className="block text-xs text-foreground mb-1">Type *</label>
-                    {form.isBundle ? (
-                      <div className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm text-foreground/60">
-                        —
-                      </div>
-                    ) : (
-                      <select value={form.type} onChange={(e) => updateField("type", e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-accent/40" required>
-                        <option value="">Select type</option>
-                        {productTypes.map((t) => (<option key={t} value={t}>{t.replace("-", " ")}</option>))}
-                      </select>
-                    )}
-                    {form.isBundle && (
-                      <p className="text-[11px] text-foreground/70 mt-1">Not applicable for bundle sets</p>
-                    )}
-                  </div>
+
                   <div>
                     <label className="block text-xs text-foreground mb-1">Brand (Optional)</label>
                     <input type="text" value={form.brand} onChange={(e) => updateField("brand", e.target.value)}

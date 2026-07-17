@@ -335,11 +335,10 @@ export default function ProductDetailPage({ product }: Props) {
           <div className="mt-8 divide-y divide-primary/10 rounded-xl border border-card-border bg-card">
             {[
               { title: "Details", content: product.detail || "Premium formula crafted with the finest ingredients." },
-              { title: "Shipping & Returns", content: shippingReturnsText || `Free shipping on orders over $${freeShippingThreshold}. 30-day return policy.` },
               { title: "Ingredients", content: product.ingredients || "Contact us for ingredient details." },
             ].map((section) => (
               <details key={section.title} className="group">
-                <summary className="flex items-center justify-between px-4 py-3.5 text-sm font-medium text-dark cursor-pointer hover:text-accent transition-colors list-none">
+                <summary className="flex items-center justify-between px-4 py-3.5 text-sm font-bold text-dark cursor-pointer hover:text-accent transition-colors list-none">
                   {section.title}
                   <svg className="w-4 h-4 text-foreground group-open:rotate-180 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

@@ -6,7 +6,7 @@ export const site = {
   email: "pinayvictoriousbeauty@gmail.com",
   phone: "+61 413 504 424",
   whatsapp: "+61 413 504 424",
-  address: "Sydney, Australia",
+  address: "Cairns, Queensland Australia",
   url: process.env.NEXT_PUBLIC_SITE_URL || process.env.SITE_URL || "https://www.pinayvictoriousbeauty.com.au",
   locale: "en-AU",
   keywords: ["beauty", "skincare", "cosmetics Australia", "Korean beauty", "Asian beauty", "wellness", "makeup", "K-beauty", "natural skincare", "Pinay Victorious"],

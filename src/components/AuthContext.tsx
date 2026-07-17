@@ -242,11 +242,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       cred = await signInWithPopup(auth, googleProvider);
     } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
+      const fbErr = err as { code?: string; message?: string };
+      const code = fbErr?.code;
+      console.error("[Google Sign-In]", code, fbErr?.message);
       if (code === "auth/account-exists-with-different-credential") {
         throw new Error("An account with this email already exists. Please sign in with your email and password instead.");
       }
-      throw new Error("Google sign-in failed. Please try again.");
+      if (code === "auth/popup-blocked") {
+        throw new Error("Google sign-in popup was blocked. Please allow popups for this site and try again.");
+      }
+      if (code === "auth/unauthorized-domain") {
+        throw new Error("Google sign-in is not configured for this domain. Please contact support.");
+      }
+      if (code === "auth/operation-not-allowed") {
+        throw new Error("Google sign-in is not enabled. Please contact support.");
+      }
+      if (code === "auth/cancelled-popup-request" || code === "auth/popup-closed-by-user") {
+        throw new Error("Google sign-in was cancelled.");
+      }
+      throw new Error(`Google sign-in failed${code ? ` (${code})` : ""}. Please try again.`);
     }
     const fu = cred.user;
     await checkAdminClaim(fu);

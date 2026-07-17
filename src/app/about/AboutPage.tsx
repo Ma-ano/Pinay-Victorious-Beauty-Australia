@@ -29,17 +29,17 @@ export default function AboutPage() {
   const values = [
     {
       title: "Faith",
-      description: "Our journey began with faith during challenging times, and it remains the foundation of everything we do.",
+      description: "Faith has been the foundation of our journey from the beginning. It gave us strength during uncertain times and continues to guide our commitment to serving our customers with purpose, honesty, and care.",
       path: "M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5z M8 16h8v2H8z M10 18h4v3h-4z",
     },
     {
       title: "Resilience",
-      description: "From a small pandemic initiative to an international beauty movement, we grow stronger with every challenge.",
+      description: "Our journey from a small pandemic initiative in Qatar to an Australian beauty business reflects the power of perseverance and determination. Every challenge has helped us grow stronger and continue moving forward.",
       path: "M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10zm0-2a8 8 0 100-16 8 8 0 000 16zm1-8.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm3.5 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm-7 0a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zm-3.5 5c1.2 2.2 3.7 3.5 6.5 3.5s5.3-1.3 6.5-3.5z",
     },
     {
       title: "Community",
-      description: "We celebrate multicultural beauty traditions and empower every individual to feel confident in their own skin.",
+      description: "We celebrate diversity and the beauty traditions that bring people together. Our goal is to create a welcoming beauty community where everyone feels valued, confident, and inspired.",
       path: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z",
     },
   ];
@@ -59,7 +59,7 @@ export default function AboutPage() {
               Beauty With Purpose
             </h1>
             <p className="mt-4 text-foreground text-base md:text-lg leading-relaxed max-w-xl animate-fade-in-up">
-              {site.name} is built on faith, resilience, and a passion for self-care.
+              At {site.name}, we believe beauty is more than appearance — it is about confidence, self-care, and embracing what makes each person unique.
             </p>
           </div>
         </div>
@@ -77,13 +77,19 @@ export default function AboutPage() {
             </h2>
             <div className="mt-6 space-y-4 text-foreground leading-relaxed text-sm md:text-base">
               <p>
-                Our story began in Qatar during the 2020 pandemic. What started as a small effort to help people maintain their confidence during a global crisis quickly grew into something far greater than we could have imagined.
+                Our story began in Qatar during the 2020 pandemic.
               </p>
               <p>
-                Driven by a deep belief in the power of self-care, we began sourcing premium beauty and wellness essentials from South Korea, Thailand, the Philippines, and across Asia. Each product was chosen with care, rooted in cherished traditions and proven results.
+                During a challenging time when many people were facing uncertainty, we started with a small initiative to help others maintain their confidence and enjoy moments of self-care. What began as a simple passion project soon grew into something much bigger — a vision to share beauty products that inspire confidence and positivity.
               </p>
               <p>
-                Today, we are proud to call Sydney, Australia home. From Qatar to Australia, we continue to grow -- one community and one success story at a time.
+                Driven by our love for beauty and wellness, we began carefully sourcing beauty essentials from South Korea, Thailand, the Philippines, and across Asia. Each product was selected with care, inspired by trusted beauty traditions, innovative ingredients, and the diverse beauty cultures that continue to influence the world.
+              </p>
+              <p>
+                Today, we are proud to continue this journey in Australia.
+              </p>
+              <p>
+                From our beginnings in Qatar to building our home in Australia, Pinay Victorious Beauty Australia continues to grow by connecting with communities, celebrating multicultural beauty, and sharing products that encourage confidence and self-care.
               </p>
             </div>
             <div className="mt-6 w-16 h-0.5 bg-accent/40 rounded-full" />
@@ -110,9 +116,9 @@ export default function AboutPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-dark text-sm">Curated Excellence</h3>
+                <h3 className="font-semibold text-dark text-sm">Curated Beauty Selection</h3>
                 <p className="text-xs text-foreground mt-2 leading-relaxed max-w-xs mx-auto">
-                  High-quality, innovative beauty and wellness essentials sourced from South Korea, Thailand, the Philippines, and across Asia.
+                  We carefully select beauty and wellness products inspired by Asian beauty traditions, including products from South Korea, Thailand, the Philippines, and across Asia. Our goal is to bring customers quality products that are unique, trusted, and enjoyable as part of their daily self-care routines.
                 </p>
               </div>
               <div className="text-center animate-fade-in-up">
@@ -121,9 +127,9 @@ export default function AboutPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-dark text-sm">Community-Focused</h3>
+                <h3 className="font-semibold text-dark text-sm">Community Focused</h3>
                 <p className="text-xs text-foreground mt-2 leading-relaxed max-w-xs mx-auto">
-                  Dedicated to empowering multicultural communities and celebrating rich Asian beauty traditions.
+                  We believe beauty connects people. We are passionate about supporting multicultural communities and celebrating the rich beauty traditions, stories, and cultures that inspire our products.
                 </p>
               </div>
               <div className="text-center animate-fade-in-up">
@@ -135,7 +141,7 @@ export default function AboutPage() {
                 </div>
                 <h3 className="font-semibold text-dark text-sm">Beauty Without Borders</h3>
                 <p className="text-xs text-foreground mt-2 leading-relaxed max-w-xs mx-auto">
-                  Everyone deserves access to products that make them look, feel, and live their best -- no matter where they are.
+                  Beauty belongs to everyone. Our mission is to make beauty products more accessible, allowing people from all backgrounds to discover products that help them feel confident, cared for, and their best every day.
                 </p>
               </div>
             </div>
@@ -190,15 +196,15 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* CTA */}
+      {/* Thank You */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-24">
         <div className="relative overflow-hidden rounded-3xl bg-linear-to-r from-accent/20 via-primary/20 to-accent/10 p-8 md:p-12 text-center">
           <div className="absolute -top-8 -right-8 w-36 h-36 bg-accent/10 rounded-full blur-3xl" />
           <div className="absolute -bottom-8 -left-8 w-28 h-28 bg-accent/5 rounded-full blur-3xl" />
           <div className="relative z-10">
-            <h2 className="text-2xl md:text-4xl font-bold text-dark">Welcome to the Family</h2>
+            <h2 className="text-2xl md:text-4xl font-bold text-dark">Thank You For Being Part Of Our Journey</h2>
             <p className="mt-3 text-foreground text-sm md:text-base max-w-md mx-auto">
-              Join thousands of customers who have discovered their confidence through our curated beauty essentials.
+              From Qatar to Australia, we are grateful for every customer who supports Pinay Victorious Beauty Australia. Every order, message, and connection helps us continue our mission of sharing beauty, confidence, and self-care with our growing community.
             </p>
             <div className="mt-6">
               <Link

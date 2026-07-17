@@ -38,7 +38,7 @@ function baseTemplate(content: string, baseUrl: string = site.url) {
           <tr>
             <td style="padding:20px 30px;background-color:${bgColor};text-align:center;border-top:1px solid ${brandColor}20;">
               <p style="margin:0;font-size:12px;color:${textColor}80;">
-                &copy; ${new Date().getFullYear()} Pinay Victorious Beauty Australia &bull; Sydney, Australia
+                &copy; ${new Date().getFullYear()} Pinay Victorious Beauty Australia &bull; Cairns, Queensland Australia
               </p>
               <p style="margin:8px 0 0;font-size:12px;color:${textColor}60;">
                 You received this email because you signed up on our website.

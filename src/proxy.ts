@@ -4,19 +4,15 @@ import type { NextRequest } from "next/server";
 const ADMIN_TIMEOUT_MS = 30 * 60 * 1000;
 const CUSTOMER_TIMEOUT_MS = 4 * 60 * 60 * 1000;
 
-// testing time
-// const ADMIN_TIMEOUT_MS = 30 * 1000;      // 30 seconds
-// const CUSTOMER_TIMEOUT_MS = 30 * 1000;   // 30 seconds
-
 function addSecurityHeaders(res: NextResponse): NextResponse {
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.firebaseio.com https://apis.google.com https://www.googletagmanager.com",
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.paypal.com https://*.firebaseio.com https://apis.google.com https://www.googletagmanager.com https://vercel.live",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https://firebasestorage.googleapis.com https://lh3.googleusercontent.com https://images.unsplash.com",
     "font-src 'self' https://fonts.gstatic.com",
     "connect-src 'self' https://*.firebaseio.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firestore.googleapis.com https://*.paypal.com https://api.afterpay.com https://api-sandbox.afterpay.com https://firebasestorage.googleapis.com",
-    "frame-src https://www.paypal.com https://www.sandbox.paypal.com",
+    "frame-src https://www.paypal.com https://www.sandbox.paypal.com https://pinay-victorious.firebaseapp.com https://apis.google.com",
     "object-src 'none'",
     "base-uri 'self'",
   ].join("; ");

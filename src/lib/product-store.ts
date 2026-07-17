@@ -27,7 +27,6 @@ export interface ProductFormData {
   slug: string;
   category: string;
   subcategory?: string;
-  type: string;
   brand: string;
   price: number;
   originalPrice?: number;

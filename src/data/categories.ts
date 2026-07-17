@@ -28,6 +28,8 @@ export const categories: Category[] = [
       { name: "Moisturizer", slug: "moisturizer" },
       { name: "Sunscreen", slug: "sunscreen" },
       { name: "Face Mask", slug: "face-mask" },
+      { name: "Eye Cream", slug: "eye-cream" },
+      { name: "Face Set", slug: "face-set" },
       { name: "Whitening Products", slug: "whitening" },
     ],
   },
@@ -44,6 +46,10 @@ export const categories: Category[] = [
       { name: "Lipstick", slug: "lipstick" },
       { name: "Eyebrow & Eye Makeup", slug: "eye-makeup" },
       { name: "Beauty Tools", slug: "beauty-tools" },
+      { name: "Face", slug: "face" },
+      { name: "Lips", slug: "lips" },
+      { name: "Eyes & Brows", slug: "eyes-brows" },
+      { name: "Cheeks", slug: "cheeks" },
     ],
   },
   {
@@ -57,6 +63,7 @@ export const categories: Category[] = [
       { name: "Body Lotion", slug: "body-lotion" },
       { name: "Body Scrub", slug: "body-scrub" },
       { name: "Body Wash", slug: "body-wash" },
+      { name: "Body Bar", slug: "body-bar" },
       { name: "Whitening Lotion", slug: "whitening-lotion" },
       { name: "Hand & Foot Care", slug: "hand-foot-care" },
       { name: "Body Capsules (topical)", slug: "body-capsules-topical" },
@@ -87,8 +94,9 @@ export const categories: Category[] = [
     subcategories: [
       { name: "Shampoo", slug: "shampoo" },
       { name: "Conditioner", slug: "conditioner" },
-      { name: "Hair Treatment", slug: "hair-treatment" },
+      { name: "Hair Treatment/Mask", slug: "hair-treatment-mask" },
       { name: "Hair Growth Products", slug: "hair-growth" },
+      { name: "Hair Oil", slug: "hair-oil" },
     ],
   },
   {
@@ -222,5 +230,32 @@ export const categories: Category[] = [
     imageUrl: "photo-1522335789203-aabd1fc54bc9",
     description: "Limited-time offers you don't want to miss",
     subcategories: [],
+  },
+  {
+    id: "18",
+    name: "Underarm/Bikini Care",
+    slug: "underarm-bikini-care",
+
+    imageUrl: "",
+    description: "Underarm and bikini care products",
+    subcategories: [
+      { name: "Soap Bar", slug: "soap-bar" },
+      { name: "Roll on/Powder Stick", slug: "roll-on-powder-stick" },
+      { name: "Cream/Spray", slug: "cream-spray" },
+      { name: "Sets", slug: "sets" },
+    ],
+  },
+  {
+    id: "19",
+    name: "Health & Wellness",
+    slug: "health-wellness",
+
+    imageUrl: "photo-1552693673-1bf958298935",
+    description: "Collagen, supplements & dietary products",
+    subcategories: [
+      { name: "Collagen", slug: "collagen" },
+      { name: "Glutathione", slug: "glutathione" },
+      { name: "Dietary Supplement", slug: "dietary-supplement" },
+    ],
   },
 ];
