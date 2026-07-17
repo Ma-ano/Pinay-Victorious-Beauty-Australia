@@ -41,6 +41,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "PayPal order creation returned no ID" }, { status: 500 });
     }
 
+    const expireAt = Timestamp.fromDate(new Date(Date.now() + 30 * 60 * 1000));
+
     const orderData: Record<string, unknown> = {
       userId: decoded.uid,
       customerName: customerName || "",
@@ -70,6 +72,7 @@ export async function POST(request: Request) {
       shippingCost: shippingCost ?? 0,
       total,
       status: "processing",
+      expireAt,
       createdAt: now,
       updatedAt: now,
     };

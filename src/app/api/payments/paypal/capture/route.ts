@@ -47,6 +47,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    if (orderData.paymentStatus === "paid") {
+      return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
+    }
+
+    if (orderData.expireAt && orderData.expireAt.toDate() < new Date()) {
+      await orderRef.update({
+        paymentStatus: "expired",
+        status: "cancelled",
+        updatedAt: Timestamp.fromDate(new Date()),
+      });
+      return NextResponse.json({ error: "Payment session expired" }, { status: 400 });
+    }
+
     if (orderData.status === "approved" || orderData.status === "rejected" || orderData.status === "cancelled") {
       return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
     }

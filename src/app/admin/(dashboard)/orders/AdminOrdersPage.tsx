@@ -116,6 +116,7 @@ const paymentStatusColors: Record<string, string> = {
   failed: "bg-red-100 text-red-700",
   cancelled: "bg-red-100 text-red-700",
   declined: "bg-red-100 text-red-700",
+  expired: "bg-orange-100 text-orange-700",
 };
 
 function formatDate(ts?: Timestamp | string): string {

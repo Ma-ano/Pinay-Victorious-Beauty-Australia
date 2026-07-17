@@ -41,7 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    if (orderData.paymentStatus === "paid" || orderData.paymentStatus === "cancelled") {
+    if (orderData.paymentStatus === "paid" || orderData.paymentStatus === "cancelled" || orderData.paymentStatus === "expired") {
       return NextResponse.json({ success: true, alreadyFinal: true });
     }
 
