@@ -1,5 +1,3 @@
-import DOMPurify from "isomorphic-dompurify";
-
 export function sanitizeText(str: string, maxLength = 256): string {
   if (!str) return str;
   const stripped = str.replace(/<[^>]*>/g, "").trim();
@@ -24,11 +22,6 @@ export function sanitizePhone(phone: string): string {
 export function sanitizeEmail(email: string): string {
   if (!email) return email;
   return email.replace(/<[^>]*>/g, "").trim().toLowerCase().slice(0, 254);
-}
-
-export function sanitizeHTML(html: string): string {
-  if (!html) return html;
-  return DOMPurify.sanitize(html, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] });
 }
 
 export function safeJsonLd(obj: unknown): string {
