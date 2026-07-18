@@ -1,7 +1,15 @@
 "use client";
 
 import { getAuthClient, getGoogleProvider } from "@/lib/firebase";
-import { setPersistence, browserLocalPersistence, signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import {
+  setPersistence,
+  browserLocalPersistence,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+  type User,
+  type UserCredential,
+} from "firebase/auth";
 
 let persistenceInitialized = false;
 
@@ -15,19 +23,19 @@ async function initAuthPersistence(): Promise<void> {
   persistenceInitialized = true;
 }
 
-async function handleRedirectResult(): Promise<null> {
+async function handleRedirectResult(): Promise<User | null> {
   const auth = getAuthClient();
   if (!auth) return null;
 
   try {
-    await getRedirectResult(auth);
-    return null;
+    const result = await getRedirectResult(auth);
+    return result ? result.user : null;
   } catch {
     return null;
   }
 }
 
-async function loginWithGoogle(): Promise<{ user: { uid: string } }> {
+async function loginWithGoogle(): Promise<UserCredential> {
   await initAuthPersistence();
 
   const auth = getAuthClient();
@@ -38,8 +46,7 @@ async function loginWithGoogle(): Promise<{ user: { uid: string } }> {
   }
 
   try {
-    const result = await signInWithPopup(auth, provider);
-    return { user: { uid: result.user.uid } };
+    return await signInWithPopup(auth, provider);
   } catch (error: unknown) {
     const err = error as { code?: string };
     const code = err.code;

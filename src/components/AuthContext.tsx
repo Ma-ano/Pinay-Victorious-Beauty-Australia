@@ -131,6 +131,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await checkAdminClaim(fu);
         const base = mapFirebaseUser(fu);
         try {
+          if (!db) return;
           const userDoc = await getDoc(doc(db, "users", fu.uid));
           if (userDoc.exists()) {
             const data = userDoc.data();
@@ -162,6 +163,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase Auth not initialized");
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const tr = await cred.user.getIdTokenResult();
     return tr.claims.isAdmin === true;
@@ -191,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase Auth not initialized");
     await signInWithEmailAndPassword(auth, email.trim(), password);
     setEmailVerified(false);
   }, []);
@@ -249,6 +252,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase Auth not initialized");
     await signOut(auth);
     setUser(null);
     setEmailVerified(false);
@@ -269,6 +273,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback(async (data: { name?: string; phone?: string; photoURL?: string; address?: Address }) => {
     const db = getFirebaseDb();
     if (!user) throw new Error("Not authenticated");
+    if (!db) throw new Error("Firestore not initialized");
 
     const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name;
@@ -289,6 +294,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
     const auth = getFirebaseAuth();
+    if (!auth) throw new Error("Firebase Auth not initialized");
     const fu = auth.currentUser;
     if (!fu || !user) throw new Error("Not authenticated");
 
@@ -299,6 +305,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const getIdToken = useCallback(async (): Promise<string | null> => {
     const auth = getFirebaseAuth();
+    if (!auth) return null;
     try {
       const fu = auth.currentUser;
       if (!fu) return null;
