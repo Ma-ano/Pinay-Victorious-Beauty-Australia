@@ -111,11 +111,33 @@ export default function CheckoutPage() {
     }).catch(() => {});
   }, []);
 
+  // Debug click listener to identify blocking elements
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      console.log("[Click Debug]", el);
+    };
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
+  }, []);
+
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.push("/login?redirect=checkout");
     }
   }, [loading, isAuthenticated, router]);
+
+  // Debug: detect elements blocking clicks on PayPal buttons
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el) {
+        console.log("[PayPal Debug] Click target:", el.tagName, el.className, el.id);
+      }
+    };
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

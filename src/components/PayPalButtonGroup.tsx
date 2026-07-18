@@ -133,7 +133,7 @@ export default function PayPalButtonGroup({ createOrder, onApprove, onError, onC
   }
 
   return (
-    <div className="relative">
+    <div className="relative z-10">
       <div ref={containerRef} className="space-y-2" />
       {disabled && (
         <div className="absolute inset-0 bg-white/60 rounded-xl z-10" />

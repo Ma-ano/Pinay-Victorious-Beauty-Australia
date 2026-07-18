@@ -159,6 +159,7 @@ export default function CustomerNavbar() {
                           exit={{ opacity: 0, y: -4 }}
                           transition={{ duration: 0.15 }}
                           className="absolute top-full left-0 mt-2 w-80 bg-card rounded-xl shadow-xl border border-primary/10 overflow-hidden z-50"
+                          style={{ pointerEvents: searchOpen ? "auto" : "none" }}
                         >
                           <div className="p-3">
                             <div className="relative">
@@ -270,6 +271,7 @@ export default function CustomerNavbar() {
                             exit={{ opacity: 0, y: 6 }}
                             transition={{ duration: 0.15 }}
                             className="absolute top-full left-0 mt-1 min-w-55 max-w-[90vw] sm:min-w-100 lg:min-w-125 xl:min-w-150 max-h-[70vh] overflow-y-auto bg-card rounded-xl p-4 shadow-xl"
+                            style={{ pointerEvents: catOpen ? "auto" : "none" }}
                           >
                             <div className="grid grid-cols-2 xl:grid-cols-3 gap-x-4 gap-y-3">
                               {categoryLinks.filter(c => c.subcategories.length > 0).map((cat) => (
@@ -448,6 +450,7 @@ export default function CustomerNavbar() {
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="lg:hidden glass border-t border-primary/10 overflow-hidden"
+                style={{ pointerEvents: mobileOpen ? "auto" : "none" }}
               >
                 <div className="overflow-y-auto max-h-[calc(100dvh-4rem)]">
                   <div className="px-4 py-3 space-y-1">
@@ -710,6 +713,7 @@ function MobileCategorySection({ categories, onClose }: { categories: { label: s
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
+            style={{ pointerEvents: open ? "auto" : "none" }}
           >
             <div className="pl-4 pb-1 space-y-2">
               {categories.map((cat) => (

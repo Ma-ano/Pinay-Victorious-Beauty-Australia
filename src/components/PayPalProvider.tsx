@@ -46,7 +46,7 @@ export default function PayPalProvider({ children }: { children: ReactNode }) {
   return (
     <PayPalContext.Provider value={{ ready }}>
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=${CURRENCY}&components=buttons,messages`}
+        src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=${CURRENCY}&components=buttons,messages&enable-funding=card`}
         strategy="afterInteractive"
         data-sdk-integration-source="developer-library"
         onLoad={() => setLoaded(true)}

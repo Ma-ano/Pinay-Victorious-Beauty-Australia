@@ -1,166 +1,88 @@
-CATEGORIES
- 
-A. Skincare
-Facial Cleanser
-Toner
-Serum
-Moisturizer
-Sunscreen
-Face Mask
-Eye Cream
-Face Set
-Pimple Patch
- 
-B. Body Care
-Body Lotion
-Body Wash
-Body Bar
-Body Scrub
-Hand & Foot Care
- 
- 
-C. Hair Care
-Shampoo
-Conditioner
-Hair Treatment/Mask
-Hair Growth Products
-Hair Oil
-Hair Color 
+You are a senior frontend engineer working on an existing Next.js (App Router) + TypeScript + Tailwind + Framer Motion eCommerce site using PayPal JS SDK buttons.
 
+🎯 Problem
 
-D. Underarm/Bikini Care
-Soap Bar
-Roll on/Powder Stick
-Cream/Spray
-Sets
+On mobile devices, the PayPal debit/credit card button is not clickable, while it works on desktop.
 
-E. Beauty & Cosmetics
-Face
-Lips
-Eyes & Brows
-Cheeks
+⚠️ Important Context
+PayPal buttons render inside an iframe
+This is almost always caused by UI layering issues (z-index / overlays / pointer-events)
+The project already has:
+Sticky/fixed navbar
+Animated search dropdown (Framer Motion)
+Mobile menu overlays
+Do NOT redesign UI
+Do NOT change payment logic
+ONLY fix clickability issue safely
+✅ Tasks
+1. Fix Overlay Blocking (CRITICAL)
 
+Audit and update all overlays (navbar, dropdown, modals, animated layers):
 
-F. Health & Wellness
-Collagen
-Glutathione
-Dietary Supplement
+Ensure non-interactive layers do NOT block clicks:
+style={{ pointerEvents: "none" }}
+Only enable pointer events when actually interactive:
+className={isOpen ? "pointer-events-auto" : "pointer-events-none"}
+2. Fix PayPal Container Layering
 
-G. Korean Beauty
-Featured Picks
-Trending Now 
-Signature Products 
+Wrap PayPal buttons properly:
 
-H. Filipino Beauty
-Featured Picks
-Trending Now 
-Signature Products 
+<div className="relative z-10">
+  <div id="paypal-button-container" />
+</div>
 
-I. Thai Beauty
-Featured Picks
-Trending Now 
-Signature Products 
+Ensure NO parent has:
 
-J. Food
-K. Fragrances
-Perfume for Women
-Perfume for Men
-Body Mist
-Perfume Sets
+overflow: hidden
+pointer-events: none
+lower z-index than overlays
+3. Fix Framer Motion Blocking Layers
 
-L. Fashion & Apparel
-Women's Clothing
-Men's Clothing
-Sleepwear
-Accessories 
+For any full-screen or absolute motion elements:
 
-M. Best Sellers
-N. New Arrivals
-O. Gift Sets & Bundles
-P. Sale & Promotions
+<motion.div
+  className="absolute inset-0"
+  style={{ pointerEvents: "none" }}
+/>
 
-this is my finalized category 
-make sure it is aligned with the Navbar categories, filter on my /shop and also remove the type filter on /shop
-also on my /admin/products make sure that on my add/edit the category and sub category is correct 
-make sure it wont have conflict with the current datas
+If interactive:
 
-ALSO
-add this to footer create RETURN & REFUND POLICY
+style={{ pointerEvents: isOpen ? "auto" : "none" }}
+4. Fix Tailwind Issues
 
-RETURN & REFUND POLICY
+Search and REMOVE or adjust:
 
-Last Updated: July 2026
+pointer-events-none on parent containers of PayPal
+overflow-hidden on checkout/payment sections
+5. Ensure PayPal Card Funding Enabled
 
-At Pinay Victorious Beauty Shop, customer satisfaction is important to us.
+Verify PayPal SDK script includes card:
 
-Every order is carefully checked and packed before leaving our store.
+<script src="https://www.paypal.com/sdk/js?client-id=YOUR_CLIENT_ID&components=buttons&enable-funding=card"></script>
+6. Mobile Touch Fix
 
-Due to the nature of beauty and personal care products, we follow strict hygiene guidelines when handling returns.
+Ensure no global CSS disables touch:
 
-Change of Mind Returns
+/* REMOVE if exists */
+touch-action: none;
+7. Add Debug Helper (TEMP)
 
-We do not accept returns or exchanges for change-of-mind purchases.
+Add this to detect blockers:
 
-Please carefully review product details, ingredients, and suitability before placing your order.
-
-Beauty Product Returns
-
-For health, safety, and hygiene reasons, we cannot accept returns for beauty or personal care products that have been:
-
-Opened;
-Used;
-Tested;
-Removed from sealed packaging; or
-Damaged after delivery.
-
-This includes skincare, cosmetics, and personal care products.
-
-Faulty, Damaged or Incorrect Items
-
-If you receive an item that is:
-
-Faulty;
-Damaged;
-Incorrect; or
-Not as described,
-
-please contact us within 7 days of receiving your order.
-
-Please provide:
-Your order number;
-Details of the issue; and
-Photos of the product and packaging.
-
-We will review your request and provide an appropriate solution, which may include replacement, exchange, or refund where applicable.
-
-Sale Items
-
-Sale items, discounted products, and promotional purchases are final sale unless the product is faulty, damaged, or your rights under Australian Consumer Law apply.
-
-Refunds
-
-Approved refunds will be processed to the original payment method used at checkout.
-
-Please allow:
-
-3–10 business days
-
-for your payment provider or bank to complete processing.
-
-Original shipping costs are non-refundable unless the issue was caused by an error on our behalf.
-
-Australian Consumer Law
-
-Nothing in this Return & Refund Policy excludes or limits your rights under the Australian Consumer Law.
-
-You may be entitled to a remedy where a product:
-
-Has a major fault;
-Is unsafe;
-Is not as described; or
-Does not meet consumer guarantees.
-Contact Us
-
-For return and refund enquiries:
-
-Email: pinayvictoriousbeauty@gmail.com
+document.addEventListener("click", (e) => {
+  console.log(document.elementFromPoint(e.clientX, e.clientY));
+});
+✅ Expected Result
+PayPal debit/credit card button is fully clickable on mobile
+No regression on desktop
+No UI redesign
+No payment logic changes
+🚫 Do NOT
+Modify backend
+Change PayPal API logic
+Replace PayPal buttons
+Break animations
+✅ Output Format
+Show EXACT code changes
+Highlight what was blocking clicks
+Keep solution minimal and production-safe
