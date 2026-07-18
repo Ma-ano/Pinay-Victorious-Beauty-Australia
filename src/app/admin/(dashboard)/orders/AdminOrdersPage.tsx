@@ -20,6 +20,7 @@ const db = _fb;
 import { useToast } from "@/components/Toast";
 import { useAuth } from "@/components/AuthContext";
 import { formatPrice } from "@/lib/format";
+import { sanitizeText, sanitizeAddressField, sanitizeItemName, sanitizePhone } from "@/lib/sanitize";
 
 type OrderStatus = "processing" | "approved" | "completed" | "cancelled" | "rejected";
 
@@ -35,12 +36,14 @@ interface OrderItem {
 }
 
 interface ShippingAddress {
-  street: string;
+  street?: string;
+  addressLine1?: string;
+  addressLine2?: string | null;
   suburb?: string;
-  city: string;
+  city?: string;
   state: string;
   postcode: string;
-  country: string;
+  country?: string;
 }
 
 interface FirestoreOrder {
@@ -134,6 +137,16 @@ function statusLabel(status: string) {
   return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
+function displayShipping(s: ShippingAddress | undefined): string[] {
+  if (!s) return [];
+  const line1 = s.addressLine1 || s.street || "";
+  const suburb = s.suburb || s.city || "";
+  const line2 = s.addressLine2 || "";
+  const statePostcode = [s.state, s.postcode].filter(Boolean).join(" ");
+  const lines = [line1, line2, suburb, statePostcode].filter(Boolean);
+  return lines.length > 0 ? lines : ["-"];
+}
+
 function paymentLabel(order: FirestoreOrder): string {
   if (order.paymentMethod === "paypal") return "PayPal Wallet";
   if (order.paymentMethod === "card") return "Debit / Credit Card";
@@ -188,41 +201,41 @@ function OrderDetailModal({
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-2">Customer Details</h3>
             <div className="space-y-1 text-sm text-foreground">
-              <p><span className="font-medium text-foreground">Name:</span> {order.customerName}</p>
-              <p><span className="font-medium text-foreground">Email:</span> {order.customerEmail}</p>
-              <p><span className="font-medium text-foreground">Phone:</span> {order.customerPhone || "-"}</p>
+              <p><span className="font-medium text-foreground">Name:</span> {sanitizeText(order.customerName, 100)}</p>
+              <p><span className="font-medium text-foreground">Email:</span> {sanitizeText(order.customerEmail, 254)}</p>
+              <p><span className="font-medium text-foreground">Phone:</span> {sanitizePhone(order.customerPhone) || "-"}</p>
               <p><span className="font-medium text-foreground">Payment:</span>
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ml-1.5 ${paymentColors[order.paymentMethod] || "bg-gray-100 text-gray-700"}`}>
                   {paymentLabel(order)} · {order.paymentStatus || "pending"}
                 </span>
               </p>
               {order.payerEmail && (
-                <p><span className="font-medium text-foreground">Payer Email:</span> {order.payerEmail}</p>
+                <p><span className="font-medium text-foreground">Payer Email:</span> {sanitizeText(order.payerEmail, 254)}</p>
               )}
               {order.fundingSource && (
-                <p><span className="font-medium text-foreground">Funding Source:</span> {order.fundingSource}</p>
+                <p><span className="font-medium text-foreground">Funding Source:</span> {sanitizeText(order.fundingSource, 50)}</p>
               )}
               {(order.paymentMethod === "paypal" || order.paymentMethod === "card") && (
                 <>
                   {order.paypalOrderId && (
-                    <p><span className="font-medium text-foreground">PayPal Order ID:</span> {order.paypalOrderId}</p>
+                    <p><span className="font-medium text-foreground">PayPal Order ID:</span> {sanitizeText(order.paypalOrderId, 50)}</p>
                   )}
                   {order.paypalCaptureId && (
-                    <p><span className="font-medium text-foreground">Transaction ID:</span> {order.paypalCaptureId}</p>
+                    <p><span className="font-medium text-foreground">Transaction ID:</span> {sanitizeText(order.paypalCaptureId, 50)}</p>
                   )}
                   {order.cardBrand && (
-                    <p><span className="font-medium text-foreground">Card Brand:</span> {order.cardBrand}</p>
+                    <p><span className="font-medium text-foreground">Card Brand:</span> {sanitizeText(order.cardBrand, 30)}</p>
                   )}
                 </>
               )}
               {order.paymentMethod === "afterpay" && (
                 <>
                   {order.afterpayOrderId && (
-                    <p><span className="font-medium text-foreground">Afterpay Order ID:</span> {order.afterpayOrderId}</p>
+                    <p><span className="font-medium text-foreground">Afterpay Order ID:</span> {sanitizeText(order.afterpayOrderId, 50)}</p>
                   )}
-                  <p><span className="font-medium text-foreground">Merchant Reference:</span> {order.firestoreId}</p>
+                  <p><span className="font-medium text-foreground">Merchant Reference:</span> {sanitizeText(order.firestoreId, 50)}</p>
                   {order.afterpayToken && (
-                    <p><span className="font-medium text-foreground">Afterpay Token:</span> {order.afterpayToken}</p>
+                    <p><span className="font-medium text-foreground">Afterpay Token:</span> {sanitizeText(order.afterpayToken, 50)}</p>
                   )}
                 </>
               )}
@@ -232,10 +245,9 @@ function OrderDetailModal({
           <section>
             <h3 className="text-sm font-semibold text-foreground mb-2">Shipping Address</h3>
             <div className="space-y-1 text-sm text-foreground">
-              <p>{order.shipping?.street || "-"}</p>
-              {order.shipping?.suburb && <p>{order.shipping.suburb}</p>}
-              <p>{order.shipping?.city || "-"}, {order.shipping?.state || "-"} {order.shipping?.postcode || ""}</p>
-              <p>{order.shipping?.country || "-"}</p>
+              {displayShipping(order.shipping).map((line, i) => (
+                <p key={i}>{sanitizeAddressField(line)}</p>
+              ))}
             </div>
           </section>
 
@@ -246,9 +258,9 @@ function OrderDetailModal({
                 <div key={`${item.productId}-${index}`} className="flex justify-between gap-4 text-sm bg-primary/5 rounded-xl p-3">
                   <div>
                     <p className="text-xs text-foreground">Product:</p>
-                    <p className="text-foreground font-medium">{item.name}</p>
+                    <p className="text-foreground font-medium">{sanitizeItemName(item.name)}</p>
                     {item.variant?.name && (
-                      <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                      <p className="text-xs text-foreground">Variant: {sanitizeItemName(item.variant.name)}</p>
                     )}
                     <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                   </div>
@@ -262,7 +274,7 @@ function OrderDetailModal({
             </div>
             {order.discount && order.discount > 0 && (
               <div className="mt-1 flex justify-between text-sm text-foreground">
-                <span>Discount{order.discountCode ? ` (${order.discountCode})` : ""}</span>
+                <span>Discount{order.discountCode ? ` (${sanitizeText(order.discountCode, 30)})` : ""}</span>
                 <span className="text-green-600">-{formatPrice(order.discount)}</span>
               </div>
             )}
@@ -431,12 +443,13 @@ export default function AdminOrdersPage() {
           o.payerEmail,
           o.firestoreId,
           o.orderNumber,
+          o.shipping?.addressLine1,
+          o.shipping?.addressLine2,
           o.shipping?.street,
           o.shipping?.suburb,
           o.shipping?.city,
           o.shipping?.state,
           o.shipping?.postcode,
-          o.shipping?.country,
         ].join(" ").toLowerCase();
         return searchable.includes(q);
       });
@@ -640,8 +653,8 @@ export default function AdminOrdersPage() {
                 >
                   <td className="px-4 py-3 font-medium text-dark font-mono text-xs">#{order.orderNumber || order.firestoreId.slice(-8)}</td>
                   <td className="px-4 py-3 text-foreground">
-                    <div className="font-medium text-dark">{order.customerName}</div>
-                    <div className="text-xs">{order.customerEmail}</div>
+                    <div className="font-medium text-dark">{sanitizeText(order.customerName, 100)}</div>
+                    <div className="text-xs">{sanitizeText(order.customerEmail, 254)}</div>
                   </td>
                   <td className="px-4 py-3 text-foreground hidden sm:table-cell">{order.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0}</td>
                   <td className="px-4 py-3 text-dark font-medium">{formatPrice(order.total ?? order.subtotal ?? 0)}</td>

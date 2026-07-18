@@ -1,3 +1,5 @@
+import { CURRENCY } from "@/lib/constants";
+
 const AFTERPAY_MERCHANT_ID = process.env.NEXT_PUBLIC_AFTERPAY_MERCHANT_ID || "";
 const AFTERPAY_SECRET_KEY = process.env.AFTERPAY_SECRET_KEY || "";
 
@@ -29,6 +31,22 @@ interface AfterpayAddress {
   postcode: string;
   country: string;
   phoneNumber?: string;
+}
+
+function toAfterpayShipping(
+  raw?: { addressLine1?: string; addressLine2?: string; suburb?: string; state?: string; postcode?: string; name?: string; phoneNumber?: string },
+  customerName?: string,
+  customerPhone?: string,
+): AfterpayAddress {
+  return {
+    name: raw?.name || customerName || "",
+    line1: raw?.addressLine1 || "",
+    city: raw?.suburb || "",
+    state: raw?.state || "",
+    postcode: raw?.postcode || "",
+    country: "Australia",
+    phoneNumber: raw?.phoneNumber || customerPhone || "",
+  };
 }
 
 interface CreateCheckoutParams {
@@ -101,7 +119,7 @@ export async function createAfterpayCheckout(
 
   const body = {
     mode: "STANDARD",
-    amount: { amount: params.total, currency: "AUD" },
+    amount: { amount: params.total, currency: CURRENCY },
     items: params.items,
     consumer: { givenNames, surname, email: params.email },
     shipping: params.shipping,
@@ -166,7 +184,7 @@ export async function refundAfterpayPayment(
         Authorization: `Basic ${getAuthToken()}`,
       },
       body: JSON.stringify({
-        amount: { amount, currency: "AUD" },
+        amount: { amount, currency: CURRENCY },
       }),
     }
   );

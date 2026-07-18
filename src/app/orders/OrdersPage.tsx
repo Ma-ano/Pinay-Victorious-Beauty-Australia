@@ -27,6 +27,7 @@ import ImagePlaceholder from "@/components/ImagePlaceholder";
 import { OrderCardSkeleton } from "@/components/Skeletons";
 import { getAllProducts } from "@/lib/product-store";
 import { formatPrice } from "@/lib/format";
+import { sanitizeText, sanitizeItemName } from "@/lib/sanitize";
 
 type OrderStatus = "processing" | "approved" | "completed" | "cancelled" | "rejected";
 
@@ -39,12 +40,14 @@ interface OrderItem {
 }
 
 interface ShippingAddress {
-  street: string;
+  street?: string;
+  addressLine1?: string;
+  addressLine2?: string | null;
   suburb?: string;
-  city: string;
+  city?: string;
   state: string;
   postcode: string;
-  country: string;
+  country?: string;
 }
 
 interface CustomerOrder {
@@ -439,10 +442,10 @@ export default function OrdersPage() {
                   <OrderProgress status={order.status} paymentMethod={order.paymentMethod || "cod"} />
                 </div>
 
-                {order.discount != null && order.discount > 0 && (
+                  {order.discount != null && order.discount > 0 && (
                   <div className="px-5 py-2 bg-green-50 border-b border-primary/5">
                     <p className="text-xs text-green-700">
-                      Discount applied{order.discountCode ? ` (${order.discountCode})` : ""}: -{formatPrice(order.discount)}
+                      Discount applied{order.discountCode ? ` (${sanitizeText(order.discountCode, 30)})` : ""}: -{formatPrice(order.discount)}
                     </p>
                   </div>
                 )}
@@ -462,13 +465,13 @@ export default function OrdersPage() {
                             <p className="text-xs text-foreground">Product:</p>
                             {productSlug ? (
                               <Link href={`/shop/${productSlug}`} className="text-sm font-semibold text-dark hover:text-accent transition-colors truncate block">
-                                {item.name}
+                                {sanitizeItemName(item.name)}
                               </Link>
                             ) : (
-                              <p className="text-sm font-semibold text-dark truncate">{item.name}</p>
+                              <p className="text-sm font-semibold text-dark truncate">{sanitizeItemName(item.name)}</p>
                             )}
                             {item.variant?.name && (
-                              <p className="text-xs text-foreground">Variant: {item.variant.name}</p>
+                              <p className="text-xs text-foreground">Variant: {sanitizeItemName(item.variant.name)}</p>
                             )}
                             <p className="text-xs text-foreground">Qty: {item.quantity}</p>
                           </div>

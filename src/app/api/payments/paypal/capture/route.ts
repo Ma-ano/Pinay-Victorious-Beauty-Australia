@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { capturePayPalOrder } from "@/lib/paypal";
+import { capturePayPalOrder, getPayPalOrder } from "@/lib/paypal";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
+import { CURRENCY } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, existing: true, orderId: alreadyCaptured.docs[0].id });
     }
 
+    // Sync with PayPal — if already COMPLETED, enforce isPaid and return graceful success
+    let paypalOrderStatus: string | undefined;
+    try {
+      const paypalOrder = await getPayPalOrder(orderID);
+      paypalOrderStatus = paypalOrder.status as string;
+    } catch (e) {
+      console.error("Failed to fetch PayPal order status:", e);
+    }
+
+    if (paypalOrderStatus === "COMPLETED") {
+      await orderRef.update({ paymentStatus: "paid", isPaid: true, updatedAt: Timestamp.fromDate(new Date()) });
+      return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
+    }
+
     // Set intermediate "capturing" status before calling PayPal API.
     // If the process crashes after capture but before Firestore update,
     // the order stays as "capturing" — the webhook will reconcile it.
@@ -96,19 +111,20 @@ export async function POST(request: Request) {
     if (paypalStatus === "COMPLETED") {
       // Verify amount and currency match database
       const capturedAmount = parseFloat((capture?.amount as Record<string, unknown> | undefined)?.value as string || "0");
-      const capturedCurrency = (capture?.amount as Record<string, unknown> | undefined)?.currency as string || "";
-      if (capturedCurrency !== "AUD") {
-        await orderRef.update({ paymentStatus: "declined", updatedAt: now });
+      const capturedCurrency = (capture?.amount as Record<string, unknown> | undefined)?.currency_code as string || "";
+      if (capturedCurrency !== CURRENCY) {
+        await orderRef.update({ paymentStatus: "declined", status: "cancelled", updatedAt: now });
         return NextResponse.json({ error: "Currency mismatch" }, { status: 400 });
       }
       if (Math.abs(capturedAmount - (orderData.total || 0)) > 0.01) {
-        await orderRef.update({ paymentStatus: "declined", updatedAt: now });
+        await orderRef.update({ paymentStatus: "declined", status: "cancelled", updatedAt: now });
         return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
       }
 
       const ps = captureResult.payment_source as Record<string, unknown> | undefined;
       updates.fundingSource = ps?.paypal ? "paypal" : ps?.card ? "card" : "unknown";
       updates.paymentStatus = "paid";
+      updates.isPaid = true;
       if (ps?.card) {
         updates.cardBrand = (ps.card as Record<string, unknown>)?.brand || null;
       }

@@ -43,7 +43,7 @@ export async function POST(request: Request) {
       email: trimmedEmail,
       phone: phone?.trim() || "",
       photoURL: "",
-      address: address || { street: "", city: "", state: "", postcode: "", country: "Australia" },
+      address: address || { addressLine1: "", suburb: "", state: "", postcode: "" },
       role: "customer",
       status: "active",
       createdAt: new Date().toISOString(),

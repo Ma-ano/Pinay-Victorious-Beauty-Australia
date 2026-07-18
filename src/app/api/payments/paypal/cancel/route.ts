@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
+import { getPayPalOrder, voidPayPalOrder } from "@/lib/paypal";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +47,35 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, alreadyFinal: true });
     }
 
+    if (orderData.paypalOrderId) {
+      let paypalOrderStatus: string | undefined;
+      try {
+        const paypalOrder = await getPayPalOrder(orderData.paypalOrderId);
+        paypalOrderStatus = paypalOrder.status as string;
+      } catch {
+        // PayPal order not found or unreachable — skip void, proceed with clean up
+        paypalOrderStatus = undefined;
+      }
+
+      if (paypalOrderStatus === "COMPLETED") {
+        await orderRef.update({
+          paymentStatus: "paid",
+          isPaid: true,
+          updatedAt: Timestamp.fromDate(new Date()),
+        });
+        return NextResponse.json({ success: true, alreadyFinal: true });
+      }
+
+      if (paypalOrderStatus === "CREATED" || paypalOrderStatus === "APPROVED") {
+        voidPayPalOrder(orderData.paypalOrderId).catch(() => {});
+      }
+    }
+
     await orderRef.update({
+      paypalOrderId: null,
       status: "cancelled",
       paymentStatus: "cancelled",
-      updatedAt: new Date().toISOString(),
+      updatedAt: Timestamp.fromDate(new Date()),
     });
 
     return NextResponse.json({ success: true });

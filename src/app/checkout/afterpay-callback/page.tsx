@@ -32,7 +32,7 @@ export default function AfterpayCallbackPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ orderId, orderToken }),
         });
-        const data = await res.json();
+        const data = await res.json().catch(() => ({}));
         if (cancelled) return;
         if (!res.ok || !data.success) {
           throw new Error(data.error || "Payment confirmation failed");

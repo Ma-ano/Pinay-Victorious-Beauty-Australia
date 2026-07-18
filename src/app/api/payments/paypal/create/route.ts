@@ -3,6 +3,7 @@ import { createPayPalOrder } from "@/lib/paypal";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import crypto from "crypto";
+import { sanitizeText, sanitizeItemName, sanitizePhone } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -57,29 +58,30 @@ export async function POST(request: Request) {
     // Write to Firestore BEFORE creating PayPal order
     const orderData: Record<string, unknown> = {
       userId: decoded.uid,
-      customerName: customerName || "",
-      customerEmail: email,
-      customerPhone: customerPhone || "",
+      customerName: sanitizeText(customerName || "", 100),
+      customerEmail: sanitizeText(email || "", 254),
+      customerPhone: sanitizePhone(customerPhone),
       items: items.map((i: { productId?: string; name: string; price: number; quantity: number; variant?: { id: string; name: string } | null }) => ({
         productId: i.productId || "",
-        name: i.name,
+        name: sanitizeItemName(i.name),
         price: i.price,
         quantity: i.quantity,
-        variant: i.variant || null,
+        variant: i.variant ? { id: i.variant.id, name: sanitizeItemName(i.variant.name) } : null,
       })),
       shipping: {
-        street: shipping?.line1 || "",
-        city: shipping?.city || "",
-        state: shipping?.state || "",
-        postcode: shipping?.postcode || "",
-        country: shipping?.country || "Australia",
+        addressLine1: sanitizeText(shipping?.addressLine1 || "", 128),
+        addressLine2: shipping?.addressLine2 ? sanitizeText(shipping.addressLine2, 128) : null,
+        suburb: sanitizeText(shipping?.suburb || "", 100),
+        state: sanitizeText(shipping?.state || "", 10),
+        postcode: sanitizeText(shipping?.postcode || "", 4),
       },
-      paymentMethod: paymentMethod || "paypal",
+      paymentMethod: sanitizeText(paymentMethod || "paypal", 20),
+      isPaid: false,
       paymentStatus: "pending",
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
-      discountCode: discountCode || null,
-      shippingMethod: shippingMethod || "standard",
+      discountCode: sanitizeText(discountCode || "", 30) || null,
+      shippingMethod: sanitizeText(shippingMethod || "standard", 20),
       shippingCost: shippingCost ?? 0,
       total,
       status: "processing",
@@ -92,7 +94,7 @@ export async function POST(request: Request) {
 
     // Create PayPal order with deterministic idempotency key
     // Same user + same cart always produces the same key, preventing duplicate PayPal orders
-    const idempotentPayload = `${decoded.uid}_${JSON.stringify(items)}_${total}_${shippingCost}_${discount}`;
+    const idempotentPayload = `${decoded.uid}_${orderRef.id}_${JSON.stringify(items)}_${total}_${shippingCost}_${discount}`;
     const idempotencyKey = `paypal_${crypto.createHash("sha256").update(idempotentPayload).digest("hex").slice(0, 32)}`;
     const paypalOrder = await createPayPalOrder(
       items, total, shipping, discount, orderRef.id, shippingCost, idempotencyKey

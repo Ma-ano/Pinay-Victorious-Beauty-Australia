@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 
@@ -46,10 +47,15 @@ export async function POST(request: Request) {
       const orderId = pending.orderId || realOrderId;
       if (orderId) {
         const orderRef = getAdminDb().collection("orders").doc(orderId);
+        const orderSnap = await orderRef.get();
+        if (orderSnap.exists && orderSnap.data()!.paymentStatus === "paid") {
+          return NextResponse.json({ error: "Cannot cancel paid order" }, { status: 400 });
+        }
         await orderRef.update({
           status: "canceled",
           paymentStatus: "cancelled",
-          updatedAt: new Date().toISOString(),
+          afterpayToken: null,
+          updatedAt: Timestamp.fromDate(new Date()),
         });
       }
 
@@ -60,11 +66,19 @@ export async function POST(request: Request) {
     } else if (realOrderId) {
       const orderRef = getAdminDb().collection("orders").doc(realOrderId);
       const orderSnap = await orderRef.get();
-      if (orderSnap.exists && orderSnap.data()!.userId === decoded.uid) {
+      if (orderSnap.exists) {
+        const data = orderSnap.data()!;
+        if (data.userId !== decoded.uid) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+        }
+        if (data.paymentStatus === "paid") {
+          return NextResponse.json({ error: "Cannot cancel paid order" }, { status: 400 });
+        }
         await orderRef.update({
           status: "canceled",
           paymentStatus: "cancelled",
-          updatedAt: new Date().toISOString(),
+          afterpayToken: null,
+          updatedAt: Timestamp.fromDate(new Date()),
         });
       }
     } else {

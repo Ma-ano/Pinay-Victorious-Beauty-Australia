@@ -13,6 +13,7 @@
     "firebase": "^12.15.0",
     "firebase-admin": "^12.7.0",
     "framer-motion": "^12.40.0",
+    "isomorphic-dompurify": "^3.19.0",
     "next": "^16.2.10",
     "nodemailer": "^9.0.1",
     "react": "^19.2.7",

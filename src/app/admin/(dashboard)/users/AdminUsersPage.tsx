@@ -4,11 +4,14 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useToast } from "@/components/Toast";
 
 interface UserAddress {
-  street: string;
-  city: string;
+  street?: string;
+  addressLine1?: string;
+  addressLine2?: string | null;
+  suburb?: string;
+  city?: string;
   state: string;
   postcode: string;
-  country: string;
+  country?: string;
 }
 
 interface AdminUser {
@@ -399,15 +402,15 @@ export default function AdminUsersPage() {
                   <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Phone</p>
                   <p className="text-dark">{selectedUser.phone || "—"}</p>
                 </div>
-                {selectedUser.address && selectedUser.address.street && (
+                {selectedUser.address && (selectedUser.address.addressLine1 || selectedUser.address.street) && (
                   <div className="col-span-2">
                     <p className="text-foreground text-xs font-medium uppercase tracking-wide mb-1">Address</p>
                     <p className="text-dark">
-                      {selectedUser.address.street}
-                      {selectedUser.address.city && `, ${selectedUser.address.city}`}
-                      {selectedUser.address.state && `, ${selectedUser.address.state}`}
-                      {selectedUser.address.postcode && ` ${selectedUser.address.postcode}`}
-                      {selectedUser.address.country && `, ${selectedUser.address.country}`}
+                      {selectedUser.address.addressLine1 || selectedUser.address.street}
+                      {selectedUser.address.addressLine2 && `, ${selectedUser.address.addressLine2}`}
+                      {`\n${selectedUser.address.suburb || selectedUser.address.city || ""}`}
+                      {selectedUser.address.state ? `, ${selectedUser.address.state}` : ""}
+                      {selectedUser.address.postcode ? ` ${selectedUser.address.postcode}` : ""}
                     </p>
                   </div>
                 )}

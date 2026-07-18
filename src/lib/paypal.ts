@@ -1,3 +1,4 @@
+import { CURRENCY } from "@/lib/constants";
 import { normalizeState } from "@/data/address-config";
 
 function getApiBase(): string {
@@ -53,29 +54,27 @@ function normalizeCountry(raw: string): string {
 }
 
 function buildShipping(
-  raw?: { street?: string; line1?: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+  raw?: { addressLine1?: string; addressLine2?: string; suburb?: string; state?: string; postcode?: string },
 ): Record<string, unknown> | undefined {
   if (!raw) return undefined;
 
-  const street = (raw.street || raw.line1)?.trim();
+  const street = raw.addressLine1?.trim();
+  const line2 = raw.addressLine2?.trim();
   const suburb = raw.suburb?.trim();
-  const city = raw.city?.trim();
   const state = raw.state?.trim();
   const postcode = raw.postcode?.trim();
-  const country = raw.country?.trim();
 
-  if (!street || !city || !state || !postcode || !country) return undefined;
+  if (!street || !suburb || !state || !postcode) return undefined;
 
-  const countryCode = normalizeCountry(country);
   const adminArea1 = normalizeState(state);
 
   const address: Record<string, unknown> = {
     address_line_1: street,
-    address_line_2: suburb || undefined,
-    admin_area_2: city,
+    address_line_2: line2 || undefined,
+    admin_area_2: suburb,
     admin_area_1: adminArea1,
     postal_code: postcode,
-    country_code: countryCode,
+    country_code: "AU",
   };
 
   return {
@@ -87,7 +86,7 @@ function buildShipping(
 export async function createPayPalOrder(
   items: PayPalOrderItem[],
   total: number,
-  shipping?: { street?: string; line1?: string; suburb?: string; city: string; state: string; postcode: string; country: string },
+  shipping?: { addressLine1?: string; addressLine2?: string; suburb?: string; state?: string; postcode?: string },
   discount?: number,
   customId?: string,
   shippingAmount?: number,
@@ -110,21 +109,21 @@ export async function createPayPalOrder(
 
   const breakdown: Record<string, unknown> = {
     item_total: {
-      currency_code: "AUD",
+      currency_code: CURRENCY,
       value: itemTotal.toFixed(2),
     },
   };
 
   if (shippingCost > 0) {
     breakdown.shipping = {
-      currency_code: "AUD",
+      currency_code: CURRENCY,
       value: shippingCost.toFixed(2),
     };
   }
 
   if (discountVal > 0) {
     breakdown.discount = {
-      currency_code: "AUD",
+      currency_code: CURRENCY,
       value: discountVal.toFixed(2),
     };
   }
@@ -142,7 +141,7 @@ export async function createPayPalOrder(
     purchase_units: [
       {
         amount: {
-          currency_code: "AUD",
+          currency_code: CURRENCY,
           value: totalVal.toFixed(2),
           breakdown,
         },
@@ -150,7 +149,7 @@ export async function createPayPalOrder(
           name: item.name,
           quantity: String(item.quantity),
           unit_amount: {
-            currency_code: "AUD",
+            currency_code: CURRENCY,
             value: item.unitAmount.toFixed(2),
           },
           category: "PHYSICAL_GOODS",
@@ -222,6 +221,50 @@ export async function capturePayPalOrder(orderId: string) {
     const text = await res.text();
     console.error(`PayPal capture failed (${res.status}): ${text}`);
     throw new Error(`PayPal capture failed: ${text}`);
+  }
+
+  return res.json();
+}
+
+export async function getPayPalOrder(orderId: string) {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${API_BASE}/v2/checkout/orders/${orderId}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    console.error(`PayPal get order failed (${res.status}): ${text}`);
+    throw new Error(`PayPal get order failed: ${text}`);
+  }
+
+  return res.json();
+}
+
+export async function voidPayPalOrder(orderId: string) {
+  const token = await getAccessToken();
+
+  const res = await fetch(`${API_BASE}/v2/checkout/orders/${orderId}/cancel`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    if (res.status === 404) {
+      console.warn(`PayPal void skipped — order ${orderId} not voidable (404): ${text}`);
+    } else {
+      console.error(`PayPal void failed (${res.status}): ${text}`);
+    }
+    return null;
   }
 
   return res.json();

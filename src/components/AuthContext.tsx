@@ -16,6 +16,8 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc, type Firestore } from "firebase/firestore";
 import { getAuthClient as getFirebaseAuth, getDb as getFirebaseDb, getGoogleProvider as getFirebaseGoogleProvider } from "@/lib/firebase";
+import type { Address, StateCode } from "./address";
+import { createDefaultAddress, normalizeState } from "./address";
 
 let _firebase: { auth: Auth; db: Firestore; googleProvider: GoogleAuthProvider } | null = null;
 function getFirebase() {
@@ -31,14 +33,8 @@ function getFirebase() {
   return _firebase;
 }
 
-export interface Address {
-  street: string;
-  suburb: string;
-  city: string;
-  state: string;
-  postcode: string;
-  country: string;
-}
+export type { Address, StateCode } from "./address";
+export { createDefaultAddress, STATE_OPTIONS, normalizeState } from "./address";
 
 export interface User {
   uid: string;
@@ -67,7 +63,22 @@ interface AuthContextType {
   getIdToken: () => Promise<string | null>;
 }
 
-const defaultAddress: Address = { street: "", suburb: "", city: "", state: "", postcode: "", country: "Australia" };
+const defaultAddress: Address = createDefaultAddress();
+
+function migrateAddress(raw: Record<string, unknown> | undefined): Address {
+  if (!raw) return { ...defaultAddress };
+  const state = normalizeState(raw.state as string) || "NSW";
+  if ("addressLine1" in raw) {
+    return { ...(raw as unknown as Address), state };
+  }
+  return {
+    addressLine1: (raw.street as string) || "",
+    addressLine2: raw.suburb && raw.city && raw.suburb !== raw.city ? (raw.suburb as string) : undefined,
+    suburb: (raw.city as string) || (raw.suburb as string) || "",
+    state,
+    postcode: (raw.postcode as string) || "",
+  };
+}
 
 const defaultUser: Omit<User, "uid" | "name" | "email"> = {
   phone: "",
@@ -147,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               name: data.name || base.name,
               phone: data.phone || "",
               photoURL: data.photoURL || base.photoURL,
-              address: data.address || { ...defaultAddress },
+              address: migrateAddress(data.address),
             });
           } else {
             setUser(base);
@@ -155,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } catch {
           setUser(base);
         }
+        await syncSession(fu);
       } else {
         setUser(null);
         setEmailVerified(false);
@@ -168,35 +180,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { auth, db } = getFirebase();
+    const { auth } = getFirebase();
     const cred = await signInWithEmailAndPassword(auth, email, password);
-    const fu = cred.user;
-    setEmailVerified(fu.emailVerified);
-    await checkAdminClaim(fu);
-    try {
-      const userDoc = await getDoc(doc(db, "users", fu.uid));
-      let name = fu.displayName || fu.email?.split("@")[0] || "User";
-      let phone = "";
-      let photoURL = fu.photoURL || "";
-      let address = { ...defaultAddress };
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        name = data.name || name;
-        phone = data.phone || "";
-        photoURL = data.photoURL || photoURL;
-        address = data.address || { ...defaultAddress };
-      }
-      setUser({ uid: fu.uid, name, email: fu.email || "", phone, photoURL, address });
-    } catch {
-      setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "", ...defaultUser });
-    }
-    await syncSession(fu);
-    const tr = await fu.getIdTokenResult();
+    const tr = await cred.user.getIdTokenResult();
     return tr.claims.isAdmin === true;
   }, []);
 
   const register = useCallback(async (name: string, email: string, password: string, phone?: string, address?: Address) => {
-    const userAddress = address || { ...defaultAddress };
+    const userAddress = address || createDefaultAddress();
     const res = await fetch("/api/auth/register", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -218,21 +209,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(msg);
     }
 
-    const data = await res.json();
-
     const { auth } = getFirebase();
-    const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
-    const fu = cred.user;
-    await syncSession(fu);
-
-    setUser({
-      uid: (data as { uid: string }).uid,
-      name: name.trim(),
-      email: email.trim(),
-      phone: phone?.trim() || "",
-      photoURL: "",
-      address: userAddress,
-    });
+    await signInWithEmailAndPassword(auth, email.trim(), password);
     setEmailVerified(false);
   }, []);
 
@@ -263,39 +241,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(`Google sign-in failed${code ? ` (${code})` : ""}. Please try again.`);
     }
     const fu = cred.user;
-    await checkAdminClaim(fu);
+    const { db: firestore } = getFirebase();
     try {
-      const userDoc = await getDoc(doc(db, "users", fu.uid));
+      const userDoc = await getDoc(doc(firestore, "users", fu.uid));
       if (!userDoc.exists()) {
         const displayName = fu.displayName || fu.email?.split("@")[0] || "User";
-        await setDoc(doc(db, "users", fu.uid), {
+        await setDoc(doc(firestore, "users", fu.uid), {
           name: displayName,
           email: fu.email,
           phone: "",
-    photoURL: "",
-          address: { ...defaultAddress },
+          photoURL: "",
+          address: createDefaultAddress(),
           role: "customer",
           status: "active",
           createdAt: new Date().toISOString(),
         });
       }
-      let name = fu.displayName || fu.email?.split("@")[0] || "User";
-      let phone = "";
-      let photoURL = "";
-      let address = { ...defaultAddress };
-      if (userDoc.exists()) {
-        const data = userDoc.data();
-        name = data.name || name;
-        phone = data.phone || "";
-        photoURL = data.photoURL || photoURL;
-        address = data.address || { ...defaultAddress };
-      }
-      setUser({ uid: fu.uid, name, email: fu.email || "", phone, photoURL, address });
     } catch {
-      setUser({ uid: fu.uid, name: fu.displayName || fu.email?.split("@")[0] || "User", email: fu.email || "", ...defaultUser });
+      // user doc creation is best-effort
     }
-    setEmailVerified(fu.emailVerified);
-    await syncSession(fu);
     try {
       const tr = await fu.getIdTokenResult();
       return tr.claims.isAdmin === true;

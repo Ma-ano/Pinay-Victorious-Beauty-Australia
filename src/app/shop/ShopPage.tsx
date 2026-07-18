@@ -7,7 +7,6 @@ import { ShopPageSkeleton } from "@/components/Skeletons";
 import { getAllProducts, getAllReviewStats } from "@/lib/product-store";
 import type { Product } from "@/data/products";
 import { categories } from "@/data/categories";
-import { productTypes } from "@/data/productTypes";
 import { formatPrice } from "@/lib/format";
 
 
@@ -49,7 +48,7 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
 
   useEffect(() => {
     setPage(1);
-  }, [search, selectedCategory, selectedSubcategory, selectedType, sort, priceRange]);
+  }, [search, selectedCategory, selectedSubcategory, sort, priceRange]);
 
   function handleCategoryChange(slug: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -64,13 +63,6 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
     const params = new URLSearchParams(searchParams.toString());
     if (slug === "all") params.delete("subcategory");
     else params.set("subcategory", slug);
-    router.replace(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
-  }
-
-  function handleTypeChange(slug: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    if (slug === "all") params.delete("type");
-    else params.set("type", slug);
     router.replace(`/shop${params.toString() ? `?${params.toString()}` : ""}`);
   }
 
@@ -134,10 +126,8 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
         p.category === selectedCategory;
       const matchesSubcategory =
         selectedSubcategory === "all" || p.subcategory === selectedSubcategory;
-      const matchesType =
-        selectedType === "all" || p.type === selectedType;
       const matchesPrice = p.price >= priceRange[0] && p.price <= priceRange[1];
-      if (!(matchesSearch && matchesCategory && matchesSubcategory && matchesType && matchesPrice)) return false;
+      if (!(matchesSearch && matchesCategory && matchesSubcategory && matchesPrice)) return false;
       if (selectedCategory === "new-arrivals" && !p.isNew) return false;
       return true;
     });
@@ -255,17 +245,6 @@ export default function ShopPage({ initialProducts, initialReviewStats }: ShopPa
             ))}
           </select>
         )}
-
-        <select
-          value={selectedType}
-          onChange={(e) => handleTypeChange(e.target.value)}
-          className="w-36 shrink-0 px-3 py-2 rounded-xl border border-card-border bg-card text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-accent/40"
-        >
-          <option value="all">All Types</option>
-          {productTypes.map((type) => (
-            <option key={type} value={type}>{type.replace("-", " ")}</option>
-          ))}
-        </select>
 
         <div className="flex items-center gap-2 shrink-0 ml-auto">
           <span className="text-xs text-foreground font-medium whitespace-nowrap">Price Range</span>

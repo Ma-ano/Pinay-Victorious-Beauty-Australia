@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import Script from "next/script";
+import { CURRENCY } from "@/lib/constants";
 
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || "";
 
@@ -45,7 +46,7 @@ export default function PayPalProvider({ children }: { children: ReactNode }) {
   return (
     <PayPalContext.Provider value={{ ready }}>
       <Script
-        src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=AUD&components=buttons,messages`}
+        src={`https://www.paypal.com/sdk/js?client-id=${paypalClientId}&currency=${CURRENCY}&components=buttons,messages`}
         strategy="afterInteractive"
         data-sdk-integration-source="developer-library"
         onLoad={() => setLoaded(true)}

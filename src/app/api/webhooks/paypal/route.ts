@@ -140,6 +140,8 @@ export async function POST(request: Request) {
     };
 
     if (paymentStatus) updates.paymentStatus = paymentStatus;
+    if (paymentStatus === "paid") updates.isPaid = true;
+    if (paymentStatus === "declined") updates.status = "cancelled";
     if (captureId) updates.paypalCaptureId = captureId;
 
     await orderDoc.ref.update(updates);

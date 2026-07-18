@@ -85,6 +85,7 @@ export async function POST(request: Request) {
       if (!snap.empty) {
         await snap.docs[0].ref.update({
           paymentStatus: "declined",
+          status: "cancelled",
           updatedAt: new Date().toISOString(),
         });
       }

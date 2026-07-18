@@ -6,14 +6,16 @@ import Link from "next/link";
 import PayPalButtonGroup from "@/components/PayPalButtonGroup";
 import { usePayPalReady } from "@/components/PayPalProvider";
 import AfterpayButton from "@/components/AfterpayButton";
-import { useAuth, type Address } from "@/components/AuthContext";
+import { useAuth } from "@/components/AuthContext";
+import type { Address, StateCode } from "@/components/AuthContext";
 import { useCart } from "@/components/CartContext";
 import { useToast } from "@/components/Toast";
 import { CheckoutFormSkeleton } from "@/components/Skeletons";
 import { doc, collection, setDoc, serverTimestamp } from "firebase/firestore";
 import { getDb } from "@/lib/firebase";
 import { formatPrice } from "@/lib/format";
-import { getPostcode, normalizeState } from "@/data/address-config";
+import { createDefaultAddress, addressToShippingBody, normalizeState } from "@/components/address";
+import { sanitizeText, sanitizeAddressField, sanitizeItemName, sanitizePhone } from "@/lib/sanitize";
 
 const _fb = getDb();
 if (!_fb) throw new Error("Firestore not initialized");
@@ -25,14 +27,7 @@ import { getSettings } from "@/lib/settings-store";
 
 type PaymentMethod = "card" | "afterpay" | "paypal";
 
-const defaultAddress: Address = {
-  street: "",
-  suburb: "",
-  city: "",
-  state: "",
-  postcode: "",
-  country: "Australia",
-};
+const defaultAddress: Address = createDefaultAddress();
 
 function CreditCardIcon() {
   return (
@@ -177,10 +172,9 @@ export default function CheckoutPage() {
 
   function validateAddress(): boolean {
     const missing: string[] = [];
-    if (!checkoutAddress.street.trim()) missing.push("Street");
-    if (!checkoutAddress.suburb?.trim()) missing.push("Suburb");
-    if (!checkoutAddress.city.trim()) missing.push("City");
-    if (!checkoutAddress.state.trim()) missing.push("State");
+    if (!checkoutAddress.addressLine1.trim()) missing.push("Street address");
+    if (!checkoutAddress.suburb?.trim()) missing.push("Suburb / City");
+    if (!checkoutAddress.state) missing.push("State");
     if (!checkoutAddress.postcode.trim()) missing.push("Postcode");
     if (missing.length > 0) {
       setAddressError(`Missing shipping address fields: ${missing.join(", ")}. Please update your profile.`);
@@ -193,8 +187,11 @@ export default function CheckoutPage() {
       showToast("Invalid postcode", "error");
       return false;
     }
-    const stateCode = normalizeState(checkoutAddress.state);
-    if (!stateCode || !["NSW","VIC","QLD","WA","SA","TAS","ACT","NT"].includes(stateCode)) {
+    const normState = normalizeState(checkoutAddress.state);
+    if (normState !== checkoutAddress.state) {
+      checkoutAddress.state = normState;
+    }
+    if (!(["NSW","VIC","QLD","WA","SA","TAS","ACT","NT"] as const).includes(checkoutAddress.state as StateCode)) {
       setAddressError(`State "${checkoutAddress.state}" is not a valid Australian state. Please update your profile.`);
       showToast("Invalid state", "error");
       return false;
@@ -204,12 +201,11 @@ export default function CheckoutPage() {
   }
 
   const shippingAddress: Address = {
-    street: checkoutAddress.street.trim(),
-    suburb: checkoutAddress.suburb?.trim() || "",
-    city: checkoutAddress.city.trim(),
-    state: normalizeState(checkoutAddress.state),
-    postcode: getPostcode(checkoutAddress.suburb?.trim() || "", normalizeState(checkoutAddress.state)) || checkoutAddress.postcode.trim(),
-    country: checkoutAddress.country.trim(),
+    addressLine1: checkoutAddress.addressLine1.trim(),
+    addressLine2: checkoutAddress.addressLine2?.trim() || undefined,
+    suburb: checkoutAddress.suburb.trim(),
+    state: checkoutAddress.state,
+    postcode: checkoutAddress.postcode.trim(),
   };
 
 function generateOrderNumber(): string {
@@ -233,7 +229,13 @@ function generateOrderNumber(): string {
         quantity: i.quantity,
         variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
       })),
-      shipping: shippingAddress,
+      shipping: {
+        addressLine1: shippingAddress.addressLine1,
+        addressLine2: shippingAddress.addressLine2 || null,
+        suburb: shippingAddress.suburb,
+        state: shippingAddress.state,
+        postcode: shippingAddress.postcode,
+      },
       paymentMethod: overridePaymentMethod || paymentMethod,
       subtotal: totalPrice,
       discount,
@@ -277,36 +279,28 @@ function generateOrderNumber(): string {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerName: currentUser.name,
-          customerPhone: currentUser.phone || "",
+          customerName: sanitizeText(currentUser.name, 100),
+          customerPhone: sanitizePhone(currentUser.phone),
           email: currentUser.email,
           items: items.map((i) => ({
             productId: i.product.id,
-            name: i.product.name,
+            name: sanitizeItemName(i.product.name),
             price: i.variant?.price ?? i.product.salePrice ?? i.product.price,
             quantity: i.quantity,
             unitAmount: i.variant?.price ?? i.product.salePrice ?? i.product.price,
-            variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
+            variant: i.variant ? { id: i.variant.id, name: sanitizeItemName(i.variant.name) } : null,
           })),
           subtotal: totalPrice,
           total: orderTotal,
           shippingCost: shippingCost,
           shippingMethod,
           discount,
-          discountCode: appliedPromo?.code || null,
+          discountCode: sanitizeText(appliedPromo?.code || "", 30) || null,
           paymentMethod,
-          shipping: {
-            name: `${currentUser.name}`,
-            line1: shippingAddress.street,
-            city: shippingAddress.city,
-            state: shippingAddress.state,
-            postcode: shippingAddress.postcode,
-            country: shippingAddress.country,
-            phoneNumber: currentUser.phone || "",
-          },
+          shipping: addressToShippingBody(shippingAddress, currentUser.name, currentUser.phone || ""),
         }),
       });
-      const responseData = await res.json();
+      const responseData = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(responseData.error || "Failed to create PayPal order");
       if (!responseData.id) throw new Error("PayPal order ID missing from response");
       firestoreOrderIdRef.current = responseData.firestoreId;
@@ -333,7 +327,7 @@ function generateOrderNumber(): string {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ orderID: data.orderID, firestoreOrderId: firestoreId }),
       });
-      const result = await res.json();
+      const result = await res.json().catch(() => ({}));
       if (!res.ok || !result.success) {
         throw new Error(result.error || "Payment declined");
       }
@@ -370,9 +364,20 @@ function generateOrderNumber(): string {
     showToast("Payment cancelled", "info");
   }
 
-  function handlePayPalError(err: Record<string, unknown>) {
+  async function handlePayPalError(err: Record<string, unknown>) {
     if (!mountedRef.current) return;
     console.error("PayPal SDK error:", err);
+    const firestoreId = firestoreOrderIdRef.current;
+    if (firestoreId) {
+      try {
+        await fetch("/api/payments/paypal/cancel", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ firestoreOrderId: firestoreId }),
+        });
+      } catch {}
+    }
+    showToast("Payment failed. Please try again.", "error");
   }
 
   async function handleAfterpayClick() {
@@ -383,35 +388,27 @@ function generateOrderNumber(): string {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          customerName: currentUser.name,
-          customerPhone: currentUser.phone || "",
+          customerName: sanitizeText(currentUser.name, 100),
+          customerPhone: sanitizePhone(currentUser.phone),
           email: currentUser.email,
           items: items.map((i) => ({
             productId: i.product.id,
-            name: i.product.name,
+            name: sanitizeItemName(i.product.name),
             price: i.variant?.price ?? i.product.salePrice ?? i.product.price,
             quantity: i.quantity,
             unitAmount: i.variant?.price ?? i.product.salePrice ?? i.product.price,
-            variant: i.variant ? { id: i.variant.id, name: i.variant.name } : null,
+            variant: i.variant ? { id: i.variant.id, name: sanitizeItemName(i.variant.name) } : null,
           })),
           subtotal: totalPrice,
           total: orderTotal,
           shippingCost: shippingCost,
           shippingMethod,
           discount,
-          discountCode: appliedPromo?.code || null,
-          shipping: {
-            name: `${currentUser.name}`,
-            line1: shippingAddress.street,
-            city: shippingAddress.city,
-            state: shippingAddress.state,
-            postcode: shippingAddress.postcode,
-            country: shippingAddress.country,
-            phoneNumber: currentUser.phone || "",
-          },
+          discountCode: sanitizeText(appliedPromo?.code || "", 30) || null,
+          shipping: addressToShippingBody(shippingAddress, currentUser.name, currentUser.phone || ""),
         }),
       });
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Failed to create Afterpay checkout");
       if (!data.checkoutUrl) throw new Error("Missing checkout URL");
       window.location.href = data.checkoutUrl;
@@ -516,11 +513,11 @@ function generateOrderNumber(): string {
                 Edit
               </Link>
             </div>
-            {checkoutAddress.street ? (
+            {checkoutAddress.addressLine1 ? (
               <div className="text-sm text-foreground space-y-1 pl-7">
-                <p>{checkoutAddress.street}</p>
-                <p>{checkoutAddress.suburb}{checkoutAddress.suburb ? ", " : ""}{checkoutAddress.city} {checkoutAddress.state} {checkoutAddress.postcode}</p>
-                <p>{checkoutAddress.country}</p>
+                <p>{sanitizeAddressField(checkoutAddress.addressLine1)}</p>
+                {checkoutAddress.addressLine2 && <p>{sanitizeAddressField(checkoutAddress.addressLine2)}</p>}
+                <p>{sanitizeAddressField(checkoutAddress.suburb)} {sanitizeAddressField(checkoutAddress.state)} {sanitizeAddressField(checkoutAddress.postcode)}</p>
               </div>
             ) : (
               <div className="text-sm text-foreground/60 pl-7">
@@ -633,9 +630,9 @@ function generateOrderNumber(): string {
               {items.map((item) => (
                 <div key={item.key} className="flex justify-between text-sm">
                   <div className="flex-1 min-w-0 pr-3">
-                    <p className="text-foreground truncate">{item.product.name}</p>
+                    <p className="text-foreground truncate">{sanitizeItemName(item.product.name)}</p>
                     {item.variant && (
-                      <p className="text-xs text-foreground/60">{item.variant.name}</p>
+                      <p className="text-xs text-foreground/60">{sanitizeItemName(item.variant.name)}</p>
                     )}
                     <p className="text-xs text-foreground/50">Qty: {item.quantity}</p>
                   </div>
@@ -733,7 +730,7 @@ function generateOrderNumber(): string {
                 </div>
                 {discount > 0 && (
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-green-600 dark:text-green-400">Discount{appliedPromo?.code ? ` (${appliedPromo.code})` : ""}</span>
+                    <span className="text-green-600 dark:text-green-400">Discount{appliedPromo?.code ? ` (${sanitizeText(appliedPromo.code, 30)})` : ""}</span>
                     <span className="text-green-600 dark:text-green-400">-{formatPrice(discount)}</span>
                   </div>
                 )}

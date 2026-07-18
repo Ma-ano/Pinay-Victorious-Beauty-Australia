@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { hasAfterpayCredentials, captureAfterpayPayment } from "@/lib/afterpay";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
+import { CURRENCY } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -89,17 +90,18 @@ export async function POST(request: Request) {
       // Verify amount matches database
       const capturedAmount = parseFloat(captureResult.originalAmount?.amount || "0");
       const capturedCurrency = captureResult.originalAmount?.currency || "";
-      if (capturedCurrency !== "AUD") {
-        await orderRef.update({ paymentStatus: "declined", afterpayToken: orderToken, updatedAt: now });
+      if (capturedCurrency !== CURRENCY) {
+        await orderRef.update({ paymentStatus: "declined", status: "cancelled", afterpayToken: orderToken, updatedAt: now });
         return NextResponse.json({ error: "Currency mismatch" }, { status: 400 });
       }
       if (Math.abs(capturedAmount - (orderData.total || 0)) > 0.01) {
-        await orderRef.update({ paymentStatus: "declined", afterpayToken: orderToken, updatedAt: now });
+        await orderRef.update({ paymentStatus: "declined", status: "cancelled", afterpayToken: orderToken, updatedAt: now });
         return NextResponse.json({ error: "Amount mismatch" }, { status: 400 });
       }
 
       await orderRef.update({
         paymentStatus: "paid",
+        isPaid: true,
         afterpayToken: orderToken,
         afterpayOrderId: captureResult.id || orderToken,
         updatedAt: now,
@@ -107,13 +109,15 @@ export async function POST(request: Request) {
     } else if (captureResult.status === "DECLINED") {
       await orderRef.update({
         paymentStatus: "declined",
+        status: "cancelled",
         afterpayToken: orderToken,
         updatedAt: now,
       });
       return NextResponse.json({ success: false, orderId, status: "DECLINED" });
     } else {
       await orderRef.update({
-        paymentStatus: "pending",
+        paymentStatus: "declined",
+        status: "cancelled",
         afterpayToken: orderToken,
         updatedAt: now,
       });

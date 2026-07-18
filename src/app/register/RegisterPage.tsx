@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthContext";
 import type { Address } from "@/components/AuthContext";
-import { COUNTRIES, getStates, getCities, getSuburbs } from "@/data/address-config";
+import { createDefaultAddress, validateAddress } from "@/components/address";
+import AddressForm from "@/components/AddressForm";
 
 function EyeIcon({ open }: { open: boolean }) {
   return open ? (
@@ -27,12 +28,8 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("+61 ");
-  const [street, setStreet] = useState("");
-  const [country, setCountry] = useState("Australia");
-  const [state, setState] = useState("");
-  const [city, setCity] = useState("");
-  const [suburb, setSuburb] = useState("");
-  const [postcode, setPostcode] = useState("");
+  const [address, setAddress] = useState<Address>(createDefaultAddress());
+  const [addressErrors, setAddressErrors] = useState<Partial<Record<keyof Address, string>>>({});
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -48,28 +45,6 @@ export default function RegisterPage() {
     }
   }, [authLoading, isAuthenticated, router]);
 
-  const states = getStates(country);
-  const cities = country && state ? getCities(country, state) : [];
-  const suburbs = country && state && city ? getSuburbs(country, state, city) : [];
-
-  function handleCountryChange(value: string) {
-    setCountry(value);
-    setState("");
-    setCity("");
-    setSuburb("");
-  }
-
-  function handleStateChange(value: string) {
-    setState(value);
-    setCity("");
-    setSuburb("");
-  }
-
-  function handleCityChange(value: string) {
-    setCity(value);
-    setSuburb("");
-  }
-
   function validate(): boolean {
     const errs: Record<string, string> = {};
     const trimmedName = name.trim();
@@ -79,12 +54,15 @@ export default function RegisterPage() {
     const trimmedPhone = phone.trim();
     if (!trimmedPhone) errs.phone = "Phone number is required";
     else if (!/^\+?[\d\s\-()]{7,20}$/.test(trimmedPhone)) errs.phone = "Please enter a valid phone number";
-    if (!street.trim()) errs.street = "Street is required";
-    if (!state) errs.state = "State is required";
-    if (!city) errs.city = "City is required";
-    if (!suburb) errs.suburb = "Suburb is required";
-    if (!postcode.trim()) errs.postcode = "Postcode is required";
-    else if (country === "Australia" && !/^\d{4,5}$/.test(postcode.trim())) errs.postcode = "Enter a valid postcode";
+    const addrErrors = validateAddress(address);
+    if (Object.keys(addrErrors).length > 0) {
+      setAddressErrors(addrErrors);
+      for (const [key, msg] of Object.entries(addrErrors)) {
+        errs[key] = msg;
+      }
+    } else {
+      setAddressErrors({});
+    }
     if (!password) errs.password = "Password is required";
     else if (!passwordRegex.test(password)) errs.password = "Minimum 8 characters, 1 uppercase, 1 lowercase, 1 number";
     if (!confirmPassword) errs.confirmPassword = "Please confirm your password";
@@ -98,15 +76,13 @@ export default function RegisterPage() {
     if (!validate()) return;
     setLoading(true);
     try {
-      const address: Address = {
-        street: street.trim(),
-        suburb,
-        city,
-        state,
-        postcode: postcode.trim(),
-        country,
-      };
-      await register(name.trim(), email.trim(), password, phone.trim(), address);
+      await register(
+        name.trim(),
+        email.trim(),
+        password,
+        phone.trim(),
+        { ...address, postcode: address.postcode.trim() }
+      );
       router.push(`/verify-email?email=${encodeURIComponent(email.trim())}`);
     } catch (err: unknown) {
       const code = (err as { code?: string })?.code;
@@ -127,9 +103,6 @@ export default function RegisterPage() {
     }
   };
 
-  const selectClass = (field: string) =>
-    `w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors appearance-none cursor-pointer ${errors[field] ? "border-red-400" : "border-primary/20"}`;
-
   if (authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -143,31 +116,31 @@ export default function RegisterPage() {
   return (
     <div className="min-h-[calc(100vh-8rem)] flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-4xl">
-        <div className="bg-card border border-primary/10 rounded-2xl p-6 md:p-8 shadow-xl">
+        <div className="bg-card border border-dark/10 rounded-2xl p-6 md:p-8 shadow-xl">
           <h1 className="text-2xl font-semibold text-dark mb-6 text-center">Register</h1>
           {errors.form && (
             <p className="text-sm text-red-400 bg-red-50 dark:bg-red-900/20 rounded-xl px-4 py-2.5 mb-4">{errors.form}</p>
           )}
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 relative">
-              <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-primary/20 -translate-x-px" />
+              <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-dark/10 -translate-x-px" />
               <div className="space-y-4">
-                <p className="text-sm font-semibold text-dark border-b border-primary/10 pb-2">Personal Details</p>
+                <p className="text-sm font-semibold text-dark border-b border-dark/10 pb-2">Personal Details</p>
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-foreground mb-1">Name <span className="text-red-400">*</span></label>
                   <input id="name" type="text" value={name} onChange={(e) => setName(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.name ? "border-red-400" : "border-primary/20"}`} placeholder="Your name" />
+                    className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.name ? "border-red-400" : "border-dark/20"}`} placeholder="Your name" />
                   {errors.name && <p className="text-xs text-red-400 mt-1">{errors.name}</p>}
                 </div>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1">Email <span className="text-red-400">*</span></label>
                   <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.email ? "border-red-400" : "border-primary/20"}`} placeholder="you@example.com" />
+                    className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.email ? "border-red-400" : "border-dark/20"}`} placeholder="you@example.com" />
                   {errors.email && <p className="text-xs text-red-400 mt-1">{errors.email}</p>}
                 </div>
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-foreground mb-1">Phone <span className="text-red-400">*</span></label>
-                  <div className={`flex items-center w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus-within:border-accent transition-colors ${errors.phone ? "border-red-400" : "border-primary/20"}`}>
+                  <div className={`flex items-center w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus-within:border-accent transition-colors ${errors.phone ? "border-red-400" : "border-dark/20"}`}>
                     <span className="text-foreground font-medium mr-1 select-none">+61</span>
                     <input id="phone" type="tel"
                       value={phone.startsWith("+61 ") ? phone.slice(4) : phone}
@@ -194,7 +167,7 @@ export default function RegisterPage() {
                     <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1">Password <span className="text-red-400">*</span></label>
                     <div className="relative">
                       <input id="password" type={showPassword ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)}
-                        className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.password ? "border-red-400" : "border-primary/20"}`} placeholder="••••••••" />
+                        className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.password ? "border-red-400" : "border-dark/20"}`} placeholder="••••••••" />
                       <button type="button" onClick={() => setShowPassword(!showPassword)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground hover:text-dark transition-colors" tabIndex={-1}
                         aria-label={showPassword ? "Hide password" : "Show password"}><EyeIcon open={showPassword} /></button>
@@ -205,7 +178,7 @@ export default function RegisterPage() {
                     <label htmlFor="confirmPassword" className="block text-sm font-medium text-foreground mb-1">Confirm Password <span className="text-red-400">*</span></label>
                     <div className="relative">
                       <input id="confirmPassword" type={showConfirm ? "text" : "password"} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)}
-                        className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.confirmPassword ? "border-red-400" : "border-primary/20"}`} placeholder="••••••••" />
+                        className={`w-full px-4 py-2.5 pr-10 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.confirmPassword ? "border-red-400" : "border-dark/20"}`} placeholder="••••••••" />
                       <button type="button" onClick={() => setShowConfirm(!showConfirm)}
                         className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground hover:text-dark transition-colors" tabIndex={-1}
                         aria-label={showConfirm ? "Hide password" : "Show password"}><EyeIcon open={showConfirm} /></button>
@@ -215,78 +188,12 @@ export default function RegisterPage() {
                 </div>
               </div>
 
-              <div className="space-y-4">
-                <p className="text-sm font-semibold text-dark border-b border-primary/10 pb-2">Shipping Address</p>
-
-                <div>
-                  <label htmlFor="street" className="block text-sm font-medium text-foreground mb-1">Street <span className="text-red-400">*</span></label>
-                  <input id="street" type="text" value={street} onChange={(e) => setStreet(e.target.value)}
-                    className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.street ? "border-red-400" : "border-primary/20"}`} placeholder="123 Beauty Lane" />
-                  {errors.street && <p className="text-xs text-red-400 mt-1">{errors.street}</p>}
-                </div>
-
-                <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-foreground mb-1">Country <span className="text-red-400">*</span></label>
-                  <select id="country" value={country} onChange={(e) => handleCountryChange(e.target.value)}
-                    className={selectClass("country")}>
-                    {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  {errors.country && <p className="text-xs text-red-400 mt-1">{errors.country}</p>}
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-foreground mb-1">State <span className="text-red-400">*</span></label>
-                    <select id="state" value={state} onChange={(e) => handleStateChange(e.target.value)}
-                      className={selectClass("state")}>
-                      <option value="">Select</option>
-                      {states.map((s) => <option key={s.label} value={s.label}>{s.label}</option>)}
-                    </select>
-                    {errors.state && <p className="text-xs text-red-400 mt-1">{errors.state}</p>}
-                  </div>
-                  <div>
-                    <label htmlFor="suburb" className="block text-sm font-medium text-foreground mb-1">Suburb <span className="text-red-400">*</span></label>
-                    {suburbs.length > 0 ? (
-                      <select id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)}
-                        className={selectClass("suburb") + " disabled:opacity-50 disabled:cursor-not-allowed"} disabled={!city}>
-                        <option value="">Select</option>
-                        {suburbs.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    ) : (
-                      <select id="suburb" value={suburb} onChange={(e) => setSuburb(e.target.value)}
-                        className={selectClass("suburb") + " disabled:opacity-50 disabled:cursor-not-allowed"} disabled={!city}>
-                        <option value="">Select suburb</option>
-                      </select>
-                    )}
-                    {errors.suburb && <p className="text-xs text-red-400 mt-1">{errors.suburb}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-foreground mb-1">City <span className="text-red-400">*</span></label>
-                    {cities.length > 0 ? (
-                      <select id="city" value={city} onChange={(e) => handleCityChange(e.target.value)}
-                        className={selectClass("city") + " disabled:opacity-50 disabled:cursor-not-allowed"} disabled={!state}>
-                        <option value="">Select</option>
-                        {cities.map((c) => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                    ) : (
-                      <select id="city" value={city} onChange={(e) => handleCityChange(e.target.value)}
-                        className={selectClass("city") + " disabled:opacity-50 disabled:cursor-not-allowed"} disabled={!state}>
-                        <option value="">Select city</option>
-                      </select>
-                    )}
-                    {errors.city && <p className="text-xs text-red-400 mt-1">{errors.city}</p>}
-                  </div>
-                  <div>
-                    <label htmlFor="postcode" className="block text-sm font-medium text-foreground mb-1">Postcode <span className="text-red-400">*</span></label>
-                    <input id="postcode" type="text" value={postcode} onChange={(e) => setPostcode(e.target.value)}
-                      className={`w-full px-4 py-2.5 rounded-xl border bg-transparent text-dark text-sm focus:outline-none focus:border-accent transition-colors ${errors.postcode ? "border-red-400" : "border-primary/20"}`} placeholder="2000" />
-                    {errors.postcode && <p className="text-xs text-red-400 mt-1">{errors.postcode}</p>}
-                  </div>
-                </div>
-              </div>
+              <AddressForm
+                value={address}
+                onChange={setAddress}
+                errors={addressErrors}
+                label="Shipping Address"
+              />
             </div>
 
             <button type="submit" disabled={loading}
@@ -296,12 +203,12 @@ export default function RegisterPage() {
           </form>
 
           <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-primary/20" /></div>
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark/10" /></div>
             <div className="relative flex justify-center text-xs text-foreground"><span className="bg-card px-2">or</span></div>
           </div>
 
           <button onClick={handleGoogle}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/20 text-sm text-foreground hover:bg-primary/10 hover:border-accent/50 transition-all">
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-dark/20 text-sm text-foreground hover:bg-dark/5 hover:border-accent/50 transition-all">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />

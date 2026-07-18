@@ -1,7 +1,9 @@
+import { CURRENCY } from "@/lib/constants";
+
 export function formatPrice(amount: number): string {
   const formatted = new Intl.NumberFormat("en-AU", {
     style: "currency",
-    currency: "AUD",
+    currency: CURRENCY,
   }).format(amount);
   return `AU${formatted}`;
 }

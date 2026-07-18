@@ -3,6 +3,8 @@ import { createAfterpayCheckout, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 import crypto from "crypto";
+import { sanitizeText, sanitizeItemName, sanitizePhone } from "@/lib/sanitize";
+import { CURRENCY } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
@@ -41,11 +43,11 @@ interface ItemInput {
 
 interface ShippingInput {
   name?: string;
-  line1?: string;
-  city?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  suburb?: string;
   state?: string;
   postcode?: string;
-  country?: string;
   phoneNumber?: string;
 }
 
@@ -83,8 +85,8 @@ function validateInput(body: {
   if (!body.shipping || typeof body.shipping !== "object") {
     return "Shipping address is required";
   }
-  if (!body.shipping.line1 || !body.shipping.city) {
-    return "Shipping street and city are required";
+  if (!body.shipping.addressLine1 || !body.shipping.suburb) {
+    return "Shipping street and suburb are required";
   }
 
   if (!body.email || typeof body.email !== "string") {
@@ -126,7 +128,7 @@ export async function POST(request: Request) {
 
     const origin = request.headers.get("origin") || process.env.SITE_URL || "";
     const now = Timestamp.fromDate(new Date());
-    const expireAt = Timestamp.fromDate(new Date(Date.now() + 24 * 60 * 60 * 1000));
+    const expireAt = Timestamp.fromDate(new Date(Date.now() + 15 * 60 * 1000));
 
     const orderRef = getAdminDb().collection("orders").doc();
 
@@ -149,9 +151,9 @@ export async function POST(request: Request) {
     // Write to Firestore BEFORE creating Afterpay checkout
     const orderData: Record<string, unknown> = {
       userId: decoded.uid,
-      customerName: customerName || "",
-      customerEmail: email,
-      customerPhone: customerPhone || "",
+      customerName: sanitizeText(customerName || "", 100),
+      customerEmail: sanitizeText(email || "", 254),
+      customerPhone: sanitizePhone(customerPhone),
       items: items.map(
         (i: {
           productId?: string;
@@ -161,24 +163,25 @@ export async function POST(request: Request) {
           variant?: { id: string; name: string } | null;
         }) => ({
           productId: i.productId || "",
-          name: i.name,
+          name: sanitizeItemName(i.name),
           price: i.price,
           quantity: i.quantity,
-          variant: i.variant || null,
+          variant: i.variant ? { id: i.variant.id, name: sanitizeItemName(i.variant.name) } : null,
         })
       ),
       shipping: {
-        street: shipping.line1 || "",
-        city: shipping.city || "",
-        state: shipping.state || "",
-        postcode: shipping.postcode || "",
-        country: shipping.country || "Australia",
+        addressLine1: sanitizeText(shipping.addressLine1 || "", 128),
+        addressLine2: shipping.addressLine2 ? sanitizeText(shipping.addressLine2, 128) : null,
+        suburb: sanitizeText(shipping.suburb || "", 100),
+        state: sanitizeText(shipping.state || "", 10),
+        postcode: sanitizeText(shipping.postcode || "", 4),
       },
       paymentMethod: "afterpay",
+      isPaid: false,
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
-      discountCode: discountCode || null,
-      shippingMethod: shippingMethod || "standard",
+      discountCode: sanitizeText(discountCode || "", 30) || null,
+      shippingMethod: sanitizeText(shippingMethod || "standard", 20),
       shippingCost: shippingCost ?? 0,
       total,
       status: "processing",
@@ -193,12 +196,12 @@ export async function POST(request: Request) {
       (i: { name: string; quantity: number; unitAmount: number }) => ({
         name: i.name,
         quantity: i.quantity,
-        price: { amount: String(i.unitAmount), currency: "AUD" },
+        price: { amount: String(i.unitAmount), currency: CURRENCY },
       })
     );
 
     // Deterministic idempotency key — same cart + user always produces same key
-    const idempotentPayload = `${decoded.uid}_${JSON.stringify(items)}_${total}_${shippingCost}_${discount}_afterpay`;
+    const idempotentPayload = `${decoded.uid}_${orderRef.id}_${JSON.stringify(items)}_${total}_${shippingCost}_${discount}_afterpay`;
     const idempotencyKey = crypto.createHash("sha256").update(idempotentPayload).digest("hex").slice(0, 32);
 
     const result = await createAfterpayCheckout({
@@ -206,11 +209,11 @@ export async function POST(request: Request) {
       total: String(total),
       shipping: {
         name: shipping.name || customerName || "",
-        line1: shipping.line1 || "",
-        city: shipping.city || "",
+        line1: shipping.addressLine1 || "",
+        city: shipping.suburb || "",
         state: shipping.state || "",
         postcode: shipping.postcode || "",
-        country: shipping.country || "Australia",
+        country: "Australia",
         phoneNumber: shipping.phoneNumber || customerPhone || "",
       },
       redirectConfirmUrl: `${origin}/checkout/afterpay-callback?orderId=${orderRef.id}`,
@@ -229,9 +232,9 @@ export async function POST(request: Request) {
     const pendingData = {
       orderId: orderRef.id,
       userId: decoded.uid,
-      customerName: customerName || "",
-      customerEmail: email,
-      customerPhone: customerPhone || "",
+      customerName: sanitizeText(customerName || "", 100),
+      customerEmail: sanitizeText(email || "", 254),
+      customerPhone: sanitizePhone(customerPhone),
       items: items.map(
         (i: {
           productId?: string;
@@ -241,25 +244,25 @@ export async function POST(request: Request) {
           variant?: { id: string; name: string } | null;
         }) => ({
           productId: i.productId || "",
-          name: i.name,
+          name: sanitizeItemName(i.name),
           price: i.price,
           quantity: i.quantity,
-          variant: i.variant || null,
+          variant: i.variant ? { id: i.variant.id, name: sanitizeItemName(i.variant.name) } : null,
         })
       ),
       shipping: {
-        street: shipping.line1 || "",
-        city: shipping.city || "",
-        state: shipping.state || "",
-        postcode: shipping.postcode || "",
-        country: shipping.country || "Australia",
+        addressLine1: sanitizeText(shipping.addressLine1 || "", 128),
+        addressLine2: shipping.addressLine2 ? sanitizeText(shipping.addressLine2, 128) : null,
+        suburb: sanitizeText(shipping.suburb || "", 100),
+        state: sanitizeText(shipping.state || "", 10),
+        postcode: sanitizeText(shipping.postcode || "", 4),
       },
       paymentMethod: "afterpay",
       afterpayToken: result.token,
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
-      discountCode: discountCode || null,
-      shippingMethod: shippingMethod || "standard",
+      discountCode: sanitizeText(discountCode || "", 30) || null,
+      shippingMethod: sanitizeText(shippingMethod || "standard", 20),
       shippingCost: shippingCost ?? 0,
       total,
       status: "pending_payment",

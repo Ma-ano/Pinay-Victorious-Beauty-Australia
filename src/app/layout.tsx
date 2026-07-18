@@ -15,6 +15,7 @@ import PayPalProvider from "@/components/PayPalProvider";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { site } from "@/data/site";
 import { preconnect } from "react-dom";
+import { safeJsonLd } from "@/lib/sanitize";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -92,7 +93,7 @@ export default async function RootLayout({
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       </head>
       <body className="min-h-screen flex flex-col">

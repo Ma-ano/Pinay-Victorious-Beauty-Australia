@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { CURRENCY } from "@/lib/constants";
 
 interface PayPalButtonGroupProps {
   createOrder: () => Promise<string>;
@@ -55,7 +56,7 @@ export default function PayPalButtonGroup({ createOrder, onApprove, onError, onC
         try {
           if (paypal.findEligibleMethods) {
             const methods = await paypal.findEligibleMethods({
-              currencyCode: "AUD",
+              currencyCode: CURRENCY,
               amount: String(amount),
             });
             if (controller.signal.aborted) return;
@@ -66,7 +67,7 @@ export default function PayPalButtonGroup({ createOrder, onApprove, onError, onC
               pageType: "checkout",
             });
             const methods = await instance.findEligibleMethods({
-              currencyCode: "AUD",
+              currencyCode: CURRENCY,
               amount: String(amount),
             });
             if (controller.signal.aborted) return;
