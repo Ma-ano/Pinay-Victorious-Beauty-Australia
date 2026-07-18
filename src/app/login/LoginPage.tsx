@@ -6,6 +6,7 @@ import Link from "next/link";
 import { signOut } from "firebase/auth";
 import { getAuthClient } from "@/lib/firebase";
 import { useAuth } from "@/components/AuthContext";
+import { useGoogleLogin } from "@/hooks/useGoogleLogin";
 
 const _auth = getAuthClient();
 if (!_auth) throw new Error("Firebase Auth not configured");
@@ -28,11 +29,12 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const [adminAlert, setAdminAlert] = useState(false);
   const loginAttemptRef = useRef(false);
-  const { login, loginWithGoogle, isAuthenticated, loading: authLoading } = useAuth();
+  const { login, isAuthenticated, loading: authLoading } = useAuth();
+  const { login: loginWithGoogle, loading: googleLoading } = useGoogleLogin();
   const router = useRouter();
 
   useEffect(() => {
@@ -78,8 +80,14 @@ export default function LoginPage() {
     setError("");
     try {
       loginAttemptRef.current = true;
-      const isAdmin = await loginWithGoogle();
+      const result = await loginWithGoogle();
       loginAttemptRef.current = false;
+
+      if ((result as { redirect?: boolean })?.redirect) {
+        return;
+      }
+
+      const isAdmin = (result as { isAdmin?: boolean })?.isAdmin;
       if (isAdmin) {
         await signOut(auth);
         setAdminAlert(true);
@@ -87,7 +95,18 @@ export default function LoginPage() {
       }
       router.push("/");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Google sign-in failed. Please try again.");
+      const authError = err as Error;
+      if (authError.message === "REDIRECT_INITIATED") {
+        return;
+      }
+      const code = (err as { code?: string })?.code;
+      if (code === "auth/user-not-found" || code === "auth/invalid-credential") {
+        setError("Invalid email or password");
+      } else if (code === "auth/too-many-requests") {
+        setError("Too many attempts. Please try again later.");
+      } else {
+        setError("Google login failed. Please try again.");
+      }
     }
   };
 
@@ -153,7 +172,7 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-          <div className="min-h-[20px]">
+          <div className="min-h-5">
             {error && <p className="text-sm text-red-400">{error}</p>}
           </div>
           <button
@@ -176,7 +195,8 @@ export default function LoginPage() {
 
         <button
           onClick={handleGoogle}
-          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/20 text-sm text-foreground hover:bg-primary/10 hover:border-accent/50 transition-all"
+          disabled={googleLoading}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/20 text-sm text-foreground hover:bg-primary/10 hover:border-accent/50 transition-all disabled:opacity-50"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" />
@@ -184,7 +204,7 @@ export default function LoginPage() {
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
             <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
           </svg>
-          Sign in with Google
+          {googleLoading ? "Signing in..." : "Sign in with Google"}
         </button>
 
           <div className="text-sm text-foreground text-center mt-4 space-y-2">

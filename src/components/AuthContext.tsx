@@ -1,37 +1,12 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signInWithPopup,
-  signOut,
-  onIdTokenChanged,
-  reauthenticateWithCredential,
-  EmailAuthProvider,
-  updatePassword,
-  type User as FirebaseUser,
-  type Auth,
-  type GoogleAuthProvider,
-} from "firebase/auth";
-import { doc, setDoc, getDoc, updateDoc, type Firestore } from "firebase/firestore";
-import { getAuthClient as getFirebaseAuth, getDb as getFirebaseDb, getGoogleProvider as getFirebaseGoogleProvider } from "@/lib/firebase";
+import { signInWithEmailAndPassword, signOut, onIdTokenChanged, reauthenticateWithCredential, EmailAuthProvider, updatePassword, type User as FirebaseUser } from "firebase/auth";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
+import { getAuthClient as getFirebaseAuth, getDb as getFirebaseDb } from "@/lib/firebase";
+import { loginWithGoogle as loginWithGoogleService } from "@/lib/authService";
 import type { Address, StateCode } from "./address";
 import { createDefaultAddress, normalizeState } from "./address";
-
-let _firebase: { auth: Auth; db: Firestore; googleProvider: GoogleAuthProvider } | null = null;
-function getFirebase() {
-  if (!_firebase) {
-    const auth = getFirebaseAuth();
-    if (!auth) throw new Error("Firebase Auth not initialized");
-    const db = getFirebaseDb();
-    if (!db) throw new Error("Firestore not initialized");
-    const googleProvider = getFirebaseGoogleProvider();
-    if (!googleProvider) throw new Error("Google Auth provider not initialized");
-    _firebase = { auth, db, googleProvider };
-  }
-  return _firebase;
-}
 
 export type { Address, StateCode } from "./address";
 export { createDefaultAddress, STATE_OPTIONS, normalizeState } from "./address";
@@ -94,7 +69,7 @@ function mapFirebaseUser(fu: FirebaseUser): User {
     uid: fu.uid,
     name: fu.displayName || fu.email?.split("@")[0] || "User",
     email: fu.email || "",
-          photoURL: fu.photoURL || "",
+    photoURL: fu.photoURL || "",
   };
 }
 
@@ -137,7 +112,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    const { auth, db } = getFirebase();
+    const auth = getFirebaseAuth();
+    const db = getFirebaseDb();
     let fresh = false;
     const unsub = onIdTokenChanged(auth, async (fu) => {
       if (fu) {
@@ -180,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { auth } = getFirebase();
+    const auth = getFirebaseAuth();
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const tr = await cred.user.getIdTokenResult();
     return tr.claims.isAdmin === true;
@@ -209,67 +185,65 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       throw new Error(msg);
     }
 
-    const { auth } = getFirebase();
+    const auth = getFirebaseAuth();
     await signInWithEmailAndPassword(auth, email.trim(), password);
     setEmailVerified(false);
   }, []);
 
   const loginWithGoogle = useCallback(async () => {
-    const { auth, db, googleProvider } = getFirebase();
-    let cred;
     try {
-      cred = await signInWithPopup(auth, googleProvider);
-    } catch (err: unknown) {
-      const fbErr = err as { code?: string; message?: string };
-      const code = fbErr?.code;
-      console.error("[Google Sign-In]", code, fbErr?.message);
-      if (code === "auth/account-exists-with-different-credential") {
+      const cred = await loginWithGoogleService();
+      if (!cred || cred.user === null) {
+        return false;
+      }
+      const fu = cred.user;
+      const db = getFirebaseDb();
+      if (!db) throw new Error("Firestore not initialized");
+      try {
+        const userDoc = await getDoc(doc(db, "users", fu.uid));
+        if (!userDoc.exists()) {
+          const displayName = fu.displayName || fu.email?.split("@")[0] || "User";
+          await setDoc(doc(db, "users", fu.uid), {
+            name: displayName,
+            email: fu.email,
+            phone: "",
+            photoURL: "",
+            address: createDefaultAddress(),
+            role: "customer",
+            status: "active",
+            createdAt: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // user doc creation is best-effort
+      }
+      try {
+        const tr = await fu.getIdTokenResult();
+        return tr.claims.isAdmin === true;
+      } catch {
+        return false;
+      }
+    } catch (error) {
+      const authError = error as { code?: string; message?: string };
+      if (authError.code === "REDIRECT_INITIATED") {
+        throw new Error("REDIRECT_INITIATED");
+      }
+      console.error("[Google Sign-In]", authError.code, authError?.message);
+      if (authError.code === "auth/account-exists-with-different-credential") {
         throw new Error("An account with this email already exists. Please sign in with your email and password instead.");
       }
-      if (code === "auth/popup-blocked") {
-        throw new Error("Google sign-in popup was blocked. Please allow popups for this site and try again.");
-      }
-      if (code === "auth/unauthorized-domain") {
+      if (authError.code === "auth/unauthorized-domain") {
         throw new Error("Google sign-in is not configured for this domain. Please contact support.");
       }
-      if (code === "auth/operation-not-allowed") {
+      if (authError.code === "auth/operation-not-allowed") {
         throw new Error("Google sign-in is not enabled. Please contact support.");
       }
-      if (code === "auth/cancelled-popup-request" || code === "auth/popup-closed-by-user") {
-        throw new Error("Google sign-in was cancelled.");
-      }
-      throw new Error(`Google sign-in failed${code ? ` (${code})` : ""}. Please try again.`);
-    }
-    const fu = cred.user;
-    const { db: firestore } = getFirebase();
-    try {
-      const userDoc = await getDoc(doc(firestore, "users", fu.uid));
-      if (!userDoc.exists()) {
-        const displayName = fu.displayName || fu.email?.split("@")[0] || "User";
-        await setDoc(doc(firestore, "users", fu.uid), {
-          name: displayName,
-          email: fu.email,
-          phone: "",
-          photoURL: "",
-          address: createDefaultAddress(),
-          role: "customer",
-          status: "active",
-          createdAt: new Date().toISOString(),
-        });
-      }
-    } catch {
-      // user doc creation is best-effort
-    }
-    try {
-      const tr = await fu.getIdTokenResult();
-      return tr.claims.isAdmin === true;
-    } catch {
-      return false;
+      throw new Error(`Google sign-in failed${authError.code ? ` (${authError.code})` : ""}. Please try again.`);
     }
   }, []);
 
   const logout = useCallback(async () => {
-    const { auth } = getFirebase();
+    const auth = getFirebaseAuth();
     await signOut(auth);
     setUser(null);
     setEmailVerified(false);
@@ -288,7 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.email]);
 
   const updateProfile = useCallback(async (data: { name?: string; phone?: string; photoURL?: string; address?: Address }) => {
-    const { db } = getFirebase();
+    const db = getFirebaseDb();
     if (!user) throw new Error("Not authenticated");
 
     const updateData: Record<string, unknown> = {};
@@ -309,7 +283,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    const { auth } = getFirebase();
+    const auth = getFirebaseAuth();
     const fu = auth.currentUser;
     if (!fu || !user) throw new Error("Not authenticated");
 
@@ -319,7 +293,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   const getIdToken = useCallback(async (): Promise<string | null> => {
-    const { auth } = getFirebase();
+    const auth = getFirebaseAuth();
     try {
       const fu = auth.currentUser;
       if (!fu) return null;

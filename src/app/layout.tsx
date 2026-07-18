@@ -3,7 +3,8 @@ import { headers } from "next/headers";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import { AuthProvider } from "@/components/AuthContext";
+import { AuthProvider as AuthContextProvider } from "@/components/AuthContext";
+import { AuthProvider } from "@/components/AuthProvider";
 import { ToastProvider } from "@/components/Toast";
 import { CartProvider } from "@/components/CartContext";
 import IdleTimeoutProvider from "@/components/IdleTimeoutProvider";
@@ -99,6 +100,7 @@ export default async function RootLayout({
       <body className="min-h-screen flex flex-col">
         <MotionProvider>
         <AuthProvider>
+        <AuthContextProvider>
         <CartProvider>
           <ToastProvider>
             <PayPalProvider>
@@ -114,6 +116,7 @@ export default async function RootLayout({
             </PayPalProvider>
           </ToastProvider>
         </CartProvider>
+        </AuthContextProvider>
         </AuthProvider>
         </MotionProvider>
       </body>
