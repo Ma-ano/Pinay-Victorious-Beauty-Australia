@@ -3,6 +3,8 @@ import { getAdminDb } from "@/lib/firebase-admin";
 import crypto from "crypto";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const AFTERPAY_SECRET_KEY = process.env.AFTERPAY_SECRET_KEY || "";
 

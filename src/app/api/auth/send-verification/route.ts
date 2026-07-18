@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createAndSendOtp } from "@/lib/otp";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

@@ -3,6 +3,8 @@ import { getAdminDb, getAdminAuth } from "@/lib/firebase-admin";
 import { Timestamp } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 function getSessionCookie(request: Request): string | null {
   const cookieHeader = request.headers.get("cookie") || "";

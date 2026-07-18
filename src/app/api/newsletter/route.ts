@@ -3,6 +3,8 @@ import { sendEmail } from "@/lib/mail";
 import { welcomeEmail } from "@/lib/email-templates";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 function getBaseUrl(request: Request): string {
   const origin = request.headers.get("origin");

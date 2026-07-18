@@ -4,6 +4,8 @@ import { getFirestore } from "firebase-admin/firestore";
 import { createAndSendOtp } from "@/lib/otp";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 

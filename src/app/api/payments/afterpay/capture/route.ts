@@ -5,6 +5,8 @@ import { Timestamp } from "firebase-admin/firestore";
 import { CURRENCY } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function getSessionCookie(request: Request): string | null {
   const cookieHeader = request.headers.get("cookie") || "";

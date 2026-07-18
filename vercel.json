@@ -3,5 +3,23 @@
   "buildCommand": "next build",
   "outputDirectory": ".next",
   "installCommand": "npm install",
-  "devCommand": "next dev"
+  "devCommand": "next dev",
+  "functions": {
+    "src/app/api/payments/**/*.ts": {
+      "maxDuration": 60,
+      "runtime": "nodejs18.x"
+    },
+    "src/app/api/auth/**/*.ts": {
+      "maxDuration": 30,
+      "runtime": "nodejs18.x"
+    },
+    "src/app/api/admin/**/*.ts": {
+      "maxDuration": 60,
+      "runtime": "nodejs18.x"
+    },
+    "src/app/api/webhooks/**/*.ts": {
+      "maxDuration": 60,
+      "runtime": "nodejs18.x"
+    }
+  }
 }

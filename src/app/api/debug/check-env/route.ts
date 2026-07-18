@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAdminApp, FirebaseAdminNotConfigured } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 const SENSITIVE_KEYS = ["FIREBASE_ADMIN_PRIVATE_KEY", "ADMIN_SETUP_SECRET", "SMTP_PASS"];
 

@@ -6,6 +6,8 @@ import crypto from "crypto";
 import { sanitizeText, sanitizeItemName, sanitizePhone } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 function getSessionCookie(request: Request): string | null {
   const cookieHeader = request.headers.get("cookie") || "";

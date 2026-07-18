@@ -3,6 +3,8 @@ import { refundAfterpayPayment, hasAfterpayCredentials } from "@/lib/afterpay";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
   try {

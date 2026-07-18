@@ -3,6 +3,8 @@ import sharp from "sharp";
 import { getAdminBucket, getAdminAuth } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const SIZES = [200, 400, 800, 1200];
 const QUALITY = 80;

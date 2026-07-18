@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ uid: string }> }) {
   try {
