@@ -113,6 +113,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getFirebaseAuth();
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
+
     const db = getFirebaseDb();
     let fresh = false;
     const unsub = onIdTokenChanged(auth, async (fu) => {
