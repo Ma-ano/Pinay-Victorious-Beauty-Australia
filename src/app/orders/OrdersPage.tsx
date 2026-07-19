@@ -269,7 +269,7 @@ export default function OrdersPage() {
     if (!user) return;
     const onFocus = () => { fetchOrders(); fetchReviewedKeys(); };
     window.addEventListener("focus", onFocus);
-    const interval = setInterval(fetchOrders, 60000);
+    const interval = setInterval(fetchOrders, 300000);
     return () => {
       window.removeEventListener("focus", onFocus);
       clearInterval(interval);
