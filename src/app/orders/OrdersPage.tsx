@@ -70,6 +70,7 @@ interface CustomerOrder {
   shippingCost?: number;
   orderNumber?: string;
   createdAt?: Timestamp;
+  expireAt?: Timestamp;
 }
 
 interface CustomerReview {
@@ -208,6 +209,27 @@ export default function OrdersPage() {
           firestoreId: docSnap.id,
           ...docSnap.data(),
         })) as CustomerOrder[];
+
+      // Auto-expire pending orders past their expireAt
+      const now = new Date();
+      const batchUpdates: Promise<void>[] = [];
+      for (const order of nextOrders) {
+        if (order.paymentStatus !== "pending") continue;
+        if (!order.expireAt) continue;
+        if (order.expireAt.toDate() >= now) continue;
+        batchUpdates.push(
+          updateDoc(doc(db, "orders", order.firestoreId), {
+            paymentStatus: "expired",
+            status: "cancelled",
+            updatedAt: serverTimestamp(),
+          }).then(() => {
+            order.paymentStatus = "expired";
+            order.status = "cancelled";
+          }).catch(() => {})
+        );
+      }
+      await Promise.all(batchUpdates);
+
       nextOrders.sort((a, b) => {
   const aTime = a.createdAt ? (typeof a.createdAt === "string" ? new Date(a.createdAt).getTime() : a.createdAt.toMillis()) : 0;
   const bTime = b.createdAt ? (typeof b.createdAt === "string" ? new Date(b.createdAt).getTime() : b.createdAt.toMillis()) : 0;
