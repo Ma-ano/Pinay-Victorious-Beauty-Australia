@@ -180,6 +180,7 @@ export async function POST(request: Request) {
       },
       paymentMethod: "afterpay",
       isPaid: false,
+      paymentStatus: "pending",
       subtotal: subtotal ?? total,
       discount: discount ?? 0,
       discountCode: sanitizeText(discountCode || "", 30) || null,

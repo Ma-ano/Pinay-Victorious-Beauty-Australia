@@ -417,7 +417,7 @@ export default function AdminOrdersPage() {
       }
     }
     run();
-    const interval = setInterval(run, 300000);
+    const interval = setInterval(run, 900000);
     return () => { cancelled = true; clearInterval(interval); };
   }, []);
 

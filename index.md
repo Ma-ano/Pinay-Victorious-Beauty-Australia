@@ -1,30 +1,37 @@
-# Firestore Indexes Required
-
-## Existing (already created)
-
-| Collection | Fields | Used by |
-|-----------|--------|---------|
-| `orders` | `userId` ↑, `paymentStatus` ↑, `paymentMethod` ↑ | OrdersPage user lookup |
-| `orders` | `afterpayOrderId` ↑, `paymentStatus` ↑ | Afterpay webhook |
-| `orders` | `paypalOrderId` ↑, `paymentStatus` ↑ | PayPal webhook |
-| `orders` | `paymentMethod` ↑, `status` ↑, `expireAt` ↑ | Afterpay-specific cleanup (legacy) |
-| `reviews` | `productId` ↑, `createdAt` ↑ | Product reviews page |
-
-## Must Add (for auto-expiry cleanup to work)
-
-| # | Collection | Fields | Query | Created? |
-|---|-----------|--------|-------|----------|
-| 1 | `orders` | **`status`** ↑, **`expireAt`** ↑ | `where("status", "==", "processing").where("expireAt", "<", now)` | ❌ |
-| 2 | `orders` | **`paymentStatus`** ↑, **`status`** ↑ | `where("paymentStatus", "==", "pending").where("status", "in", ["cancelled", "rejected"])` | ❌ |
-
-## How to create
-
-Go to **Firebase Console** → **Firestore** → **Indexes** → **Add Index** and create both:
-
-**Index 1:**
-- Collection: `orders`
-- Fields: `status` (Ascending), `expireAt` (Ascending)
-
-**Index 2:**
-- Collection: `orders`
-- Fields: `paymentStatus` (Ascending), `status` (Ascending)
+orders	
+paymentStatus
+status
+__name__
+Collection	CICAgNiav4AK		Enabled	
+orders	
+userID
+paymentStatus
+paymentMethod
+__name__
+Collection	CICAgJim14AK		Enabled	
+orders	
+afterpayOrderId
+paymentStatus
+__name__
+Collection	CICAgJj7z4EK		Enabled	
+orders	
+paypalOrderId
+paymentStatus
+__name__
+Collection	CICAgJjF9oIK		Enabled	
+orders	
+paymentMethod
+status
+expireAt
+__name__
+Collection	CICAgJiUpoMK		Enabled	
+orders	
+status
+expireAt
+__name__
+Collection	CICAgNi47oMK		Enabled	
+reviews	
+productId
+createdAt
+__name__
+Collection	CICAgOjXh4EK		Enabled
