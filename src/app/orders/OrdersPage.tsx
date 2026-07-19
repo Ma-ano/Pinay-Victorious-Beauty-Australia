@@ -315,10 +315,12 @@ export default function OrdersPage() {
     try {
       await updateDoc(doc(db, "orders", orderId), {
         status: "cancelled",
+        paymentStatus: "cancelled",
         updatedAt: serverTimestamp(),
       });
       setCancelConfirmId(null);
       showToast("Order cancelled", "success");
+      fetchOrders();
     } catch {
       showToast("Failed to cancel order", "error");
     }

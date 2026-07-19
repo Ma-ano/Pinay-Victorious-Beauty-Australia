@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminAuth, getAdminDb } from "@/lib/firebase-admin";
+import { getPayPalOrder, voidPayPalOrder } from "@/lib/paypal";
+import { Timestamp } from "firebase-admin/firestore";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -31,13 +33,56 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "orderId is required" }, { status: 400 });
     }
 
-    const orderSnap = await getAdminDb().collection("orders").doc(orderId).get();
+    const orderRef = getAdminDb().collection("orders").doc(orderId);
+    const orderSnap = await orderRef.get();
     if (!orderSnap.exists) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    await getAdminDb().collection("orders").doc(orderId).update({
+    const orderData = orderSnap.data()!;
+
+    // Void payment gateway before cancelling
+    if (orderData.paypalOrderId) {
+      let paypalOrderStatus: string | undefined;
+      try {
+        const paypalOrder = await getPayPalOrder(orderData.paypalOrderId);
+        paypalOrderStatus = paypalOrder.status as string;
+      } catch {
+        paypalOrderStatus = undefined;
+      }
+
+      if (paypalOrderStatus === "COMPLETED") {
+        await orderRef.update({
+          paymentStatus: "paid",
+          isPaid: true,
+          updatedAt: Timestamp.fromDate(new Date()),
+        });
+        return NextResponse.json({ error: "Order is already paid — use refund instead" }, { status: 400 });
+      }
+
+      if (paypalOrderStatus === "CREATED" || paypalOrderStatus === "APPROVED") {
+        voidPayPalOrder(orderData.paypalOrderId).catch(() => {});
+      }
+    }
+
+    if (orderData.paymentMethod === "afterpay" && orderData.afterpayToken) {
+      try {
+        const pendingRef = getAdminDb().collection("pending_afterpay").doc(orderData.afterpayToken);
+        const pendingSnap = await pendingRef.get();
+        if (pendingSnap.exists && pendingSnap.data()?.status !== "completed") {
+          await pendingRef.update({
+            status: "cancelled",
+            cancelledAt: new Date().toISOString(),
+          });
+        }
+      } catch {
+        // best-effort
+      }
+    }
+
+    await orderRef.update({
       status: "rejected",
+      paymentStatus: "cancelled",
       updatedAt: new Date().toISOString(),
     });
 

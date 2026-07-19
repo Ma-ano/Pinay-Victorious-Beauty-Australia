@@ -401,14 +401,14 @@ export default function AdminOrdersPage() {
       try {
         const token = await getIdToken();
         if (!token || cancelled) return;
-        const res = await fetch("/api/admin/orders/cleanup-afterpay", {
+        const res = await fetch("/api/admin/orders/cleanup-expired", {
           method: "POST",
           headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         });
         if (res.ok) {
           const data = await res.json();
           if (data.cleanedCount > 0) {
-            showToast(`${data.cleanedCount} expired Afterpay order(s) cancelled automatically`, "success");
+            showToast(`${data.cleanedCount} expired order(s) cancelled automatically`, "success");
             fetchOrders();
           }
         }

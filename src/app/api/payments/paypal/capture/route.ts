@@ -54,6 +54,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, existing: true, orderId: firestoreOrderId });
     }
 
+    if (orderData.paymentStatus === "cancelled" || orderData.paymentStatus === "expired" || orderData.paymentStatus === "declined") {
+      return NextResponse.json({ error: "Order payment is no longer valid" }, { status: 400 });
+    }
+
     if (orderData.expireAt && orderData.expireAt.toDate() < new Date()) {
       await orderRef.update({
         paymentStatus: "expired",

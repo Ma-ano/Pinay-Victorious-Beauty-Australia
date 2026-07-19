@@ -73,6 +73,7 @@ export async function POST(request: Request) {
       }
       await doc.ref.update({
         status: "cancelled",
+        paymentStatus: "cancelled",
         updatedAt: new Date().toISOString(),
         webhookEventIds: FieldValue.arrayUnion(eventId),
       });

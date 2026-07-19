@@ -56,6 +56,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, existing: true, orderId });
     }
 
+    if (orderData.paymentStatus === "cancelled" || orderData.paymentStatus === "expired" || orderData.paymentStatus === "declined" || orderData.status === "cancelled" || orderData.status === "rejected") {
+      return NextResponse.json({ error: "Order is cancelled or expired" }, { status: 400 });
+    }
+
     if (orderData.expireAt && orderData.expireAt.toDate() < new Date()) {
       await orderRef.update({
         paymentStatus: "expired",
