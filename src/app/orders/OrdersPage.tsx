@@ -269,7 +269,11 @@ export default function OrdersPage() {
     if (!user) return;
     const onFocus = () => { fetchOrders(); fetchReviewedKeys(); };
     window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
+    const interval = setInterval(fetchOrders, 60000);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      clearInterval(interval);
+    };
   }, [user]);
 
   const activeReview = (() => {

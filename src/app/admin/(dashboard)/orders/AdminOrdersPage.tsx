@@ -417,7 +417,8 @@ export default function AdminOrdersPage() {
       }
     }
     run();
-    return () => { cancelled = true; };
+    const interval = setInterval(run, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
