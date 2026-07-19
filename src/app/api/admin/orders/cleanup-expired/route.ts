@@ -30,15 +30,22 @@ export async function POST(request: Request) {
     const now = new Date();
     const ordersRef = getAdminDb().collection("orders");
 
-    const snapshot = await ordersRef
+    // Fix expired orders: processing past expireAt
+    const expiredSnapshot = await ordersRef
       .where("status", "==", "processing")
       .where("expireAt", "<", Timestamp.fromDate(now))
+      .get();
+
+    // Fix zombie orders: already cancelled/rejected but paymentStatus still pending
+    const zombieSnapshot = await ordersRef
+      .where("paymentStatus", "==", "pending")
+      .where("status", "in", ["cancelled", "rejected"])
       .get();
 
     let cleanedCount = 0;
     const batch = getAdminDb().batch();
 
-    for (const doc of snapshot.docs) {
+    for (const doc of expiredSnapshot.docs) {
       const orderData = doc.data();
       if (orderData.paymentStatus === "paid") continue;
 
@@ -50,11 +57,23 @@ export async function POST(request: Request) {
       cleanedCount++;
     }
 
+    for (const doc of zombieSnapshot.docs) {
+      const orderData = doc.data();
+      if (orderData.paymentStatus !== "pending") continue;
+
+      batch.update(doc.ref, {
+        paymentStatus: "cancelled",
+        updatedAt: Timestamp.fromDate(now),
+      });
+      cleanedCount++;
+    }
+
     if (cleanedCount > 0) {
       await batch.commit();
     }
 
-    for (const doc of snapshot.docs) {
+    const allExpired = [...expiredSnapshot.docs, ...zombieSnapshot.docs];
+    for (const doc of allExpired) {
       const orderData = doc.data();
       if (orderData.paymentStatus === "paid") continue;
 
